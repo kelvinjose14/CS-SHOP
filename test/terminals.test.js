@@ -82,6 +82,7 @@ test('el administrador puede renombrar y desactivar una computadora', async () =
   A.call('terminals.save', { id: caja2.id, active: false });
   assert.throws(() => B.call('products.list'), /desactivada por el administrador/);
   assert.throws(() => B.login({ username: 'vendedor', password: 'vendedor123' }), /desactivada/);
+  assert.throws(() => api.pair('Caja 2'), /desactivada\. El administrador debe activarla/, 'volver a conectarla no la reactiva');
   assert.throws(() => A.call('terminals.save', { id: 1, active: false }), /no se puede desactivar/);
 
   A.call('terminals.save', { id: caja2.id, name: 'Mostrador', active: true });

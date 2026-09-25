@@ -61,9 +61,24 @@ const PHOTO_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 
 // Lee una foto de productos por su nombre. null si no existe o el nombre no es válido.
 function readPhoto(photosDir, name) {
-  const file = path.join(photosDir, String(name));
-  if (!PHOTO_NAME.test(name) || !fs.existsSync(file)) return null;
+  name = String(name);
+  if (!PHOTO_NAME.test(name)) return null;
+  const file = path.join(photosDir, name);
+  if (!fs.existsSync(file)) return null;
   return { type: PHOTO_TYPES[name.split('.').pop()], data: fs.readFileSync(file) };
+}
+
+// decodeURIComponent sin lanzar: un nombre mal codificado es simplemente inválido.
+function safeDecode(s) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return '';
+  }
+}
+
+function versionMismatch(principal, mine) {
+  return new AppError(`La PC principal tiene la versión ${principal} y esta computadora la ${mine || 'desconocida'}. Instale la misma versión en todas las computadoras.`, 'VERSION');
 }
 
 // Cuenta intentos fallidos por clave (IP + usuario) dentro de una ventana de tiempo.
@@ -72,7 +87,8 @@ function limiter(max) {
   return {
     blocked(k) {
       const list = (hits.get(k) || []).filter((t) => Date.now() - t < LIMIT_WINDOW);
-      hits.set(k, list);
+      if (list.length) hits.set(k, list);
+      else hits.delete(k);
       return list.length >= max;
     },
     fail(k) {
@@ -145,13 +161,11 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
     }
     keys.clear(ip);
     const theirs = req.headers['x-caps-version'];
-    if (theirs !== version) {
-      throw Object.assign(new AppError(`La PC principal tiene la versión ${version} y esta computadora la ${theirs || 'desconocida'}. Instale la misma versión en todas las computadoras.`, 'VERSION'), { status: 409 });
-    }
+    if (theirs !== version) throw Object.assign(versionMismatch(version, theirs), { status: 409 });
 
     const photo = /^\/v1\/foto\/(.+)$/.exec(url.pathname);
     if (req.method === 'GET' && photo) {
-      const img = readPhoto(photosDir, decodeURIComponent(photo[1]));
+      const img = readPhoto(photosDir, safeDecode(photo[1]));
       if (!img) return send(res, 404, { ok: false, error: 'Foto no encontrada.', code: 'NOT_FOUND' });
       res.writeHead(200, { 'content-type': img.type, 'content-length': img.data.length, 'cache-control': 'max-age=86400' });
       return res.end(img.data);
@@ -166,8 +180,11 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
       case '/v1/login': {
         const who = `${ip}|${String(body.username || '').toLowerCase()}`;
         if (logins.blocked(who)) throw new AppError('Demasiados intentos fallidos. Espere un minuto e intente de nuevo.', 'RATE');
+        // Por la red solo entran las PCs conectadas; la principal (1) entra en su propio proceso.
+        const terminal = Number(body.terminal);
+        if (!Number.isInteger(terminal) || terminal <= 1) throw new AppError('Esta computadora no está registrada en la PC principal. Vuelva a conectarla.', 'TERMINAL');
         try {
-          const data = api.login({ username: body.username, password: body.password }, { terminal: body.terminal });
+          const data = api.login({ username: body.username, password: body.password }, { terminal });
           logins.clear(who);
           return send(res, 200, { ok: true, data });
         } catch (err) {
@@ -197,10 +214,13 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
   }
 
   const server = http.createServer((req, res) => {
-    const url = new URL(req.url, 'http://localhost');
-    route(req, res, url).catch((err) => {
-      if (!res.headersSent) send(res, err.status || 200, errorBody(err));
-    });
+    // Todo error queda dentro de la promesa: una petición rara no debe tumbar la PC principal.
+    Promise.resolve()
+      .then(() => route(req, res, new URL(req.url, 'http://localhost')))
+      .catch((err) => {
+        if (!res.headersSent) send(res, err.status || 200, errorBody(err));
+        else res.destroy();
+      });
   });
   server.keepAliveTimeout = 30000;
   return server;
@@ -246,4 +266,4 @@ function startDiscovery({ info, httpPort, port = DISCOVERY_PORT }) {
   });
 }
 
-module.exports = { PORT, DISCOVERY_PORT, DISCOVER_MSG, newKey, normalizeKey, sameKey, callApi, readPhoto, createServer, listen, close, startDiscovery };
+module.exports = { PORT, DISCOVERY_PORT, DISCOVER_MSG, newKey, normalizeKey, sameKey, callApi, readPhoto, safeDecode, versionMismatch, createServer, listen, close, startDiscovery };

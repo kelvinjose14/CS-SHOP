@@ -7,6 +7,8 @@ const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { migrate } = require('./schema');
 
+const MAX_STATEMENTS = 300; // tope de la caché de consultas preparadas (hay consultas armadas con filtros)
+
 class Database {
   constructor(file) {
     this.file = file || null;
@@ -20,6 +22,7 @@ class Database {
   prepare(query) {
     let stmt = this.stmts.get(query);
     if (!stmt) {
+      if (this.stmts.size >= MAX_STATEMENTS) this.stmts.clear();
       stmt = this.sql.prepare(query);
       this.stmts.set(query, stmt);
     }
@@ -72,7 +75,8 @@ class Database {
       return result;
     } catch (err) {
       this.depth--;
-      if (this.depth === 0) this.sql.exec('ROLLBACK');
+      // Si SQLite ya deshizo la transacción, un ROLLBACK taparía el error original.
+      if (this.depth === 0 && this.sql.isTransaction) this.sql.exec('ROLLBACK');
       throw err;
     }
   }
@@ -125,4 +129,4 @@ async function validateDatabaseFile(file) {
   }
 }
 
-module.exports = { openDatabase, validateDatabaseFile, removeDatabaseFiles };
+module.exports = { openDatabase, validateDatabaseFile };

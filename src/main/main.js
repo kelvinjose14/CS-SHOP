@@ -118,51 +118,52 @@ function registerIpc() {
   ipcMain.handle('net:ping', wrap(() => needBackend().ping()));
 
   // ---------- Configurar esta PC ----------
-  // Si ya está configurada, solo el administrador puede cambiarla. Una PC conectada también se puede
-  // reconfigurar desde la pantalla de entrada: si cambió la clave o la dirección, nadie puede entrar para hacerlo.
-  const setupAllowed = () => {
+  // Si ya está configurada, solo el administrador puede cambiarla. Excepción: una PC conectada se puede
+  // volver a conectar desde la pantalla de entrada, porque si cambió la clave o la dirección nadie puede entrar.
+  const setupAllowed = ({ reconnect = false } = {}) => {
     if (!backend) return;
-    if (backend.mode === 'terminal' && !backend.user()) return;
+    if (reconnect && backend.mode === 'terminal' && !backend.user()) return;
     backend.requireAdmin();
   };
+  // Datos de conexión escritos en la pantalla; devuelve un cliente listo y el saludo de la principal.
+  async function reach({ host, port, key }) {
+    host = String(host || '').trim();
+    if (!host) throw userError('Escriba la dirección de la PC principal.');
+    port = Number(port) || net.PORT;
+    const client = createClient({ host, port, key: String(key || '').trim().toUpperCase(), version: app.getVersion() });
+    const hello = await client.hello();
+    if (hello.version !== app.getVersion()) throw net.versionMismatch(hello.version, app.getVersion());
+    return { client, hello, host, port };
+  }
   ipcMain.handle('setup:discover', wrap(async () => {
-    setupAllowed();
+    setupAllowed({ reconnect: true });
     return discover({ timeout: 2000 });
   }));
-  ipcMain.handle('setup:test', wrap(async ({ host, port, key }) => {
-    setupAllowed();
-    const hello = await createClient({ host, port: Number(port) || net.PORT, key, version: app.getVersion() }).hello();
-    if (hello.version !== app.getVersion()) {
-      throw userError(`La PC principal tiene la versión ${hello.version} y esta computadora la ${app.getVersion()}. Instale la misma versión en todas las computadoras.`, 'VERSION');
-    }
-    return hello;
+  ipcMain.handle('setup:test', wrap(async (opts) => {
+    setupAllowed({ reconnect: true });
+    return (await reach(opts)).hello;
   }));
   ipcMain.handle('setup:principal', wrap(async ({ name }) => {
     setupAllowed();
-    const cfg = { mode: 'principal', share: true, key: net.newKey(), server_id: crypto.randomUUID() };
     if (backend && backend.mode === 'principal') throw userError('Esta computadora ya es la PC principal.');
-    if (backend) await backend.close();
-    backend = null;
+    // Primero el nombre en la base local: si no es válido, esta PC sigue como estaba.
     const db = await openDatabase(dbFile());
     try {
       createApi(db).setTerminalName(1, name);
     } finally {
       db.close();
     }
-    saveConfig(cfg);
+    const cfg = saveConfig({ mode: 'principal', share: true, key: net.newKey(), server_id: crypto.randomUUID() });
     relaunch();
     return cfg.key;
   }));
-  ipcMain.handle('setup:terminal', wrap(async ({ host, port, key, name }) => {
-    setupAllowed();
-    port = Number(port) || net.PORT;
-    const client = createClient({ host, port, key, version: app.getVersion() });
-    const hello = await client.hello();
-    if (hello.version !== app.getVersion()) {
-      throw userError(`La PC principal tiene la versión ${hello.version} y esta computadora la ${app.getVersion()}. Instale la misma versión en todas las computadoras.`, 'VERSION');
-    }
-    const terminal = await client.pair(name);
-    saveConfig({ mode: 'terminal', terminal_id: terminal.id, name: terminal.name, key: String(key).trim().toUpperCase(), server: { host, port, server_id: hello.server_id, name: hello.name } });
+  ipcMain.handle('setup:terminal', wrap(async (opts) => {
+    setupAllowed({ reconnect: true });
+    if (!String(opts.name || '').trim()) throw userError('Escriba un nombre para esta computadora.');
+    if (!String(opts.key || '').trim()) throw userError('Escriba la clave de conexión.');
+    const { client, hello, host, port } = await reach(opts);
+    const terminal = await client.pair(opts.name);
+    saveConfig({ mode: 'terminal', terminal_id: terminal.id, name: terminal.name, key: String(opts.key).trim().toUpperCase(), server: { host, port, server_id: hello.server_id, name: hello.name } });
     relaunch();
     return terminal;
   }));
@@ -262,7 +263,7 @@ app.whenReady().then(async () => {
     return;
   }
   protocol.handle('caps-foto', async (req) => {
-    const name = decodeURIComponent(new URL(req.url).pathname.slice(1));
+    const name = net.safeDecode(new URL(req.url).pathname.slice(1));
     const img = backend ? await backend.photo(name).catch(() => null) : null;
     if (!img) return new Response(null, { status: 404 });
     return new Response(img.data, { headers: { 'content-type': img.type } });

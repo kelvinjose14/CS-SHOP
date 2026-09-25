@@ -50,14 +50,18 @@ test('permisos y sesiones por la red', async (t) => {
   await assert.rejects(v.call('purchases.list'), /permiso/);
   await assert.rejects(v.call('products.save', { name: 'X', photo_data: PNG }), /permiso/);
   await assert.rejects(connect().call('token-falso', 'products.list'), (e) => e.code === 'AUTH');
-  await assert.rejects(connect().login('admin', 'mala', 1), /incorrectos/);
+  await assert.rejects(connect().login('admin', 'mala', v.terminal), /incorrectos/);
+  // Por la red nadie entra como la PC principal (su caja es de ella).
+  await assert.rejects(connect().login('admin', 'admin123', 1), (e) => e.code === 'TERMINAL');
+  await assert.rejects(connect().login('admin', 'admin123'), (e) => e.code === 'TERMINAL');
 });
 
 test('bloquea el inicio de sesión tras varios intentos fallidos', async (t) => {
   const { connect } = await start(t);
   const c = connect();
-  for (let i = 0; i < 5; i++) await assert.rejects(c.login('admin', 'mala', 1), /incorrectos/);
-  await assert.rejects(c.login('admin', 'admin123', 1), /Demasiados intentos/);
+  const { id } = await c.pair('Caja 2');
+  for (let i = 0; i < 5; i++) await assert.rejects(c.login('admin', 'mala', id), /incorrectos/);
+  await assert.rejects(c.login('admin', 'admin123', id), /Demasiados intentos/);
 });
 
 test('dos computadoras venden a la vez el mismo producto sin perder ni duplicar existencia', async (t) => {
@@ -111,6 +115,18 @@ test('las fotos se suben y se descargan por la red', async (t) => {
   assert.ok(img.data.length > 20);
   assert.equal(await connect().photo('../capsshop.db'), null);
   assert.equal(await connect({ key: 'MALA-CLAV' }).photo(photo), null);
+});
+
+test('una petición mal formada no tumba la PC principal', async (t) => {
+  const { port, connect } = await start(t);
+  const raw = (path) => new Promise((resolve) => {
+    const req = require('http').request({ host: '127.0.0.1', port, path, headers: { 'x-caps-key': KEY, 'x-caps-version': VERSION } }, (res) => { res.resume(); resolve(res.statusCode); });
+    req.on('error', () => resolve('error'));
+    req.end();
+  });
+  assert.equal(await raw('/v1/foto/%E0%A4%A'), 404);
+  assert.equal(await raw('//[::1'), 200);
+  assert.equal((await connect().hello()).server_id, 'srv-1', 'el servidor sigue atendiendo');
 });
 
 test('sin la PC principal responde "Sin conexión"', async () => {

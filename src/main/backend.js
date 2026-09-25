@@ -6,7 +6,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { openDatabase, validateDatabaseFile, removeDatabaseFiles } = require('../core/db');
+const { openDatabase, validateDatabaseFile } = require('../core/db');
 const { createApi } = require('../core/api');
 const { AppError, today } = require('../core/util');
 const { getSetting } = require('../core/services/common');
@@ -151,13 +151,28 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       requireAdmin();
       fs.mkdirSync(backupsDir, { recursive: true });
       db.backupTo(path.join(backupsDir, `antes-de-restaurar-${Date.now()}.db`));
+      // Se copia al lado antes de tocar la base: si la copia falla, los datos actuales siguen intactos.
+      const incoming = dbFile + '.restaurando';
+      fs.copyFileSync(file, incoming);
       api.closeAll();
-      db.close();
-      removeDatabaseFiles(dbFile);
-      fs.copyFileSync(file, dbFile);
-      db = await openDatabase(dbFile);
-      api = createApi(db);
-      token = null;
+      db.close(); // al cerrar, SQLite vuelca el WAL al archivo principal
+      const previous = dbFile + '.anterior';
+      try {
+        for (const f of [dbFile + '-wal', dbFile + '-shm']) fs.rmSync(f, { force: true });
+        fs.renameSync(dbFile, previous);
+        try {
+          fs.renameSync(incoming, dbFile);
+        } catch (err) {
+          fs.renameSync(previous, dbFile); // se devuelven los datos que había
+          throw err;
+        }
+        fs.rmSync(previous, { force: true });
+      } finally {
+        fs.rmSync(incoming, { force: true });
+        db = await openDatabase(dbFile);
+        api = createApi(db);
+        token = null;
+      }
     },
     async close() {
       await stopSharing();

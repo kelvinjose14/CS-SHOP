@@ -54,7 +54,7 @@ const App = {
 
   showLogin(message, code) {
     document.body.className = 'login-page';
-    const canSetup = this.info.mode === 'terminal' && ['OFFLINE', 'KEY', 'TERMINAL', 'VERSION'].includes(code);
+    const canSetup = this.info.mode === 'terminal' && CONNECTION_ERRORS.includes(code);
     setHTML(document.body, html`
       <div class="login">
         <div class="login-card">
@@ -77,12 +77,12 @@ const App = {
         this.info = await window.capsApi.info();
         await this.enter();
       } catch (err) {
-        if (['OFFLINE', 'KEY', 'TERMINAL', 'VERSION'].includes(err.code)) return this.showLogin(err.message, err.code);
+        if (CONNECTION_ERRORS.includes(err.code)) return this.showLogin(err.message, err.code);
         $('.login-error').textContent = err.message;
       }
     };
     const setup = $('#login-setup');
-    if (setup) setup.onclick = (e) => { e.preventDefault(); this.showSetup({ back: () => this.showLogin() }); };
+    if (setup) setup.onclick = (e) => { e.preventDefault(); this.showSetup({ back: () => this.showLogin(), terminalOnly: true }); };
   },
 
   onLoggedOut(message, code) {

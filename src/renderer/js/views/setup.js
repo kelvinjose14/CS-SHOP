@@ -3,7 +3,8 @@
 
 Object.assign(App, {
   // back: función para volver sin cambiar (desde Configuración o desde la pantalla de entrada).
-  showSetup({ back = null } = {}) {
+  // terminalOnly: desde la pantalla de entrada solo se puede volver a conectar a la principal.
+  showSetup({ back = null, terminalOnly = false } = {}) {
     document.body.className = 'login-page';
     const info = this.info;
     setHTML(document.body, html`
@@ -13,7 +14,7 @@ Object.assign(App, {
           <h2>Configurar esta computadora</h2>
           <p class="muted">¿Cómo va a trabajar esta PC?</p>
           <div class="setup-choice">
-            <button class="choice" data-mode="principal">${icon('pc', 'big')}<b>Esta es la PC principal</b><small>Guarda todos los datos. Debe estar encendida mientras la tienda trabaja.</small></button>
+            <button class="choice" data-mode="principal" ${terminalOnly ? 'hidden' : ''}>${icon('pc', 'big')}<b>Esta es la PC principal</b><small>Guarda todos los datos. Debe estar encendida mientras la tienda trabaja.</small></button>
             <button class="choice" data-mode="terminal">${icon('wifi', 'big')}<b>Conectar a la PC principal</b><small>Usa los datos de la PC principal por la red de la tienda.</small></button>
           </div>
           <form id="setup-principal" class="setup-form" hidden autocomplete="off">
@@ -27,11 +28,11 @@ Object.assign(App, {
             <button class="btn block" type="button" id="st-find">${icon('search')} Buscar la PC principal en la red</button>
             <div id="st-found"></div>
             <div class="grid-2 tight">
-              <label class="field"><span>Dirección de la PC principal</span><input name="host" placeholder="192.168.1.10" required></label>
-              <label class="field"><span>Puerto</span><input name="port" type="number" value="47810" required></label>
+              <label class="field"><span>Dirección de la PC principal</span><input name="host" placeholder="192.168.1.10" value="${info.server ? info.server.host : ''}" required></label>
+              <label class="field"><span>Puerto</span><input name="port" type="number" value="${info.server ? info.server.port : 47810}" required></label>
             </div>
             <label class="field"><span>Clave de conexión</span><input name="key" placeholder="XXXX-XXXX" required></label>
-            <label class="field"><span>Nombre de esta computadora</span><input name="name" placeholder="Caja 2" required maxlength="40"></label>
+            <label class="field"><span>Nombre de esta computadora</span><input name="name" placeholder="Caja 2" value="${info.mode === 'terminal' ? info.terminal.name : ''}" required maxlength="40"></label>
             <div class="login-error"></div>
             <div class="inline"><button class="btn" type="button" id="st-test">Probar conexión</button><button class="btn primary" type="submit">Conectar</button></div>
           </form>
@@ -44,6 +45,7 @@ Object.assign(App, {
       for (const [k, f] of Object.entries(forms)) f.hidden = k !== b.dataset.mode;
     }));
     if (back) $('#st-back').onclick = () => back();
+    if (terminalOnly) $('.choice[data-mode=terminal]').click();
     const fail = (form, err) => ($('.login-error', form).textContent = err.message);
     const restarting = () => setHTML($('.login-card'), html`<h2>Listo</h2><p class="muted">Reiniciando CAPS Shop…</p>`);
 
@@ -103,13 +105,21 @@ Object.assign(App, {
         </div>
       </div>`);
     document.body.appendChild(box);
+    let busy = false;
     const tryNow = async () => {
+      // Si la capa ya no está (por ejemplo, se volvió a la pantalla de entrada), se deja de reintentar.
+      if (!box.isConnected) return clearInterval(timer);
+      if (busy) return;
+      busy = true;
       try {
         await window.capsApi.ping();
       } catch {
         return;
+      } finally {
+        busy = false;
       }
       clearInterval(timer);
+      if (!box.isConnected) return;
       box.remove();
       toast('Conexión recuperada.');
       if (this.user) this.reload();

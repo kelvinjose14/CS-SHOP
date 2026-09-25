@@ -115,6 +115,10 @@ Decisión DT-14:
   - 10 claves incorrectas por minuto desde una IP la bloquean un minuto;
   - 5 contraseñas incorrectas por minuto, por IP y usuario, bloquean el inicio de sesión.
 - **Fotos:** solo nombres de archivo válidos, sin rutas.
+- **Por la red nadie entra como la PC principal** (`terminal` 1): su caja solo se usa desde ella.
+- **Una PC desactivada** no se reactiva al volver a conectarse con su nombre: solo el administrador la activa.
+- **Reconfigurar una PC conectada sin sesión** (desde la pantalla de entrada) solo permite volver a conectarla, no convertirla en principal.
+- **Una petición mal formada** (URL o nombre de foto inválidos) recibe un error y no detiene el servidor.
 - **Permisos:** se comprueban en la principal, igual que antes. Una terminal no puede saltárselos.
 - **Tráfico sin cifrar** dentro de la red de la tienda. Una persona conectada a la misma red con herramientas especiales podría ver contraseñas y datos. Mitigaciones:
   - usar una red con contraseña, sin clientes conectados a la misma WiFi;

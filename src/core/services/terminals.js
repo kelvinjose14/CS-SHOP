@@ -20,9 +20,10 @@ function register(db, name) {
     const found = db.get('SELECT * FROM terminals WHERE name = ?', [n]);
     if (found) {
       if (found.id === PRINCIPAL) throw new AppError('Ese nombre es el de la PC principal. Use otro nombre para esta computadora.');
-      if (!found.active) db.update('terminals', found.id, { active: 1 });
+      // Una PC desactivada no se reactiva sola: lo decide el administrador.
+      if (!found.active) throw new AppError('Esa computadora está desactivada. El administrador debe activarla en Configuración → Red.', 'TERMINAL');
       audit({ db, terminal: found.id }, 'conectar_pc', 'pc', found.id, { nombre: n });
-      return { ...found, active: 1 };
+      return found;
     }
     const id = db.insert('terminals', { name: n, active: 1, created_at: now() });
     audit({ db, terminal: id }, 'conectar_pc', 'pc', id, { nombre: n });

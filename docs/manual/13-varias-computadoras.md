@@ -55,6 +55,8 @@ En **Configuración → Red** de la principal están los datos para conectar las
 3. Pulse **Buscar la PC principal en la red** y elija la que aparece. Si no aparece ninguna, escriba la **Dirección** que muestra la principal en Configuración → Red.
 4. Escriba la **Clave de conexión**. Da igual si es en mayúsculas o minúsculas.
 5. Escriba un **Nombre de esta computadora**, por ejemplo "Caja 2". Ese nombre sale en la caja, en el historial y en la lista de computadoras.
+   - **Use un nombre distinto para cada computadora.** Dos computadoras con el mismo nombre cuentan como una sola y comparten la caja.
+   - Si reinstala una computadora, use el mismo nombre que tenía: conserva su caja y su historial.
 6. Pulse **Probar conexión**. Debe decir **Conexión correcta con "…"**.
 7. Pulse **Conectar**. El programa se reinicia.
 
@@ -114,6 +116,8 @@ Cuando vuelve la conexión:
 | **Clave de conexión incorrecta. Revísela en la PC principal: Configuración → Red.** | Escriba la clave correcta. Si la cambiaron, en la pantalla de entrada pulse **Configurar esta PC** |
 | **La PC principal tiene la versión X y esta computadora la Y. Instale la misma versión en todas las computadoras.** | Instale la misma versión en todas |
 | **Esta computadora fue desactivada por el administrador.** | El administrador debe activarla en Configuración → Red |
+| **Esa computadora está desactivada. El administrador debe activarla en Configuración → Red.** (al conectar) | Se intentó conectar con el nombre de una computadora desactivada. Actívela, o use otro nombre |
+| **Escriba la dirección de la PC principal.** / **La dirección de la PC principal no es válida.** | Escriba la dirección que muestra la principal en Configuración → Red, por ejemplo `192.168.1.10` |
 | **Esta computadora no está registrada en la PC principal. Vuelva a conectarla.** | Pasa si se restauró en la principal una copia anterior a la conexión. Vuelva a configurarla (13.3) |
 | **Ese nombre es el de la PC principal. Use otro nombre para esta computadora.** | Elija otro nombre |
 | **Demasiados intentos fallidos. Espere un minuto e intente de nuevo.** | Se equivocaron 5 veces con la contraseña en un minuto |

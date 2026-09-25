@@ -82,6 +82,8 @@ const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 2
 /* ---------- Llamadas al sistema ---------- */
 // Errores que obligan a entrar de nuevo (sesión vencida, PC desactivada, clave o versión distinta).
 const SESSION_ERRORS = ['AUTH', 'TERMINAL', 'KEY', 'VERSION'];
+// Errores de conexión con la PC principal: en la pantalla de entrada permiten volver a configurar la PC.
+const CONNECTION_ERRORS = ['OFFLINE', 'KEY', 'TERMINAL', 'VERSION'];
 async function api(name, params, { silent = false } = {}) {
   try {
     return await window.capsApi.call(name, params);

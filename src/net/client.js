@@ -55,7 +55,13 @@ async function discover({ timeout = 2000, port = DISCOVERY_PORT, targets = broad
 function httpRequest(method, url, headers, body, { connectTimeout = CONNECT_TIMEOUT, timeout = TIMEOUT } = {}) {
   return new Promise((resolve, reject) => {
     let connected = false;
-    const req = http.request(url, { method, headers, agent });
+    let req;
+    try {
+      req = http.request(url, { method, headers, agent });
+    } catch {
+      reject(new AppError('La dirección de la PC principal no es válida.', 'VALIDATION'));
+      return;
+    }
     const fail = (err) => reject(Object.assign(err, { network: true, sent: connected }));
     const timer = setTimeout(() => {
       if (!connected) req.destroy(Object.assign(new Error('No se pudo conectar a tiempo.'), { code: 'ECONNTIMEOUT' }));
