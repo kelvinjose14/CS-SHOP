@@ -354,6 +354,14 @@ const shortDate = (k) => (k.length === 7 ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', '
 function photoUrl(name) {
   return name ? App.info.photosUrl + encodeURIComponent(name) : null;
 }
+// Si falta el archivo de una foto (por ejemplo, tras restaurar una copia sin las fotos), se muestra el ícono.
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.classList.contains('thumb')) return;
+  const ph = el(html`<span class="thumb ph" style="${img.getAttribute('style') || ''}" title="Falta el archivo de la foto">${icon('tag')}</span>`);
+  img.replaceWith(ph);
+}, true);
+
 function productThumb(p, size = 40) {
   const url = photoUrl(p.photo);
   return url

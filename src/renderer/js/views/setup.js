@@ -31,7 +31,7 @@ Object.assign(App, {
               <label class="field"><span>Dirección de la PC principal</span><input name="host" placeholder="192.168.1.10" value="${info.server ? info.server.host : ''}" required></label>
               <label class="field"><span>Puerto</span><input name="port" type="number" value="${info.server ? info.server.port : 47810}" required></label>
             </div>
-            <label class="field"><span>Clave de conexión</span><input name="key" placeholder="XXXX-XXXX" required></label>
+            <label class="field"><span>Clave de conexión</span><input name="key" placeholder="XXXXX-XXXXX" required></label>
             <label class="field"><span>Nombre de esta computadora</span><input name="name" placeholder="Caja 2" value="${info.mode === 'terminal' ? info.terminal.name : ''}" required maxlength="40"></label>
             <div class="login-error"></div>
             <div class="inline"><button class="btn" type="button" id="st-test">Probar conexión</button><button class="btn primary" type="submit">Conectar</button></div>

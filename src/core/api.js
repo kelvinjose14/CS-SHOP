@@ -78,6 +78,8 @@ const METHODS = {
 };
 
 const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 horas sin actividad
+// Lo único permitido mientras el usuario debe cambiar su contraseña.
+const BEFORE_PASSWORD_CHANGE = new Set(['auth.changePassword', 'settings.get']);
 const TOUCH_EVERY = 60 * 1000;
 
 function createApi(db) {
@@ -146,6 +148,8 @@ function createApi(db) {
       }
       const [roles, fn] = entry;
       if (!roles.includes(s.user.role)) throw new AppError('No tiene permiso para realizar esta operación.', 'FORBIDDEN');
+      // La contraseña inicial (o restablecida) se cambia antes de usar el sistema, también desde la red.
+      if (s.user.must_change && !BEFORE_PASSWORD_CHANGE.has(name)) throw new AppError('Debe cambiar su contraseña antes de continuar.', 'PASSWORD');
       const result = fn({ db, user: s.user, terminal: s.terminal }, params || {});
       if (name === 'auth.changePassword') s.user = result;
       return result;

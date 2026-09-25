@@ -8,6 +8,7 @@ const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { openDatabase, validateDatabaseFile } = require('../src/core/db');
 const reports = require('../src/core/services/reports');
+const { migrate, MIGRATIONS } = require('../src/core/schema');
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'v1.0.0.db');
 const TABLES = ['users', 'products', 'inventory_movements', 'suppliers', 'customers', 'purchases', 'purchase_items', 'purchase_payments',
@@ -47,7 +48,7 @@ test('abre la base de la versión 1.0.0 y conserva todos los datos', async () =>
   assert.ok(before.sales > 100, 'la base de muestra tiene datos');
 
   const db = await openDatabase(file);
-  assert.equal(db.value('PRAGMA user_version'), 2);
+  assert.equal(db.value('PRAGMA user_version'), MIGRATIONS.length);
   assert.equal(db.value('PRAGMA integrity_check'), 'ok');
   assert.equal(db.value('PRAGMA journal_mode'), 'wal');
   assert.deepEqual(snapshot((q) => db.value(q)), before);
@@ -64,7 +65,7 @@ test('abre la base de la versión 1.0.0 y conserva todos los datos', async () =>
 
   // Se vuelve a abrir sin aplicar la migración otra vez.
   const again = await openDatabase(file);
-  assert.equal(again.value('PRAGMA user_version'), 2);
+  assert.equal(again.value('PRAGMA user_version'), MIGRATIONS.length);
   assert.equal(again.value('SELECT COUNT(*) FROM terminals'), 1);
   again.close();
 });
@@ -83,4 +84,24 @@ test('los respaldos son archivos válidos y se rechazan los que no lo son', asyn
   const restored = await openDatabase(backup);
   assert.equal(restored.value('SELECT COUNT(*) FROM terminals'), 1);
   restored.close();
+});
+
+test('una migración que falla no deja nada a medias', async () => {
+  const { file } = tempCopy();
+  const db = await openDatabase(file);
+  const bad = [...MIGRATIONS, 'CREATE TABLE a_medias (x INTEGER); INSERT INTO tabla_inexistente VALUES (1);'];
+  assert.throws(() => db.tx(() => migrate(db, bad)), /tabla_inexistente/);
+  assert.equal(db.value('PRAGMA user_version'), MIGRATIONS.length);
+  assert.equal(db.value("SELECT COUNT(*) FROM sqlite_master WHERE name = 'a_medias'"), 0);
+  db.close();
+});
+
+test('una base de una versión más nueva no se abre ni se modifica', async () => {
+  const { file } = tempCopy();
+  const db = await openDatabase(file);
+  db.exec(`PRAGMA user_version = ${MIGRATIONS.length + 1}`);
+  db.close();
+  const before = fs.readFileSync(file);
+  await assert.rejects(openDatabase(file), /versión más nueva de CAPS Shop/);
+  assert.ok(fs.readFileSync(file).equals(before), 'el archivo queda igual');
 });

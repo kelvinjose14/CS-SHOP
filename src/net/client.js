@@ -6,6 +6,7 @@ const os = require('os');
 const crypto = require('crypto');
 const { AppError } = require('../core/util');
 const { PORT, DISCOVERY_PORT, DISCOVER_MSG } = require('./server');
+const secure = require('./secure');
 
 const CONNECT_TIMEOUT = 4000; // si la principal está apagada, no se espera más que esto por intento
 const TIMEOUT = 15000; // respuesta, una vez conectado
@@ -90,35 +91,56 @@ function httpRequest(method, url, headers, body, { connectTimeout = CONNECT_TIME
  * @param {object} o
  * @param {string} o.host
  * @param {number} [o.port]
- * @param {string} o.key        clave de conexión
+ * @param {string} o.key        clave de conexión (no se envía: se usa para cifrar)
  * @param {string} o.version    versión de este programa
- * @param {string} [o.serverId] si la dirección deja de responder, se vuelve a buscar la principal con este id
+ * @param {string} [o.serverId] identificador de la principal: forma parte de la llave de cifrado y, si la
+ *                              dirección deja de responder, se vuelve a buscar la principal con él. Si falta,
+ *                              se toma del saludo (hello).
  * @param {(host: string) => void} [o.onMoved]  avisa la nueva dirección encontrada
  * @param {object} [o.discoverOptions]
  */
 function createClient({ host, port = PORT, key, version, serverId, onMoved, discoverOptions, timeout = TIMEOUT, connectTimeout = CONNECT_TIMEOUT }) {
-  const state = { host, port };
+  const state = { host, port, serverId };
   const url = (path) => `http://${state.host}:${state.port}${path}`;
-  const headers = (extra) => ({ 'x-caps-key': key || '', 'x-caps-version': version, ...extra });
 
-  async function once(method, path, body) {
-    const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
-    const r = await httpRequest(method, url(path), headers(payload ? { 'content-type': 'application/json', 'content-length': payload.length } : {}), payload, { timeout, connectTimeout });
-    let data;
+  async function send(method, path, payload) {
+    const raw = payload === undefined ? undefined : Buffer.from(JSON.stringify(payload));
+    const headers = { 'x-caps-version': version, ...(raw ? { 'content-type': 'application/json', 'content-length': raw.length } : {}) };
+    const r = await httpRequest(method, url(path), headers, raw, { timeout, connectTimeout });
     try {
-      data = JSON.parse(r.data.toString('utf8'));
+      return JSON.parse(r.data.toString('utf8'));
     } catch {
       throw new AppError(`Respuesta inválida de la PC principal (${r.status}).`, 'ERROR');
     }
+  }
+
+  const unwrap = (data) => {
     if (!data.ok) throw new AppError(data.error, data.code || 'ERROR');
     return data.data;
+  };
+
+  async function once(method, path, body) {
+    if (path === '/v1/hello') {
+      const hello = unwrap(await send('GET', path));
+      if (!state.serverId) state.serverId = hello.server_id;
+      return hello;
+    }
+    if (!state.serverId) await once('GET', '/v1/hello');
+    // Todo lo demás va cifrado con la llave derivada de la clave. La hora y el nonce van dentro.
+    const k = secure.deriveKey(key, state.serverId);
+    const nonce = crypto.randomUUID();
+    const reply = await send('POST', path, secure.seal(k, { ...body, ts: Date.now(), nonce }));
+    if (!secure.isSealed(reply)) return unwrap(reply); // error antes de descifrar: versión o clave
+    const data = secure.open(k, reply);
+    if (!data || data.nonce !== nonce) throw new AppError('La respuesta de la PC principal no es válida.', 'ERROR');
+    return unwrap(data);
   }
 
   // Si la principal cambió de dirección (por ejemplo, el router le dio otra IP), se busca de nuevo.
   async function relocate() {
-    if (!serverId) return false;
+    if (!state.serverId) return false;
     const list = await discover({ timeout: 1500, ...discoverOptions });
-    const hit = list.find((d) => d.server_id === serverId);
+    const hit = list.find((d) => d.server_id === state.serverId);
     if (!hit || (hit.host === state.host && hit.port === state.port)) return false;
     state.host = hit.host;
     state.port = hit.port;
@@ -159,8 +181,8 @@ function createClient({ host, port = PORT, key, version, serverId, onMoved, disc
     // El mismo request_id en cada reintento: la principal no repite la operación.
     call: (token, name, params) => request('POST', '/v1/call', { token, name, params, request_id: crypto.randomUUID() }),
     async photo(name) {
-      const r = await httpRequest('GET', url(`/v1/foto/${encodeURIComponent(name)}`), headers(), undefined, { timeout, connectTimeout });
-      return r.status === 200 ? { type: r.type, data: r.data } : null;
+      const img = await request('POST', '/v1/foto', { name }, { retries: 0 });
+      return img ? { type: img.type, data: Buffer.from(img.data, 'base64') } : null;
     },
   };
 }

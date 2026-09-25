@@ -102,7 +102,12 @@ function normalize(params) {
 async function openDatabase(file) {
   if (file) fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new Database(file);
-  db.tx(() => migrate(db));
+  try {
+    db.tx(() => migrate(db));
+  } catch (err) {
+    db.close(); // no dejar el archivo abierto (en Windows quedaría bloqueado)
+    throw err;
+  }
   return db;
 }
 

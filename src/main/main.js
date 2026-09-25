@@ -10,6 +10,8 @@ const net = require('../net/server');
 const { createClient, discover } = require('../net/client');
 const config = require('./config');
 const { createLocal, createRemote } = require('./backend');
+const log = require('./log');
+const os = require('os');
 
 // Para pruebas: otra carpeta de datos permite abrir dos instancias (principal y conectada) en la misma PC.
 if (process.env.CAPSSHOP_DATA) app.setPath('userData', path.join(process.env.CAPSSHOP_DATA, 'electron'));
@@ -31,7 +33,11 @@ async function startBackend() {
     // Actualización desde 1.0.0: esta PC ya tiene los datos, así que es la principal (sin compartir hasta que se active).
     cfg = saveConfig({ mode: 'principal', share: false, key: net.newKey(), server_id: crypto.randomUUID() });
   }
-  if (!cfg) return;
+  if (!cfg) {
+    log.info('inicio', `CAPS Shop ${app.getVersion()} sin configurar`);
+    return;
+  }
+  log.info('inicio', `CAPS Shop ${app.getVersion()} · modo ${cfg.mode}${cfg.mode === 'terminal' ? ` · ${cfg.name} → ${cfg.server.host}:${cfg.server.port}` : ''}`);
   if (cfg.mode === 'principal') {
     backend = await createLocal({ dataDir: dataDir(), version: app.getVersion(), config: cfg, saveConfig });
     backend.autoBackup();
@@ -74,8 +80,9 @@ function wrap(fn) {
     try {
       return { ok: true, data: await fn(...args) };
     } catch (err) {
-      if (!err.userFacing) console.error(err);
-      return { ok: false, error: err.userFacing ? err.message : `Error inesperado: ${err.message}`, code: err.code || 'ERROR' };
+      if (!err.userFacing) log.error('programa', err.message, err);
+      const error = err.userFacing ? err.message : `Error inesperado: ${err.message}. Quedó anotado; el administrador puede enviarlo al soporte con Configuración → Soporte → Guardar diagnóstico.`;
+      return { ok: false, error, code: err.code || 'ERROR' };
     }
   };
 }
@@ -239,6 +246,39 @@ function registerIpc() {
     return file;
   }));
 
+  // ---------- Soporte ----------
+  // Errores de la interfaz: se guardan en el registro (texto acotado).
+  ipcMain.handle('log:renderer', wrap((message) => log.error('interfaz', String(message).slice(0, 4000))));
+  ipcMain.handle('support:openLogs', wrap(() => shell.openPath(log.dir)));
+  ipcMain.handle('support:diagnostic', wrap(async () => {
+    const b = needBackend();
+    if (b.mode === 'principal') b.requireAdmin();
+    const r = await dialog.showSaveDialog(win, { defaultPath: `capsshop-diagnostico-${today()}.txt`, filters: [{ name: 'Texto', extensions: ['txt'] }] });
+    if (r.canceled || !r.filePath) return null;
+    const user = b.user();
+    let details;
+    try {
+      details = b.diagnostics();
+    } catch (err) {
+      details = [`No se pudieron leer los datos: ${err.message}`];
+    }
+    const text = [
+      'CAPS Shop · diagnóstico para el soporte',
+      `Fecha: ${new Date().toString()}`,
+      `Versión: ${app.getVersion()} (Electron ${process.versions.electron}, Node ${process.versions.node})`,
+      `Sistema: ${os.type()} ${os.release()} ${os.arch()} · equipo ${os.hostname()} · memoria libre ${Math.round(os.freemem() / 1048576)} MB`,
+      `Modo: ${b.mode} · usuario: ${user ? `${user.username} (${user.role})` : 'sin sesión'}`,
+      `Carpeta de datos: ${dataDir()}`,
+      ...details,
+      '',
+      '---- Registro (últimas 500 líneas) ----',
+      log.tail(500),
+    ].join('\r\n');
+    fs.writeFileSync(r.filePath, text, 'utf8');
+    log.info('soporte', `Diagnóstico guardado en ${r.filePath}`);
+    return r.filePath;
+  }));
+
   ipcMain.handle('backup:openFolder', wrap(() => shell.openPath(needPrincipal().backupsDir)));
 }
 
@@ -252,12 +292,18 @@ app.on('second-instance', () => {
   }
 });
 
+// Nada debe cerrar el programa sin dejar rastro: los errores no capturados van al registro.
+process.on('uncaughtException', (err) => log.error('programa', 'Error no capturado', err));
+process.on('unhandledRejection', (err) => log.error('programa', 'Promesa rechazada sin capturar', err instanceof Error ? err : new Error(String(err))));
+
 app.whenReady().then(async () => {
   if (!gotLock) return;
   try {
     fs.mkdirSync(dataDir(), { recursive: true });
+    log.init(dataDir());
     await startBackend();
   } catch (err) {
+    log.error('inicio', 'No se pudo abrir la base de datos', err);
     dialog.showErrorBox('CAPS Shop', `No se pudo abrir la base de datos:\n${err.message}`);
     app.quit();
     return;

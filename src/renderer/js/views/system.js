@@ -105,6 +105,14 @@ App.register({
           <h3>Copias de seguridad</h3>
           <p class="muted">Las copias se hacen en la PC principal: ahí están todos los datos.</p>
         </div>`}
+        <div class="card">
+          <h3>Soporte</h3>
+          <p class="muted">Si algo falla, guarde el diagnóstico y envíelo al soporte. Incluye la versión, el estado de la base y de la red, y el registro de errores. No incluye contraseñas ni la clave de conexión.</p>
+          <div class="inline">
+            <button class="btn" id="sp-diag">${icon('download')} Guardar diagnóstico…</button>
+            <button class="btn" id="sp-logs">Abrir carpeta de registros</button>
+          </div>
+        </div>
         <p class="muted small center">CAPS Shop v${App.info.version}</p>
       </div>`);
     page.appendChild(form);
@@ -125,6 +133,10 @@ App.register({
       toast('Configuración guardada.');
     };
     renderNetwork($('#net-card', form));
+    $('#sp-diag', form).onclick = async () => {
+      try { if (await window.capsApi.support.diagnostic()) toast('Diagnóstico guardado.'); } catch (e) { toast(e.message, 'error'); }
+    };
+    $('#sp-logs', form).onclick = () => window.capsApi.support.openLogs();
     if (App.info.mode !== 'principal') return;
     $('#bk-create', form).onclick = async () => {
       try { const p = await window.capsApi.backupCreate(); if (p) toast('Copia de seguridad guardada.'); } catch (e) { toast(e.message, 'error'); }
