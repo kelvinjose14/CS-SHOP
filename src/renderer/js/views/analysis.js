@@ -7,6 +7,18 @@ App.register({
     const d = await api('reports.dashboard');
     const admin = App.isAdmin();
     const inv = d.inventory;
+    // En la PC principal, el administrador ve un aviso si no hay copia fuera de la computadora reciente.
+    if (admin && App.info.mode === 'principal') {
+      const ext = await window.capsApi.external.status().catch(() => null);
+      if (ext && ext.overdue) {
+        const msg = !ext.dir ? 'No hay copia fuera de esta computadora: si el disco se daña, se pierde todo.'
+          : ext.days_since === null ? 'Todavía no se pudo hacer la copia fuera de esta computadora (¿la memoria USB está conectada?).'
+            : `La última copia fuera de esta computadora es de hace ${ext.days_since} días.`;
+        const w = el(html`<div class="warn-box" id="ext-warning">${icon('alert')} ${msg} <a href="#">Configurar la copia</a></div>`);
+        $('a', w).onclick = (e) => { e.preventDefault(); App.go('settings'); };
+        page.appendChild(w);
+      }
+    }
     page.appendChild(el(html`
       <div class="dash">
         <div class="stats">

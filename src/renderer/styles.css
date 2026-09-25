@@ -368,4 +368,5 @@ body.login-page .login { overflow-y: auto; }
 .offline-card { width: 460px; text-align: center; padding: 28px; }
 .offline-card .offline-icon { color: var(--brand); margin-bottom: 8px; }
 .net-key { font-family: ui-monospace, Consolas, monospace; letter-spacing: 1px; font-size: 18px; }
-#net-card h4 { margin: 16px 0 8px; }
+#net-card h4, .settings .card h4 { margin: 16px 0 8px; }
+.cash-pill.update-pill { background: var(--brand-soft); color: var(--brand); margin-right: 8px; }

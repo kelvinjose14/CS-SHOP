@@ -100,11 +100,15 @@ App.register({
             <button class="btn" id="bk-folder">Abrir carpeta de respaldos automáticos</button>
             <button class="btn danger" id="bk-restore">Restaurar desde copia…</button>
           </div>
+          <h4>Copia fuera de esta computadora</h4>
+          <p class="muted">Una copia diaria de los datos <b>y las fotos</b> en una memoria USB o en la carpeta de OneDrive o Google Drive. Si la memoria no está conectada, la copia se hace sola al conectarla.</p>
+          <div id="ext-box"></div>
         </div>` : html`
         <div class="card">
           <h3>Copias de seguridad</h3>
           <p class="muted">Las copias se hacen en la PC principal: ahí están todos los datos.</p>
         </div>`}
+        <div class="card" id="upd-card"></div>
         <div class="card">
           <h3>Soporte</h3>
           <p class="muted">Si algo falla, guarde el diagnóstico y envíelo al soporte. Incluye la versión, el estado de la base y de la red, y el registro de errores. No incluye contraseñas ni la clave de conexión.</p>
@@ -133,6 +137,8 @@ App.register({
       toast('Configuración guardada.');
     };
     renderNetwork($('#net-card', form));
+    renderUpdates($('#upd-card', form));
+    if (App.info.mode === 'principal') renderExternal($('#ext-box', form));
     $('#sp-diag', form).onclick = async () => {
       try { if (await window.capsApi.support.diagnostic()) toast('Diagnóstico guardado.'); } catch (e) { toast(e.message, 'error'); }
     };
@@ -225,4 +231,64 @@ async function renderNetwork(card) {
     }));
   }
   $('#net-setup', card).onclick = () => App.showSetup({ back: () => App.enter() });
+}
+
+// Copia externa: carpeta elegida, última copia y botones.
+async function renderExternal(box) {
+  const st = await window.capsApi.external.status();
+  const last = st.last_at ? `${Fmt.datetime(st.last_at)}${st.days_since > 0 ? ` (hace ${st.days_since} ${st.days_since === 1 ? 'día' : 'días'})` : ''}` : 'Nunca';
+  setHTML(box, html`
+    ${st.dir ? html`<p>Carpeta: <code>${st.dir}</code> · Última copia: <b class="${st.overdue ? 'text-danger' : 'text-ok'}">${last}</b></p>` : html`<div class="warn-box">${icon('alert')} Todavía no hay copia fuera de esta computadora. Si el disco se daña, se pierde todo.</div>`}
+    ${st.last_error ? html`<div class="error-box">${st.last_error}</div>` : ''}
+    <div class="inline">
+      <button class="btn" id="ext-choose">${st.dir ? 'Cambiar carpeta…' : 'Elegir carpeta…'}</button>
+      ${st.dir ? html`<button class="btn primary" id="ext-now">Copiar ahora</button><button class="btn" id="ext-clear">Quitar</button>` : ''}
+    </div>`);
+  const run = (fn, ok) => async () => {
+    try {
+      const r = await fn();
+      if (r !== null) toast(ok);
+    } catch (e) { toast(e.message, 'error'); }
+    renderExternal(box);
+  };
+  $('#ext-choose', box).onclick = run(() => window.capsApi.external.choose(), 'Carpeta guardada y copia hecha.');
+  const now = $('#ext-now', box);
+  if (now) now.onclick = run(() => window.capsApi.external.now(), 'Copia hecha.');
+  const clear = $('#ext-clear', box);
+  if (clear) clear.onclick = async () => {
+    if (!(await confirmDialog('¿Dejar de hacer la copia fuera de esta computadora?', { danger: true, okLabel: 'Quitar' }))) return;
+    run(() => window.capsApi.external.clear(), 'Copia externa desactivada.')();
+  };
+}
+
+// Actualizaciones: se buscan solas; instalar lo decide el administrador.
+async function renderUpdates(card, st) {
+  const u = st || (await window.capsApi.updates.status());
+  const text = {
+    disabled: 'Las actualizaciones funcionan en el programa instalado.',
+    idle: 'Todavía no se buscó.',
+    checking: 'Buscando…',
+    none: 'Tiene la versión más reciente.',
+    available: `Hay una versión nueva: ${u.version}.`,
+    downloading: `Descargando la versión ${u.version}… ${u.percent || 0}%`,
+    ready: `La versión ${u.version} está lista para instalar.`,
+    error: u.error,
+  }[u.status];
+  setHTML(card, html`
+    <h3>${icon('download')} Actualizaciones</h3>
+    <p>Versión instalada: <b>${u.current}</b> · ${text}</p>
+    ${['available', 'ready'].includes(u.status) ? html`<p class="muted small">Al instalar, el programa se cierra y se abre en la versión nueva, sin perder datos. Con varias computadoras, actualice <b>primero la PC principal</b> y después las demás: todas deben tener la misma versión.</p>` : ''}
+    <div class="inline">
+      <button class="btn" id="upd-check" ${['disabled', 'checking', 'downloading'].includes(u.status) ? 'disabled' : ''}>Buscar ahora</button>
+      ${['available', 'ready'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Instalar la versión ${u.version}</button>` : ''}
+    </div>`);
+  const check = $('#upd-check', card);
+  check.onclick = async () => renderUpdates(card, await window.capsApi.updates.check());
+  const install = $('#upd-install', card);
+  if (install) install.onclick = async () => {
+    if (!(await confirmDialog(`Se instalará la versión ${u.version}. El programa se cerrará y volverá a abrir. ¿Instalar ahora?`, { okLabel: 'Instalar' }))) return;
+    install.disabled = true;
+    install.textContent = 'Descargando…';
+    try { await window.capsApi.updates.install(); } catch (e) { toast(e.message, 'error'); renderUpdates(card); }
+  };
 }

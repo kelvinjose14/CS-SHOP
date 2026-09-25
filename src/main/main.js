@@ -11,6 +11,7 @@ const { createClient, discover } = require('../net/client');
 const config = require('./config');
 const { createLocal, createRemote } = require('./backend');
 const log = require('./log');
+const { createUpdates } = require('./updates');
 const os = require('os');
 
 // Para pruebas: otra carpeta de datos permite abrir dos instancias (principal y conectada) en la misma PC.
@@ -21,6 +22,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'caps-foto', privileges: { stand
 
 let win = null;
 let backend = null; // null: esta PC todavía no está configurada
+let updates = null;
 
 const dataDir = () => process.env.CAPSSHOP_DATA || path.join(app.getPath('userData'), 'data');
 const dbFile = () => path.join(dataDir(), 'capsshop.db');
@@ -41,6 +43,7 @@ async function startBackend() {
   if (cfg.mode === 'principal') {
     backend = await createLocal({ dataDir: dataDir(), version: app.getVersion(), config: cfg, saveConfig });
     backend.autoBackup();
+    backend.externalBackup();
   } else {
     backend = createRemote({ version: app.getVersion(), config: cfg, saveConfig });
   }
@@ -279,6 +282,29 @@ function registerIpc() {
     return r.filePath;
   }));
 
+  ipcMain.handle('backup:externalStatus', wrap(() => {
+    const b = needBackend();
+    return b.mode === 'principal' ? b.externalStatus() : null;
+  }));
+  ipcMain.handle('backup:chooseExternal', wrap(async () => {
+    const b = needPrincipal();
+    const r = await dialog.showOpenDialog(win, { title: 'Carpeta para la copia fuera de esta computadora', properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths.length) return null;
+    return b.setExternalDir(r.filePaths[0]);
+  }));
+  ipcMain.handle('backup:clearExternal', wrap(() => needPrincipal().setExternalDir(null)));
+  ipcMain.handle('backup:externalNow', wrap(() => needPrincipal().backupNow()));
+
+  // ---------- Actualizaciones (con aviso; el administrador decide) ----------
+  ipcMain.handle('update:status', wrap(() => updates.status()));
+  ipcMain.handle('update:check', wrap(() => updates.check()));
+  ipcMain.handle('update:install', wrap(() => {
+    // Con sesión, solo el administrador. Sin sesión (pantalla de entrada de una PC con otra versión que
+    // la principal) cualquiera puede traer la versión publicada: si no, nadie podría entrar para hacerlo.
+    if (backend && backend.user()) backend.requireAdmin();
+    return updates.install();
+  }));
+
   ipcMain.handle('backup:openFolder', wrap(() => shell.openPath(needPrincipal().backupsDir)));
 }
 
@@ -314,9 +340,13 @@ app.whenReady().then(async () => {
     if (!img) return new Response(null, { status: 404 });
     return new Response(img.data, { headers: { 'content-type': img.type } });
   });
+  // Solo el programa instalado se actualiza (en desarrollo y en las pruebas no hay nada que instalar).
+  const enabled = app.isPackaged && !process.env.CAPSSHOP_NO_UPDATES;
+  updates = createUpdates({ updater: enabled ? require('electron-updater').autoUpdater : null, currentVersion: app.getVersion(), enabled, log });
   Menu.setApplicationMenu(null);
   registerIpc();
   createWindow();
+  updates.start();
 });
 
 let closing = false;

@@ -148,7 +148,8 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
   }
   document.body.appendChild(back);
   const first = $('input:not([type=hidden]):not([disabled]), select, textarea', bodyEl);
-  if (first) setTimeout(() => first.focus(), 30);
+  // Solo si el usuario todavía no está escribiendo dentro de la ventana (no le quita el cursor).
+  if (first) setTimeout(() => { if (!back.contains(document.activeElement)) first.focus(); }, 30);
   return { close, el: back, body: bodyEl };
 }
 

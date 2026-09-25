@@ -85,6 +85,17 @@ function settle(win) {
   }));
 }
 
+// Espera a que una condición se cumpla (por ejemplo, que una operación enviada desde un diálogo termine).
+async function eventually(fn, { timeout = 10000, every = 100 } = {}) {
+  const end = Date.now() + timeout;
+  for (;;) {
+    const ok = await fn();
+    if (ok) return ok;
+    if (Date.now() > end) return ok;
+    await new Promise((r) => setTimeout(r, every));
+  }
+}
+
 const text = (win, sel) => win.textContent(sel).then((s) => s.replace(/\s+/g, ' ').trim());
 
-module.exports = { ROOT, dataDir, launch, login, go, settle, text };
+module.exports = { ROOT, dataDir, launch, login, go, settle, text, eventually };

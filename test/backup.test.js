@@ -86,3 +86,60 @@ test('solo el administrador copia y restaura; la PC principal limita los intento
   await assert.rejects(b.login('admin', 'admin123'), /Demasiados intentos/);
   await b.login('vendedor', 'vendedor123'); // otro usuario no queda bloqueado
 });
+
+test('copia fuera de la PC: base y fotos, solo lo nuevo, 30 copias y aviso de 7 días', async (t) => {
+  const { b, dataDir } = await principal(t);
+  assert.equal(b.externalStatus().overdue, true, 'sin configurar hay aviso');
+  const usb = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-usb-'));
+  const photos = path.join(dataDir, 'fotos');
+  fs.mkdirSync(photos, { recursive: true });
+  fs.writeFileSync(path.join(photos, 'a.jpg'), 'foto a');
+
+  const st = b.setExternalDir(usb);
+  const target = path.join(usb, 'CAPS Shop respaldos');
+  assert.equal(st.overdue, false);
+  assert.ok(st.last_at);
+  assert.ok(fs.existsSync(path.join(target, `capsshop-${today()}.db`)));
+  assert.equal(await validateDatabaseFile(path.join(target, `capsshop-${today()}.db`)), true);
+  assert.equal(fs.readFileSync(path.join(target, 'fotos', 'a.jpg'), 'utf8'), 'foto a');
+
+  // El mismo día no se repite sola; "Copiar ahora" sí, y solo copia las fotos nuevas.
+  assert.equal(b.externalBackup(), null);
+  fs.writeFileSync(path.join(photos, 'b.jpg'), 'foto b');
+  for (let d = 1; d <= 31; d++) fs.writeFileSync(path.join(target, `capsshop-2020-03-${String(d).padStart(2, '0')}.db`), '');
+  b.backupNow();
+  assert.ok(fs.existsSync(path.join(target, 'fotos', 'b.jpg')));
+  assert.equal(fs.readdirSync(target).filter((f) => /^capsshop-.*\.db$/.test(f)).length, 30);
+
+  // Memoria desconectada: queda el error y el aviso, sin romper nada.
+  fs.rmSync(usb, { recursive: true });
+  assert.equal(b.externalBackup({ force: true }), null);
+  assert.match(b.externalStatus().last_error, /No se encontró la carpeta/);
+  assert.throws(() => b.backupNow(), /No se encontró la carpeta/);
+  assert.throws(() => b.setExternalDir(path.join(usb, 'no-existe')), /no existe/);
+});
+
+test('restaurar una copia externa trae también las fotos', async (t) => {
+  const { b, dataDir } = await principal(t);
+  const usb = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-usb-'));
+  const photos = path.join(dataDir, 'fotos');
+  fs.mkdirSync(photos, { recursive: true });
+  fs.writeFileSync(path.join(photos, 'gorra.jpg'), 'foto');
+  b.setExternalDir(usb);
+  fs.rmSync(photos, { recursive: true }); // el disco se dañó: se perdieron las fotos
+  await b.restore(path.join(usb, 'CAPS Shop respaldos', `capsshop-${today()}.db`));
+  assert.equal(fs.readFileSync(path.join(photos, 'gorra.jpg'), 'utf8'), 'foto');
+});
+
+test('la copia externa se considera vencida después de 7 días', async (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-resp-'));
+  const old = new Date(Date.now() - 8 * 86400000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const lastAt = `${old.getFullYear()}-${pad(old.getMonth() + 1)}-${pad(old.getDate())} 10:00:00`;
+  const config = { mode: 'principal', share: false, key: 'AAAA-BBBB', server_id: 'srv', external_backup: { dir: dataDir, last_at: lastAt } };
+  const b = await createLocal({ dataDir, version: '9.9.9', config, saveConfig: () => {} });
+  t.after(() => b.close());
+  const st = b.externalStatus();
+  assert.ok(st.days_since >= 7);
+  assert.equal(st.overdue, true);
+});

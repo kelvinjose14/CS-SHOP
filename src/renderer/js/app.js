@@ -55,6 +55,7 @@ const App = {
   showLogin(message, code) {
     document.body.className = 'login-page';
     const canSetup = this.info.mode === 'terminal' && CONNECTION_ERRORS.includes(code);
+    const canUpdate = this.info.mode === 'terminal' && code === 'VERSION';
     setHTML(document.body, html`
       <div class="login">
         <div class="login-card">
@@ -65,6 +66,7 @@ const App = {
             <div class="login-error">${message || ''}</div>
             <button class="btn primary block" type="submit">Entrar</button>
           </form>
+          ${canUpdate ? html`<button class="btn block" id="login-update">${icon('download')} Actualizar esta PC</button>` : ''}
           <p class="login-hint">${icon('pc')} ${this.pcLabel()}${canSetup ? html` · <a href="#" id="login-setup">Configurar esta PC</a> · <a href="#" id="login-diag">Guardar diagnóstico</a>` : ''}</p>
           <p class="login-hint">Sistema de inventario y contabilidad · v${this.info.version}</p>
         </div>
@@ -79,6 +81,22 @@ const App = {
       } catch (err) {
         if (CONNECTION_ERRORS.includes(err.code)) return this.showLogin(err.message, err.code);
         $('.login-error').textContent = err.message;
+      }
+    };
+    const upd = $('#login-update');
+    if (upd) upd.onclick = async () => {
+      upd.disabled = true;
+      upd.textContent = 'Buscando la versión nueva…';
+      try {
+        const u = await window.capsApi.updates.check();
+        if (!['available', 'ready'].includes(u.status)) throw new Error(u.error || 'No hay una versión más nueva publicada. Si la PC principal tiene una versión más vieja, actualice la principal.');
+        upd.textContent = `Descargando la versión ${u.version}…`;
+        await window.capsApi.updates.install();
+        upd.textContent = 'Instalando: el programa se cerrará y volverá a abrir.';
+      } catch (err) {
+        $('.login-error').textContent = err.message;
+        upd.disabled = false;
+        upd.textContent = 'Actualizar esta PC';
       }
     };
     const diag = $('#login-diag');
@@ -192,6 +210,20 @@ const App = {
       if (!SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') setHTML(page, html`<div class="error-box">${err.message}</div>`);
     }
     this.refreshCashBadge();
+    this.refreshUpdateBadge();
+  },
+
+  // Aviso de versión nueva, solo para el administrador (él decide cuándo instalar).
+  async refreshUpdateBadge() {
+    if (!this.isAdmin()) return;
+    try {
+      const u = await window.capsApi.updates.status();
+      const box = $('#topbar-right');
+      if (!box || $('.update-pill', box) || !['available', 'downloading', 'ready'].includes(u.status)) return;
+      const pill = el(html`<button class="cash-pill update-pill" title="Hay una versión nueva">${icon('download')} Versión ${u.version} disponible</button>`);
+      pill.onclick = () => this.go('settings');
+      box.prepend(pill);
+    } catch { /* sin actualizaciones */ }
   },
 
   reload() {

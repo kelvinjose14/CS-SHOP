@@ -39,5 +39,9 @@ test('el programa instalado se configura, vende y conserva los datos', { skip: !
   assert.ok(p, 'los datos siguen ahí');
   assert.equal(p.stock, 4);
   assert.equal(await win.evaluate(() => App.info.version), require('../../package.json').version);
+  // El programa instalado busca actualizaciones (sin versión nueva o sin publicar, no debe fallar).
+  const u = await win.evaluate(() => window.capsApi.updates.check());
+  assert.notEqual(u.status, 'disabled', 'las actualizaciones están activas en el programa instalado');
+  assert.ok(['none', 'available', 'error', 'checking'].includes(u.status), `estado ${u.status}: ${u.error || ''}`);
   assert.deepEqual(errors, []);
 });
