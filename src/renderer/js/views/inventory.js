@@ -10,7 +10,7 @@ function productColumns() {
   const admin = App.isAdmin();
   return [
     { label: '', render: (p) => productThumb(p, 38), csv: false, cls: 'w-thumb' },
-    { key: 'name', label: 'Producto', render: (p) => html`<strong>${p.name}</strong><div class="muted small">${[p.brand, p.model].filter(Boolean).join(' · ')}</div>`, csv: (p) => p.name },
+    { key: 'name', label: 'Producto', cls: 'col-product', render: (p) => html`<strong>${p.name}</strong><div class="muted small">${[p.brand, p.model].filter(Boolean).join(' · ')}</div>`, csv: (p) => p.name },
     { key: 'brand', label: 'Marca', hide: true },
     { key: 'model', label: 'Modelo', hide: true },
     { key: 'color', label: 'Color' },
@@ -20,9 +20,10 @@ function productColumns() {
     ...(admin ? [{ key: 'cost', label: 'Costo', money: true }] : []),
     { key: 'price_retail', label: 'Detalle', money: true },
     { key: 'price_wholesale', label: 'Por mayor', money: true },
-    { key: 'stock', label: 'Existencia', num: true, total: true, render: (p) => html`<strong class="${p.status === 'agotado' ? 'text-danger' : p.status === 'bajo' ? 'text-warn' : ''}">${Fmt.num(p.stock)}</strong>`, csv: (p) => p.stock },
-    { key: 'min_stock', label: 'Mínimo', num: true },
-    ...(admin ? [{ key: 'value', label: 'Valor al costo', money: true, total: true }] : []),
+    { key: 'stock', label: 'Existencia', num: true, total: true, render: (p) => html`<strong class="${p.status === 'agotado' ? 'text-danger' : p.status === 'bajo' ? 'text-warn' : ''}">${Fmt.num(p.stock)}</strong><div class="muted small">mín. ${Fmt.num(p.min_stock)}</div>`, csv: (p) => p.stock },
+    // Sólo en la exportación: en pantalla el mínimo va debajo de la existencia y el valor está en el detalle.
+    { key: 'min_stock', label: 'Mínimo', num: true, hide: true },
+    ...(admin ? [{ key: 'value', label: 'Valor al costo', money: true, total: true, hide: true }] : []),
     { key: 'status', label: 'Estado', render: (p) => badge(p.status), csv: (p) => STATUS_LABELS[p.status] },
   ];
 }
