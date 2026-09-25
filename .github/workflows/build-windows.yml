@@ -1,8 +1,10 @@
 name: Instalador Windows
 
-# Genera "CAPS-Shop-Setup-<versión>.exe".
-# - Manual: pestaña Actions → "Instalador Windows" → Run workflow.
-# - Automático: al crear una etiqueta vX.Y.Z se publica en Releases.
+# En cada pull request:
+#  - Linux: pruebas de lógica, de interfaz y de rendimiento (3 años de datos).
+#  - Windows: las mismas pruebas, el instalador, y el programa instalado de verdad
+#    (instalar, usar, reinstalar encima y desinstalar sin perder los datos).
+# Al crear una etiqueta vX.Y.Z, el instalador se publica en Releases.
 on:
   workflow_dispatch:
   push:
@@ -13,8 +15,34 @@ permissions:
   contents: write
 
 jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Bibliotecas para Electron
+        run: sudo apt-get update && sudo apt-get install -y xvfb libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libgtk-3-0t64 libgbm1 libasound2t64
+
+      - run: npm ci
+
+      - name: Pruebas de lógica, migración, respaldos y red
+        run: npm test
+
+      - name: Pruebas de interfaz
+        run: xvfb-run -a npm run test:ui
+
+      - name: Rendimiento con 3 años de datos
+        run: npm run test:perf
+
   build:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +56,9 @@ jobs:
       - name: Pruebas
         run: npm test
 
+      - name: Pruebas de interfaz
+        run: npm run test:ui
+
       - name: Construir instalador
         run: npx electron-builder --win nsis --publish never
 
@@ -36,6 +67,33 @@ jobs:
           name: CAPS-Shop-Setup
           path: dist/*.exe
           if-no-files-found: error
+
+      - name: Instalar, usar, reinstalar y desinstalar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = (Get-ChildItem dist\CAPS-Shop-Setup-*.exe).FullName
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\CAPS Shop'
+          $env:CAPSSHOP_EXE = Join-Path $dir 'CAPS Shop.exe'
+          $env:CAPSSHOP_KEEP_DATA = Join-Path $env:APPDATA 'CAPS Shop\data'
+
+          Write-Host '1. Instalación silenciosa'
+          Start-Process -Wait -FilePath $setup -ArgumentList '/S'
+          if (-not (Test-Path $env:CAPSSHOP_EXE)) { throw "No se instaló $env:CAPSSHOP_EXE" }
+          node --test test/ui/installed.test.js
+          if ($LASTEXITCODE) { throw 'Falló el programa instalado' }
+
+          Write-Host '2. Reinstalar encima: los datos siguen'
+          Start-Process -Wait -FilePath $setup -ArgumentList '/S'
+          node --test test/ui/installed.test.js
+          if ($LASTEXITCODE) { throw 'Falló después de reinstalar' }
+
+          Write-Host '3. Desinstalar: el programa se va y los datos quedan'
+          Start-Process -Wait -FilePath (Join-Path $dir 'Uninstall CAPS Shop.exe') -ArgumentList '/S'
+          for ($i = 0; $i -lt 60 -and (Test-Path $env:CAPSSHOP_EXE); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $env:CAPSSHOP_EXE) { throw 'No se desinstaló' }
+          if (-not (Test-Path (Join-Path $env:CAPSSHOP_KEEP_DATA 'capsshop.db'))) { throw 'La desinstalación borró los datos' }
+          Write-Host 'Instalación probada.'
 
       - name: Publicar en Releases
         if: startsWith(github.ref, 'refs/tags/v')
