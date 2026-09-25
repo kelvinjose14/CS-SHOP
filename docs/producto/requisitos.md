@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.0.0**, más lo terminado en los objetivos O2 (varias computadoras en red) y O3 (calidad para producción), aún sin publicar. Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.0.0**, más lo terminado en los objetivos O2 (varias computadoras en red), O3 (calidad para producción) y O4 (instalación y operación), aún sin publicar. Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -17,11 +17,11 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 | Área | Requisitos | Cumple | Parcial | Falta |
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 100 | 3 | 0 |
-| No funcionales | 14 | 9 | 4 | 1 |
+| No funcionales | 14 | 11 | 2 | 1 |
 | Nuevos detectados (propuestos) | 9 | — | — | 9 |
 
 
-> Lo funcional pedido está prácticamente completo. **Lo que separa al sistema de producción** es: instalador firmado, actualización automática, respaldos fuera de la PC y la prueba en la tienda con Windows 10/11 y datos reales (O4 y O6).
+> Lo funcional pedido está prácticamente completo. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
 
 ## 1. Requisitos funcionales
 
@@ -215,12 +215,12 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-02 | Funciona sin internet | Todas las funciones sin conexión | Cumple |
 | RNF-03 | Windows 10/11 de 64 bits | Instalación y uso verificados en Windows real | Parcial: el CI instala, usa, reinstala y desinstala el programa en Windows Server en cada cambio. Falta Windows 10/11 de escritorio (piloto, O6) |
 | RNF-04 | Copias de seguridad automáticas | Una copia diaria, con las últimas 30 | Cumple (en el mismo disco) |
-| RNF-05 | Copias fuera de la computadora | Copia automática a USB o nube, incluidas las fotos | Parcial: solo manual y sin fotos |
+| RNF-05 | Copias fuera de la computadora | Copia automática a USB o nube, incluidas las fotos | Cumple: copia diaria con fotos a una memoria USB o carpeta de OneDrive o Google Drive, con aviso a los 7 días (DT-20) |
 | RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Parcial: falta la recuperación del administrador. El resto está revisado en [Seguridad](../tecnico/seguridad.md) |
 | RNF-07 | Integridad de datos | Cada operación es atómica, queda en disco al confirmarse y no se abren dos instancias | Cumple (SQLite en modo WAL; una venta que se reintenta por la red no se duplica) |
 | RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Cumple: con 19,710 ventas, lo más lento tarda 60 ms en el núcleo y 0.3 s en pantalla ([Rendimiento](../tecnico/rendimiento.md)) |
-| RNF-09 | Instalador firmado | Windows no muestra la advertencia al instalar | Falta |
-| RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Parcial: instalar encima conserva los datos (lo prueba el CI en Windows); falta la actualización automática (O4) |
+| RNF-09 | Instalador firmado | Windows no muestra la advertencia al instalar | Falta: el CI está listo para firmar, pero no se compró el certificado (DT-18) |
+| RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
 | RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 40 pruebas de lógica, 7 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |

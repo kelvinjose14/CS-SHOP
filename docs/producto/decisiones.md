@@ -8,7 +8,6 @@ Registro corto de lo que se decidió y de lo que falta decidir.
 
 | ID | Pregunta | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|
-| DP-04 | ¿Se compra un certificado de firma de código? | Sí (costo anual; se quita la advertencia de Windows) / No | Sí, antes del piloto | O4 |
 | DP-05 | Los aportes de capital del dueño, ¿cuentan como otros ingresos? | Sí (suman a la ganancia neta, como hoy) / No, se registran aparte como capital | Registrarlos aparte, para que la ganancia refleje solo la operación | O5 |
 | DP-06 | ¿Qué impresora de tickets se usará? | Marca, modelo y ancho (58 u 80 mm) | Definir el modelo real antes de programar la impresión directa | O5 (RF-NUE-03) |
 | DP-07 | ¿El vendedor puede hacer retiros de caja? | Sí (como hoy) / Solo el administrador | Solo depósitos al banco, con descripción obligatoria | O5 (RF-NUE-02) |
@@ -36,3 +35,6 @@ Registro corto de lo que se decidió y de lo que falta decidir.
 | DT-15 | 25/09/2026 | **Sin la PC principal, las demás no trabajan**: muestran "Sin conexión" y reintentan. La principal es la que siempre está encendida y se elige al instalar (antigua DP-03) | El dueño no tuvo preferencia y se aplicó la recomendación: es lo más seguro y nunca hay dos versiones de la existencia o la caja. Se puede revisar si hace falta |
 | DT-16 | 25/09/2026 | Base de datos con **`node:sqlite`** (SQLite incluido en Node y Electron) en modo WAL, en lugar de sql.js | Sin módulos nativos; escribe solo lo que cambia; abre la misma base de la 1.0.0 |
 | DT-17 | 25/09/2026 | **Red cifrada con la clave de conexión** (AES-256-GCM con llave derivada por scrypt), en lugar de HTTPS con certificados | Nadie en la tienda tendría que crear ni renovar certificados. La clave, que ya se escribía al conectar cada PC, deja de viajar por la red y protege todo el tráfico ([Seguridad](../tecnico/seguridad.md#red-cifrada)) |
+| DT-18 | 25/09/2026 | **Certificado de firma de código: todavía no** (antigua DP-04). El CI queda listo: firma solo si se cargan los secretos `WIN_CSC_LINK` y `WIN_CSC_KEY_PASSWORD` | Decisión del dueño. Mientras tanto, Windows muestra "Windows protegió su PC" al instalar |
+| DT-19 | 25/09/2026 | **Actualizaciones con aviso**: el programa busca versiones nuevas en GitHub Releases, pero descargar e instalar lo decide el administrador en cada PC | Elegido por el dueño: nunca se interrumpe una venta con una instalación |
+| DT-20 | 25/09/2026 | **Copia fuera de la PC en una memoria USB o en la carpeta de OneDrive o Google Drive**, diaria y con las fotos, desde la PC principal | Elegido por el dueño; sin servicios nuevos ni costo |

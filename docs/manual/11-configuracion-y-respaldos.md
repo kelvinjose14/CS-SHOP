@@ -50,11 +50,18 @@ Las copias se hacen **solo en la PC principal**. En una computadora conectada, l
 - Se conservan las **30 copias más recientes**. Si el programa no se abre un día, ese día no hay copia.
 - **Abrir carpeta de respaldos automáticos** abre esa carpeta.
 
-**Manuales**
-- **Crear copia de seguridad…** guarda un archivo `capsshop-respaldo-AAAA-MM-DD.db` donde usted elija.
-- Guárdelo en una memoria USB o en la nube **al menos una vez por semana**. Las copias automáticas están en el mismo disco: si el disco se daña, se pierden con él.
+**Copia fuera de esta computadora** (la más importante)
+- Las copias automáticas están en el mismo disco: si el disco se daña, se pierden con él. Configure una copia afuera.
+- **Elegir carpeta…**: elija una **memoria USB** o la carpeta de **OneDrive** o **Google Drive** de esa PC. El programa de la nube la sube a internet solo.
+- **Qué guarda:** cada día, en la carpeta **CAPS Shop respaldos**:
+  - la base, `capsshop-AAAA-MM-DD.db`; se conservan 30;
+  - **las fotos**, en la carpeta `fotos`, que se copian solo si son nuevas.
+- **Cuándo copia:** se hace sola al abrir el programa y se vuelve a intentar cada hora. Si la memoria no está conectada, copia en cuanto se conecta.
+- **Copiar ahora** hace la copia en el momento. **Quitar** deja de copiar.
+- El **Inicio** avisa al administrador si no hay copia externa o si pasaron **7 días** sin copia.
 
-> **Las fotos no van dentro del archivo de copia.** La copia `.db` guarda todos los datos, pero no las fotos de los productos. Para respaldar también las fotos, copie la carpeta `fotos\` completa. Incluirlas en la copia está anotado en [Objetivos](../producto/objetivos.md#o4-instalación-y-operación).
+**Manuales**
+- **Crear copia de seguridad…** guarda un archivo `capsshop-respaldo-AAAA-MM-DD.db` donde usted elija. Esta copia no lleva las fotos; la copia externa sí.
 
 ## 11.4 Restaurar una copia
 
@@ -63,6 +70,9 @@ Las copias se hacen **solo en la PC principal**. En una computadora conectada, l
 3. Confirme el aviso: **se reemplazarán todos los datos actuales** por los de la copia.
 4. Antes de reemplazar, el sistema guarda los datos actuales en `respaldos\antes-de-restaurar-….db`, por si hay que volver atrás.
 5. Al terminar, vuelva a iniciar sesión. Las contraseñas son las que había en la copia. Las computadoras conectadas también deben entrar de nuevo.
+6. Si la copia viene de la **copia fuera de esta computadora**, las fotos que falten se recuperan solas desde la carpeta `fotos` que está al lado del archivo.
+
+Para recuperar todo en otra computadora, vea [Soporte y recuperación](14-soporte-y-recuperacion.md#142-la-pc-principal-se-dañó-volver-a-trabajar-en-otra-computadora).
 
 ## 11.5 Pasar el sistema a otra computadora
 
@@ -98,3 +108,18 @@ Anota:
 - **Abrir carpeta de registros** abre la carpeta `registros\`.
 
 En una computadora conectada, el diagnóstico muestra a qué PC principal está conectada y si la conexión funciona. Si no puede entrar, el enlace **Guardar diagnóstico** aparece en la pantalla de entrada junto a **Configurar esta PC**.
+
+## 11.7 Actualizaciones
+
+**Configuración → Actualizaciones** (administrador) muestra la versión instalada y si hay una más nueva. El programa busca solo al abrirse y cada 6 horas, pero **no descarga ni instala nada sin que usted lo pida**.
+
+- **Buscar ahora:** busca en el momento. Necesita internet.
+- **Instalar la versión X:**
+  - descarga la versión nueva;
+  - cierra el programa;
+  - la instala y lo vuelve a abrir.
+
+  Los datos no se tocan.
+- Con varias computadoras, **primero la PC principal** y después las demás ([Soporte y recuperación, 14.4](14-soporte-y-recuperacion.md#144-instalar-una-versión-nueva)).
+
+Cuando hay versión nueva, la barra de arriba muestra **Versión X disponible** (solo al administrador).
