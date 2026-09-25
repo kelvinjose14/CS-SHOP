@@ -25,19 +25,24 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 
 Cada cambio de configuración queda en el **Historial de movimientos**.
 
+La sección **Red** (compartir con otras computadoras, clave de conexión y lista de computadoras) se explica en [Varias computadoras en red](13-varias-computadoras.md#132-preparar-la-pc-principal).
+
 ## 11.2 Dónde están los datos
 
-Todo se guarda en la computadora, en `%APPDATA%\CAPS Shop\data`:
+Todo se guarda en la **PC principal**, en `%APPDATA%\CAPS Shop\data`:
 
 | Archivo o carpeta | Qué contiene |
 |---|---|
-| `capsshop.db` | La base de datos: productos, ventas, compras, clientes, caja, usuarios, configuración e historial |
+| `capsshop.db` | La base de datos: productos, ventas, compras, clientes, caja, usuarios, configuración e historial. Junto a ella pueden aparecer `capsshop.db-wal` y `capsshop.db-shm`: son parte de la base mientras el programa está abierto, no los borre |
+| `config.json` | Cómo trabaja esta computadora: principal o conectada ([Varias computadoras](13-varias-computadoras.md)) |
 | `fotos\` | Las fotos de los productos |
 | `respaldos\` | Las copias automáticas diarias |
 
-Desinstalar el programa no borra esta carpeta.
+Desinstalar el programa no borra esta carpeta. En una computadora conectada, la carpeta solo tiene `config.json`: los datos están en la principal.
 
 ## 11.3 Copias de seguridad
+
+Las copias se hacen **solo en la PC principal**. En una computadora conectada, la sección **Copias de seguridad** lo indica y no tiene botones.
 
 **Automáticas**
 - Cada día, la primera vez que se abre el programa, se guarda una copia de la base en `respaldos\capsshop-AAAA-MM-DD.db`.
@@ -56,14 +61,16 @@ Desinstalar el programa no borra esta carpeta.
 2. El sistema comprueba que sea una copia válida de CAPS Shop.
 3. Confirme el aviso: **se reemplazarán todos los datos actuales** por los de la copia.
 4. Antes de reemplazar, el sistema guarda los datos actuales en `respaldos\antes-de-restaurar-….db`, por si hay que volver atrás.
-5. Al terminar, vuelva a iniciar sesión. Las contraseñas son las que había en la copia.
+5. Al terminar, vuelva a iniciar sesión. Las contraseñas son las que había en la copia. Las computadoras conectadas también deben entrar de nuevo.
 
 ## 11.5 Pasar el sistema a otra computadora
 
 1. En la computadora vieja, cierre CAPS Shop.
 2. Copie la carpeta completa `%APPDATA%\CAPS Shop\data` a una memoria USB. Así van la base, las fotos y los respaldos.
-3. En la computadora nueva, instale CAPS Shop, ábralo una vez y ciérrelo.
-4. Reemplace la carpeta `%APPDATA%\CAPS Shop\data` de la nueva con la copiada.
+3. En la computadora nueva, instale CAPS Shop. Si lo abre, cierre la pantalla **Configurar esta computadora** sin configurar nada.
+4. Copie la carpeta a `%APPDATA%\CAPS Shop\data` de la nueva (créela si no existe; si existe, reemplácela).
 5. Abra CAPS Shop y entre con sus usuarios de siempre.
 
-> Use el sistema en **una sola computadora a la vez**. La versión 1.0.0 no comparte datos entre computadoras: si se usa en dos, cada una tendrá datos distintos y no se pueden unir. El trabajo en red es el objetivo [O2](../producto/objetivos.md#o2-varias-computadoras-en-red).
+> Esto es para cambiar la **PC principal**. Si tiene computadoras conectadas, siguen funcionando: al no encontrar la principal en la dirección vieja, la buscan en la red. Si no la encuentran, escriba la nueva dirección con **Configurar esta PC** ([Varias computadoras](13-varias-computadoras.md)).
+>
+> Para que otra computadora trabaje con los mismos datos, **no copie la base**: conéctela a la principal. Dos copias de la base no se pueden unir después.

@@ -16,6 +16,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 |---|---|
 | **Usuario o contraseña incorrectos.** | Revise el usuario y las mayúsculas de la contraseña |
 | **Su usuario fue desactivado.** | El administrador debe reactivarlo en **Usuarios** |
+| **Su sesión terminó. Vuelva a entrar.** | Pasa si la PC principal se reinició, si se restauró una copia o tras 12 horas sin uso. Entre de nuevo |
+| **Sin conexión con la PC principal (…)**, **Clave de conexión incorrecta…** o **La PC principal tiene la versión…** | Ver [Varias computadoras, errores comunes](13-varias-computadoras.md#138-errores-comunes) |
 | El sistema pide cambiar la contraseña | Es normal la primera vez o después de que el administrador la restableció |
 | El administrador olvidó su contraseña | Si hay otro usuario administrador, ese puede restablecerla. Si no, hoy no hay recuperación desde el programa ([Usuarios, 10.4](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña)) |
 
@@ -23,8 +25,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 
 | Mensaje | Qué hacer |
 |---|---|
-| **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | **Caja** → **Abrir caja**. También puede usar otro método de pago |
-| **Ya hay una caja abierta.** | Ciérrela antes de abrir otra |
+| **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | La caja de **esta computadora** está cerrada: **Caja** → **Abrir caja**. También puede usar otro método de pago |
+| **Ya hay una caja abierta en esta computadora.** | Ciérrela antes de abrir otra |
 | **No hay suficiente efectivo en caja (esperado: …).** | El retiro es mayor que lo que debería haber |
 | La caja no cuadra | Revise **Movimientos de efectivo**: ¿alguna venta se cobró en efectivo pero se pagó con tarjeta? ¿Falta registrar un gasto o un retiro? Anote la diferencia y el motivo al cerrar |
 
@@ -64,12 +66,17 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 
 Mensajes del tipo **"Monto debe ser mayor que cero."**, **"Nombre es obligatorio."**, **"Cantidad debe ser un número entero mayor que cero."** o **"Fecha: formato inválido."** indican que un campo del formulario está vacío o mal escrito. Corríjalo y vuelva a intentar.
 
+## Varias computadoras
+
+Los mensajes de conexión, clave, versión y computadoras desactivadas están en [Varias computadoras en red](13-varias-computadoras.md#138-errores-comunes).
+
 ## Si nada de esto resuelve el problema
 
 Anote:
 - qué estaba haciendo;
 - el mensaje exacto;
 - la hora;
-- el usuario.
+- el usuario;
+- en qué computadora.
 
 Si es posible, tome una captura de pantalla con la tecla Impr Pant. Con eso, el soporte puede revisar el **Historial de movimientos**. Si el programa muestra **"Error inesperado: …"**, esos datos son indispensables.

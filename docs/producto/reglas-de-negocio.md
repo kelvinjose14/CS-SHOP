@@ -138,17 +138,27 @@ Fuente: `sales.js` (`createReturn`). Solo el administrador.
 
 ## 8. Caja
 
-Fuente: `src/core/services/finance.js` (`sessionSummary`) y `common.js` (`ledger`).
+Fuente: `src/core/services/finance.js` (`sessionSummary`, `cashStatus`), `common.js` (`ledger`) y `reports.js` (`currentCash`).
 
-- Solo puede haber **una caja abierta** a la vez.
-- **Todo movimiento de dinero** se anota en el libro de dinero (`money_movements`), con dirección (entra o sale), método, concepto y fecha. Si el método es **efectivo**, se asocia a la caja abierta en ese momento.
-- Con **Exigir caja abierta** activado, un movimiento en efectivo sin caja abierta se rechaza.
+- **Cada computadora tiene su caja** (DT-14). Puede haber **una caja abierta por computadora**.
+- **Todo movimiento de dinero** se anota en el libro de dinero (`money_movements`), con dirección (entra o sale), método, concepto y fecha. Si el método es **efectivo**, se asocia a la caja abierta **de la computadora donde se registra**.
+- Con **Exigir caja abierta** activado, un movimiento en efectivo se rechaza si la caja de esa computadora está cerrada, aunque otra tenga la suya abierta.
+- **Efectivo de la tienda** (Inicio y Flujo de dinero) = suma, por cada computadora activa, de su efectivo esperado si la caja está abierta, o de lo contado en su último cierre si está cerrada.
 - **Efectivo esperado** = efectivo inicial + todas las entradas en efectivo de la sesión − todas las salidas en efectivo de la sesión.
 - **Diferencia al cerrar** = efectivo real contado − efectivo esperado. Negativa es faltante; positiva, sobrante.
 - Un **retiro** no puede superar el efectivo esperado.
 - Un gasto o una compra con **fecha anterior** pagados en efectivo salen de la **caja abierta hoy**. Su fecha solo afecta los reportes.
 
 **Ejemplo:** la caja abre con RD$ 1,000 y se vende en efectivo por RD$ 2,300. El efectivo esperado es **RD$ 3,300**. Si se cuentan RD$ 3,250, la diferencia es **−RD$ 50** (faltante).
+
+**Ejemplo con dos computadoras:**
+- La principal abre con RD$ 1,000 y la Caja 2 con RD$ 500.
+- La Caja 2 cobra una venta de RD$ 1,200 en efectivo y la principal, dos.
+- Esperado: principal **RD$ 3,400** y Caja 2 **RD$ 1,700**.
+- El Inicio muestra **RD$ 5,100**.
+- Si la Caja 2 cierra contando RD$ 1,700, el Inicio sigue mostrando RD$ 5,100, y la Caja 2 ya no puede cobrar en efectivo hasta abrir de nuevo.
+
+Este ejemplo es la prueba `test/terminals.test.js`.
 
 ## 9. Flujo de dinero
 
