@@ -8,7 +8,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 |---|---|
 | **"Windows protegió su PC"** al instalar | Pulse **Más información** → **Ejecutar de todas formas**. Sale porque el instalador aún no tiene firma digital |
 | Al abrir, aparece la ventana que ya estaba abierta | El programa solo permite una ventana a la vez, para proteger los datos. Use la que ya está abierta |
-| **"No se pudo abrir la base de datos"** | No borre nada. Cierre el programa y reinicie la computadora. Si sigue, restaure la última copia de `respaldos\` ([Respaldos](11-configuracion-y-respaldos.md#114-restaurar-una-copia)) y avise al soporte |
+| **"No se pudo abrir la base de datos"** | No borre nada. Cierre el programa y reinicie la computadora. Si sigue, restaure la última copia de `respaldos\` ([Respaldos](11-configuracion-y-respaldos.md#114-restaurar-una-copia)) y avise al soporte. El detalle queda en la carpeta `registros\` |
+| **"…Esta base de datos es de una versión más nueva de CAPS Shop…"** | Se instaló una versión más vieja que la que creó los datos. Instale la versión más reciente; los datos no se tocaron |
 
 ## Al entrar
 
@@ -18,7 +19,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **Su usuario fue desactivado.** | El administrador debe reactivarlo en **Usuarios** |
 | **Su sesión terminó. Vuelva a entrar.** | Pasa si la PC principal se reinició, si se restauró una copia o tras 12 horas sin uso. Entre de nuevo |
 | **Sin conexión con la PC principal (…)**, **Clave de conexión incorrecta…** o **La PC principal tiene la versión…** | Ver [Varias computadoras, errores comunes](13-varias-computadoras.md#138-errores-comunes) |
-| El sistema pide cambiar la contraseña | Es normal la primera vez o después de que el administrador la restableció |
+| El sistema pide cambiar la contraseña | Es normal la primera vez o después de que el administrador la restableció. Hasta cambiarla no se puede usar el sistema |
+| **Demasiados intentos fallidos. Espere un minuto e intente de nuevo.** | Se escribió mal la contraseña 5 veces en un minuto. Espere un minuto |
 | El administrador olvidó su contraseña | Si hay otro usuario administrador, ese puede restablecerla. Si no, hoy no hay recuperación desde el programa ([Usuarios, 10.4](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña)) |
 
 ## Caja
@@ -79,4 +81,8 @@ Anote:
 - el usuario;
 - en qué computadora.
 
-Si es posible, tome una captura de pantalla con la tecla Impr Pant. Con eso, el soporte puede revisar el **Historial de movimientos**. Si el programa muestra **"Error inesperado: …"**, esos datos son indispensables.
+Si es posible, tome una captura de pantalla con la tecla Impr Pant. Con eso, el soporte puede revisar el **Historial de movimientos**.
+
+**Guarde el diagnóstico** y envíelo al soporte: **Configuración** → **Soporte** → **Guardar diagnóstico…** ([detalle](11-configuracion-y-respaldos.md#116-soporte-diagnóstico-y-registro-de-errores)). Si el programa muestra **"Error inesperado: …"**, el error ya quedó anotado en el registro, y el diagnóstico lo incluye.
+
+En una computadora conectada que no puede entrar por un problema de conexión, el enlace **Guardar diagnóstico** está en la pantalla de entrada.

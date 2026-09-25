@@ -37,6 +37,7 @@ Todo se guarda en la **PC principal**, en `%APPDATA%\CAPS Shop\data`:
 | `config.json` | Cómo trabaja esta computadora: principal o conectada ([Varias computadoras](13-varias-computadoras.md)) |
 | `fotos\` | Las fotos de los productos |
 | `respaldos\` | Las copias automáticas diarias |
+| `registros\` | El registro de errores de los últimos 14 días ([11.6](#116-soporte-diagnóstico-y-registro-de-errores)) |
 
 Desinstalar el programa no borra esta carpeta. En una computadora conectada, la carpeta solo tiene `config.json`: los datos están en la principal.
 
@@ -74,3 +75,26 @@ Las copias se hacen **solo en la PC principal**. En una computadora conectada, l
 > Esto es para cambiar la **PC principal**. Si tiene computadoras conectadas, siguen funcionando: al no encontrar la principal en la dirección vieja, la buscan en la red. Si no la encuentran, escriba la nueva dirección con **Configurar esta PC** ([Varias computadoras](13-varias-computadoras.md)).
 >
 > Para que otra computadora trabaje con los mismos datos, **no copie la base**: conéctela a la principal. Dos copias de la base no se pueden unir después.
+
+## 11.6 Soporte: diagnóstico y registro de errores
+
+El programa anota los errores y los eventos importantes en la carpeta `registros\` de la carpeta de datos, con un archivo por día. Se guardan los últimos 14 días. Nunca se anotan contraseñas ni la clave de conexión.
+
+Anota:
+- el arranque;
+- la red compartida;
+- las copias y restauraciones;
+- las caídas de conexión.
+
+**Configuración** → **Soporte**:
+- **Guardar diagnóstico…** crea un archivo de texto para enviar al soporte. Incluye:
+  - la versión y el sistema;
+  - el estado de la base: tamaño, integridad y cantidad de registros;
+  - la red y las computadoras;
+  - las últimas copias;
+  - las últimas 500 líneas del registro.
+
+  No incluye contraseñas, la clave de conexión ni datos de clientes.
+- **Abrir carpeta de registros** abre la carpeta `registros\`.
+
+En una computadora conectada, el diagnóstico muestra a qué PC principal está conectada y si la conexión funciona. Si no puede entrar, el enlace **Guardar diagnóstico** aparece en la pantalla de entrada junto a **Configurar esta PC**.

@@ -43,7 +43,7 @@ En **Configuración → Red** de la principal están los datos para conectar las
 |---|---|
 | **Dirección de esta PC** | Se escribe en las demás si **Buscar** no la encuentra |
 | **Puerto** | Normalmente 47810; no hace falta cambiarlo |
-| **Clave de conexión** | Se escribe en cada computadora nueva. Solo quien tenga la clave puede conectarse |
+| **Clave de conexión** | Se escribe en cada computadora nueva. Solo quien tenga la clave puede conectarse. No viaja por la red: sirve para cifrar todo lo que pasa entre las computadoras |
 | **Computadoras** | Las PCs conectadas, su última actividad y si su caja está abierta |
 
 > **Recomendado:** pida a quien instaló la red que le dé a la PC principal una **dirección fija** en el router. Si cambia de dirección, las demás la vuelven a buscar solas, pero con una dirección fija es más seguro.
@@ -116,6 +116,7 @@ Cuando vuelve la conexión:
 | **Clave de conexión incorrecta. Revísela en la PC principal: Configuración → Red.** | Escriba la clave correcta. Si la cambiaron, en la pantalla de entrada pulse **Configurar esta PC** |
 | **La PC principal tiene la versión X y esta computadora la Y. Instale la misma versión en todas las computadoras.** | Instale la misma versión en todas |
 | **Esta computadora fue desactivada por el administrador.** | El administrador debe activarla en Configuración → Red |
+| **La fecha y hora de esta computadora no coinciden con las de la PC principal…** | Corrija la fecha y la hora de Windows en esta computadora (o en la principal). Deben diferir menos de 10 minutos |
 | **Esa computadora está desactivada. El administrador debe activarla en Configuración → Red.** (al conectar) | Se intentó conectar con el nombre de una computadora desactivada. Actívela, o use otro nombre |
 | **Escriba la dirección de la PC principal.** / **La dirección de la PC principal no es válida.** | Escriba la dirección que muestra la principal en Configuración → Red, por ejemplo `192.168.1.10` |
 | **Esta computadora no está registrada en la PC principal. Vuelva a conectarla.** | Pasa si se restauró en la principal una copia anterior a la conexión. Vuelva a configurarla (13.3) |

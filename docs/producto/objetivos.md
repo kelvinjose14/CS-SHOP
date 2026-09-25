@@ -7,11 +7,17 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.0.0)
+## Estado actual (versión 1.0.0 y lo hecho después, sin publicar)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 100 de 103 cumplen).
-- 28 pruebas automáticas (lógica del negocio, migración desde 1.0.0, caja por computadora y red), que corren en cada cambio (CI).
+- Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
+- Pruebas automáticas en cada cambio, en Linux y Windows (O3):
+  - 40 de lógica, migración, respaldos, permisos y red;
+  - 7 de interfaz con la app real;
+  - rendimiento con 3 años de datos;
+  - el instalador instalado de verdad.
+- Registro de errores y **Guardar diagnóstico** (O3).
 - Instalador de Windows generado y publicado automáticamente en GitHub.
 
 **Lo que NO está listo para producción:**
@@ -19,13 +25,11 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 | # | Brecha | Consecuencia | Objetivo |
 |---|---|---|---|
 | 1 | ~~Funciona en una sola computadora~~ **Resuelto en O2**, pendiente de probar en la red real de la tienda | — | O6 |
-| 2 | Instalador no probado en Windows real | Puede fallar al instalar o abrir en la tienda | O3, O6 |
+| 2 | Instalador probado en CI (Windows Server), pero no en Windows 10/11 de escritorio | Podría haber diferencias en la tienda | O6 |
 | 3 | Instalador sin firma digital | Windows muestra una advertencia y puede bloquearlo | O4 |
 | 4 | Sin actualización automática | Cada versión nueva hay que instalarla a mano en cada PC | O4 |
 | 5 | Respaldos solo en el mismo disco y sin fotos | Si el disco falla, se pierde todo | O4 |
-| 6 | Sin registro de errores | Si algo falla en la tienda, no hay cómo diagnosticarlo | O3 |
-| 7 | Rendimiento con años de datos sin medir (la base ya no se guarda completa en cada operación) | Podría volverse lento | O3 |
-| 8 | Interfaz sin pruebas automáticas | Un cambio puede romper una pantalla sin que nadie lo note | O3 |
+| 6 | ~~Sin registro de errores~~, ~~rendimiento sin medir~~ e ~~interfaz sin pruebas~~ **Resueltos en O3** | — | — |
 | 9 | Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.) | Operación diaria incompleta | O5 |
 | 10 | No se ha usado con datos reales | No hay aceptación del cliente | O6 |
 
@@ -73,7 +77,7 @@ O2 va primero porque cambia la base de todo el sistema. Hacer O3, O4 u O5 antes 
 
 ### O2. Varias computadoras en red
 
-**Estado:** terminado, en revisión (pull request). Decisiones: DT-13, DT-14 y DT-15. Diseño: [Red](../tecnico/red.md).
+**Estado:** hecho (PR #3, 25/09/2026). Decisiones: DT-13, DT-14 y DT-15. Diseño: [Red](../tecnico/red.md).
 
 **Meta:** que dos o más computadoras de la tienda trabajen al mismo tiempo sobre los mismos datos.
 
@@ -109,7 +113,7 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 | 5. Pruebas con 2 PCs | `test/network.test.js`: 40 ventas simultáneas desde 2 PCs en CI. A mano: dos instancias de Electron ([Desarrollo](../tecnico/desarrollo-y-publicacion.md#probar-varias-computadoras-en-una-sola-máquina)) |
 | 6. Documentación | Manual 1, 7, 11, 12 y 13; requisitos, reglas, decisiones y documentación técnica |
 
-**Queda para otros objetivos:** cifrado de la red (O3), regla automática del firewall (O4) y prueba en la red real de la tienda (O6).
+**Queda para otros objetivos:** regla automática del firewall (O4) y prueba en la red real de la tienda (O6). El cifrado de la red se hizo en O3.
 
 **Depende de:** O1, DT-13, DT-14 y DT-15.
 
@@ -117,7 +121,19 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 
 ### O3. Calidad para producción
 
-**Estado:** pendiente.
+**Estado:** terminado, en revisión (pull request). Decisión: DT-17.
+
+**Resultado:**
+
+| Entregable | Dónde |
+|---|---|
+| Pruebas de interfaz en CI | `test/ui/`, en Linux y en Windows ([Desarrollo](../tecnico/desarrollo-y-publicacion.md#pruebas)) |
+| Registro de errores y diagnóstico | `src/main/log.js`; **Configuración → Soporte** ([manual 11](../manual/11-configuracion-y-respaldos.md)) |
+| Pruebas de migración | `test/migration.test.js`: 1.0.0 → actual, migración fallida, base más nueva |
+| Pruebas de copia y restauración | `test/backup.test.js` y `test/ui/setup.test.js` |
+| Rendimiento con 3 años | 19,710 ventas; todo por debajo de 1 s tras la migración 3 ([Rendimiento](../tecnico/rendimiento.md)) |
+| Revisión de seguridad | [Seguridad](../tecnico/seguridad.md): red cifrada, cambio de contraseña exigido en el núcleo, límite de intentos en la principal y prueba de permisos de todas las operaciones |
+| Instalación en Windows | CI instala el `.exe`, usa el programa instalado, reinstala encima y desinstala sin perder datos. **Windows 10/11 de escritorio queda para el piloto (O6)** |
 
 **Meta:** detectar los problemas antes que la tienda.
 
