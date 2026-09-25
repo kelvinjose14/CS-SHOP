@@ -1,6 +1,6 @@
 # Arquitectura
 
-CAPS Shop es una aplicación de escritorio **Electron** con base de datos **SQLite** (a través de **sql.js**, SQLite compilado a WebAssembly, sin módulos nativos). Funciona sin internet en una sola computadora.
+CAPS Shop es una aplicación de escritorio **Electron** con base de datos **SQLite** (a través de **`node:sqlite`**, incluido en Node y Electron, sin módulos nativos). Funciona sin internet, en una computadora o en varias de la misma red: una **PC principal** guarda los datos y atiende a las demás ([Red](red.md)).
 
 ## Capas
 
@@ -8,7 +8,7 @@ CAPS Shop es una aplicación de escritorio **Electron** con base de datos **SQLi
 src/
   core/        Núcleo: reglas del negocio y base de datos. No depende de Electron.
     api.js       Punto de entrada único: tabla de operaciones con sus permisos
-    db.js        Envoltura de sql.js: consultas, transacciones y guardado en disco
+    db.js        Envoltura de node:sqlite: consultas, transacciones (WAL) y copias
     schema.js    Esquema y migraciones (PRAGMA user_version)
     util.js      Fechas, redondeo, validaciones, errores (AppError), estados de cuenta y períodos
     services/
@@ -19,8 +19,14 @@ src/
       sales.js     Clientes, ventas, abonos, devoluciones, anulación y cuentas por cobrar
       finance.js   Gastos, otros ingresos y caja
       reports.js   Ganancias, flujo de dinero, dashboard, más vendidos e historial
+      terminals.js Computadoras de la tienda (registrar, renombrar, desactivar)
+  net/         Red local, sin Electron
+    server.js    Servidor HTTP de la PC principal y descubrimiento UDP
+    client.js    Cliente de las PCs conectadas: reintentos, sin conexión, búsqueda
   main/        Proceso principal de Electron
-    main.js      Ventana, IPC, carpeta de datos, fotos, respaldos, CSV/PDF e impresión
+    main.js      Ventana, IPC, configurar esta PC, protocolo de fotos, respaldos, CSV/PDF e impresión
+    backend.js   Local (PC principal: base en este proceso) o remoto (PC conectada: todo por la red)
+    config.js    config.json de esta PC (modo, clave, principal)
     preload.js   Puente seguro: expone window.capsApi a la interfaz
   renderer/    Interfaz (HTML, CSS y JavaScript sin framework ni compilación)
     index.html   Carga los scripts en orden
@@ -28,7 +34,8 @@ src/
     js/lib.js    Utilidades: html seguro, formatos, tablas, modales, gráficos, exportar
     js/app.js    Inicio de sesión, menú y navegación (objeto App)
     js/views/*.js  Una pantalla o grupo de pantallas por archivo; cada una se registra con App.register
-test/core.test.js  Pruebas del núcleo (node --test)
+test/              Pruebas (node --test): núcleo, migración, computadoras y red
+test/fixtures/     Base de muestra de la versión 1.0.0
 build/             Íconos del instalador
 .github/workflows/build-windows.yml  CI: pruebas + instalador de Windows + publicación en Releases
 ```
@@ -36,11 +43,12 @@ build/             Íconos del instalador
 **Regla de dependencias:**
 
 ```
-renderer → window.capsApi → (IPC) → main → core
+renderer → window.capsApi → (IPC) → main → backend ─┬─ local:  core
+                                                     └─ remoto: net/client → (red) → net/server → core de la PC principal
 ```
 
 - La interfaz **nunca** accede a la base ni a archivos directamente.
-- El núcleo no conoce Electron. Por eso se prueba con Node puro y se puede reutilizar en un servidor (objetivo O2).
+- El núcleo y `net/` no conocen Electron. Por eso se prueban con Node puro.
 
 ## Flujo de una operación (ejemplo: una venta)
 
@@ -48,7 +56,7 @@ renderer → window.capsApi → (IPC) → main → core
 sequenceDiagram
   participant UI as Interfaz (views/sales.js)
   participant P as preload.js
-  participant M as main.js
+  participant M as main.js / backend.js
   participant A as core/api.js
   participant S as services/sales.js
   participant D as core/db.js
@@ -58,45 +66,54 @@ sequenceDiagram
   A->>A: ¿sesión activa? ¿rol permitido?
   A->>S: create(ctx, datos)
   S->>D: tx(): venta, líneas, existencias, pagos, libro de dinero, historial
-  D->>D: COMMIT y guardado del archivo en disco
+  D->>D: COMMIT (se escribe en disco)
   S-->>UI: id de la venta (o AppError con mensaje en español)
 ```
 
-- **Permisos:** `api.js` define para cada operación los roles permitidos (`ALL` o `ADMIN`). El usuario de la sesión vive en el proceso principal y se vuelve a leer de la base en cada llamada. Si fue desactivado, se cierra la sesión.
+- **Permisos:** `api.js` define para cada operación los roles permitidos (`ALL` o `ADMIN`). Cada computadora tiene su sesión (token). El usuario se vuelve a leer de la base en cada llamada: si fue desactivado, se cierra la sesión.
+- **En una PC conectada** el paso `main → api` va por la red: `backend.js` → `net/client.js` → `POST /v1/call` → `net/server.js` → `api.call` en la PC principal ([Red](red.md)).
 - **Errores:** las validaciones lanzan `AppError`, cuyo mensaje se muestra tal cual al usuario. Cualquier otro error se muestra como "Error inesperado: …".
-- **Transacciones:** cada operación que escribe corre dentro de `db.tx()`. Si algo falla, no se guarda nada (ROLLBACK). Las transacciones se pueden anidar: solo la exterior confirma y guarda.
-- **Libro de dinero:** todo cobro o pago llama a `ledger()` (`common.js`), que registra la entrada o salida. Si es en efectivo, la asocia a la caja abierta o la rechaza si la caja está cerrada.
+- **Transacciones:** cada operación que escribe corre dentro de `db.tx()` (`BEGIN IMMEDIATE`). Si algo falla, no se guarda nada (ROLLBACK). Las transacciones se pueden anidar: solo la exterior confirma.
+- **Libro de dinero:** todo cobro o pago llama a `ledger()` (`common.js`), que registra la entrada o salida. Si es en efectivo, la asocia a la caja abierta **de la PC que registra** o la rechaza si esa caja está cerrada.
 - **Existencias:** todo cambio pasa por `changeStock()` (`common.js`), que valida que no quede negativa y registra el movimiento.
 - **Historial:** las operaciones llaman a `audit()`, que guarda usuario, acción, entidad y detalle.
 
 ## Datos en disco
 
-Carpeta de datos: `%APPDATA%\CAPS Shop\data`. En pruebas se cambia con la variable `CAPSSHOP_DATA`.
+Carpeta de datos: `%APPDATA%\CAPS Shop\data`. En pruebas se cambia con la variable `CAPSSHOP_DATA`. En una PC conectada solo contiene `config.json`: los datos están en la principal.
 
 | Elemento | Detalle |
 |---|---|
-| `capsshop.db` | Archivo SQLite. Se reescribe completo después de cada transacción: primero en `.tmp` y luego se renombra, para no dejar archivos a medias |
+| `capsshop.db` (+ `-wal`, `-shm`) | Base SQLite en modo WAL con `synchronous=FULL`: cada transacción escribe solo lo que cambió y queda en disco al confirmarse |
+| `config.json` | Configuración de esta PC ([Red](red.md#configuración-de-cada-pc)) |
 | `fotos/` | Imágenes de productos (JPEG reducido a 600 px). La base guarda solo el nombre del archivo |
-| `respaldos/` | Copia diaria automática al abrir el programa; se conservan 30 |
+| `respaldos/` | Copia diaria automática al abrir el programa (`VACUUM INTO`, consistente); se conservan 30. Solo en la PC principal |
 
 ## Seguridad
 
 - **Ventana:** `contextIsolation`, `sandbox` y sin `nodeIntegration`. La interfaz solo ve `window.capsApi`.
 - **Contenido:** CSP en `index.html` (`script-src 'self'`). Todo texto dinámico pasa por `html`/`esc` (`lib.js`) antes de insertarse.
 - **Contraseñas:** scrypt con sal por usuario (`users.js`).
-- **Instancias:** una sola por computadora (`requestSingleInstanceLock`), para no escribir la base dos veces.
+- **Instancias:** una sola por computadora (`requestSingleInstanceLock`), para no abrir la base dos veces.
+- **Red:** clave de conexión, versión igual en todas las PCs y límite de intentos. El tráfico va sin cifrar dentro de la red de la tienda ([Red](red.md#seguridad)).
 
 ## Límites actuales
 
-Estos límites explican por qué la versión 1.0.0 **no está lista para producción en red** ([Objetivos](../producto/objetivos.md)).
+Lo que falta para producción, con el objetivo que lo resuelve ([Objetivos](../producto/objetivos.md)). Los límites de la 1.0.0 que resolvió O2 están al final.
 
 | Límite | Dónde | Consecuencia | Objetivo |
 |---|---|---|---|
-| La base vive en memoria de un solo proceso | `db.js` (sql.js) | No se puede compartir entre computadoras | O2 |
-| Una sola sesión de usuario por instancia | `api.js` (`current`) | En red hará falta una sesión por computadora | O2 |
-| Se reescribe el archivo completo en cada operación | `db.save()` | El costo crece con el tamaño de la base; sin medir | O2, O3 |
+| Sin rendimiento medido con años de datos | `db.js` | Sin cifras, aunque ya no se reescribe la base completa | O3 |
+| Red sin cifrar (HTTP) | `net/server.js` | Alguien en la misma red podría leer el tráfico | O3 |
+| Sin modo sin conexión | `net/client.js` | Si la principal se apaga, las demás no trabajan (DT-15) | Futuro, si se pide |
 | Sin registro de errores en archivo | `main.js` usa `console.error` | Sin diagnóstico en la tienda | O3 |
 | Interfaz sin pruebas automáticas ni linter | `renderer/` | Regresiones visuales sin detectar | O3 |
-| Scripts globales sin módulos ni compilación | `renderer/js` | Sencillo, pero sin verificación de tipos ni aislamiento | Revisar en O2/O3 si crece |
-| Respaldos sin fotos y en el mismo disco | `main.js` (`autoBackup`, `backup:*`) | Riesgo de pérdida | O4 |
-| Sin firma ni actualización automática | `package.json` (`build`) | Advertencia de Windows e instalación manual | O4 |
+| Scripts globales sin módulos ni compilación | `renderer/js` | Sencillo, pero sin verificación de tipos ni aislamiento | Revisar en O3 si crece |
+| Respaldos sin fotos y en el mismo disco | `backend.js` (`autoBackup`, `backupTo`) | Riesgo de pérdida | O4 |
+| Sin firma ni actualización automática | `package.json` (`build`) | Advertencia de Windows e instalación manual en cada PC | O4 |
+| El instalador no crea la regla del firewall | `package.json` (`nsis`) | Windows pregunta la primera vez que la principal comparte | O4 |
+
+**Resueltos en O2:**
+- La base vivía en memoria de un solo proceso (sql.js) y se reescribía completa en cada operación. Ahora usa `node:sqlite` en modo WAL.
+- Había una sola sesión de usuario por programa. Ahora hay una por computadora.
+- Solo funcionaba en una PC. Ahora hay una PC principal y PCs conectadas ([Red](red.md)).

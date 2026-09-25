@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.0.0**. Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.0.0**, más lo terminado en el objetivo O2 (varias computadoras en red, aún sin publicar). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -16,13 +16,13 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 
 | Área | Requisitos | Cumple | Parcial | Falta |
 |---|---:|---:|---:|---:|
-| Funcionales (pedido original) | 102 | 99 | 3 | 0 |
-| No funcionales | 14 | 5 | 4 | 4 |
+| Funcionales (pedido original) | 103 | 100 | 3 | 0 |
+| No funcionales | 14 | 6 | 4 | 3 |
 | Nuevos detectados (propuestos) | 9 | — | — | 9 |
 
 En no funcionales, uno más (RNF-08, rendimiento) está **sin verificar**.
 
-> Lo funcional pedido está prácticamente completo. **Lo que separa al sistema de producción está en los no funcionales:** trabajo en red, instalador probado y firmado, actualizaciones, respaldos fuera de la PC y diagnóstico de errores.
+> Lo funcional pedido está prácticamente completo. **Lo que separa al sistema de producción está en los no funcionales:** instalador probado y firmado, actualizaciones, respaldos fuera de la PC y diagnóstico de errores.
 
 ## 1. Requisitos funcionales
 
@@ -117,6 +117,7 @@ En no funcionales, uno más (RNF-08, rendimiento) está **sin verificar**.
 | RF-CAJ-07 | Efectivo real | Se indica al cerrar | Cumple | Cerrar caja |
 | RF-CAJ-08 | Diferencia de caja | Real − esperado, con faltante o sobrante | Cumple | Cerrar caja, Historial de cierres |
 | RF-CAJ-09 | Apertura y cierre | Abrir caja / Cerrar caja | Cumple | Caja |
+| RF-CAJ-10 | Una caja por computadora (DT-14) | Cada PC abre, cobra en efectivo y cierra su propia caja; el administrador ve las cajas abiertas de todas y la PC de cada cierre | Cumple | Caja, Historial de cierres |
 
 ### Contabilidad y ganancias (RF-CON)
 
@@ -154,7 +155,7 @@ En no funcionales, uno más (RNF-08, rendimiento) está **sin verificar**.
 | RF-DAS-06 | Compras del mes | Cumple |
 | RF-DAS-07 | Cuentas por cobrar | Cumple |
 | RF-DAS-08 | Cuentas por pagar | Cumple |
-| RF-DAS-09 | Efectivo en caja | Cumple |
+| RF-DAS-09 | Efectivo en caja (suma de las cajas de todas las computadoras) | Cumple |
 | RF-DAS-10 | Valor del inventario | Cumple |
 | RF-DAS-11 | Productos con stock bajo | Cumple |
 | RF-DAS-12 | Productos agotados | Cumple |
@@ -198,7 +199,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | ID | Requisito | Criterio de aceptación | Estado |
 |---|---|---|---|
 | RF-HIS-01 | Registro de ventas, compras, gastos, pagos, abonos, ajustes, devoluciones, anulaciones y cambios de precio | Cada uno aparece en Historial de movimientos | Cumple (el detalle de gastos muestra claves en inglés, RF-NUE-08) |
-| RF-HIS-02 | Fecha, hora y usuario en cada movimiento | Columnas del historial | Cumple |
+| RF-HIS-02 | Fecha, hora, usuario y computadora en cada movimiento | Columnas del historial | Cumple |
 
 ### Entrega
 
@@ -211,19 +212,19 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 
 | ID | Requisito | Criterio de aceptación | Estado |
 |---|---|---|---|
-| RNF-01 | **Varias computadoras de la tienda en red, con los mismos datos** | Dos PCs registran ventas a la vez y ambas ven lo mismo al instante | **Falta**: hoy una sola PC ([O2](objetivos.md#o2-varias-computadoras-en-red)) |
+| RNF-01 | **Varias computadoras de la tienda en red, con los mismos datos** | Dos PCs registran ventas a la vez y ambas ven lo mismo al instante | Cumple: PC principal y PCs conectadas ([Red](../tecnico/red.md)). Probado en CI con 2 PCs y 40 ventas simultáneas, y a mano con dos instancias. Falta probarlo en la red real de la tienda (O6) |
 | RNF-02 | Funciona sin internet | Todas las funciones sin conexión | Cumple |
 | RNF-03 | Windows 10/11 de 64 bits | Instalación y uso verificados en Windows real | Parcial: no probado en Windows real |
 | RNF-04 | Copias de seguridad automáticas | Una copia diaria, con las últimas 30 | Cumple (en el mismo disco) |
 | RNF-05 | Copias fuera de la computadora | Copia automática a USB o nube, incluidas las fotos | Parcial: solo manual y sin fotos |
 | RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Parcial: falta la recuperación del administrador |
-| RNF-07 | Integridad de datos | Cada operación es atómica y no se abren dos instancias | Cumple |
-| RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Sin verificar: la base se guarda completa en cada operación ([arquitectura](../tecnico/arquitectura.md#límites-actuales)) |
+| RNF-07 | Integridad de datos | Cada operación es atómica, queda en disco al confirmarse y no se abren dos instancias | Cumple (SQLite en modo WAL; una venta que se reintenta por la red no se duplica) |
+| RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Sin verificar: ya no se reescribe la base completa en cada operación, pero falta la prueba de 3 años ([O3](objetivos.md#o3-calidad-para-producción)) |
 | RNF-09 | Instalador firmado | Windows no muestra la advertencia al instalar | Falta |
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Falta: hoy se reinstala a mano (los datos se conservan) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Falta |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Parcial: 14 pruebas de lógica en CI; la interfaz se prueba a mano |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Parcial: 28 pruebas de lógica, migración y red en CI; la interfaz se prueba a mano |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados (propuestos)

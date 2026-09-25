@@ -1,6 +1,9 @@
 # Modelo de datos
 
-- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **1**.
+- **Motor:** SQLite a través de `node:sqlite`, en modo WAL (`src/core/db.js`). Es el mismo formato de archivo que escribía la versión 1.0.0 con sql.js, así que la base se abre tal cual.
+- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **2**.
+  - **1:** esquema inicial (versión 1.0.0).
+  - **2:** computadoras en red. Tabla `terminals`, y columna `terminal_id` en `cash_sessions` y `audit_log`. Las cajas existentes pasan a la PC principal (id 1).
 - **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
 - **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.
 - **Montos:** números reales redondeados a 2 decimales. El costo de producto usa 4 decimales.
@@ -10,6 +13,8 @@
 ```mermaid
 erDiagram
   users ||--o{ audit_log : registra
+  terminals ||--o{ cash_sessions : tiene
+  terminals ||--o{ audit_log : desde
   products ||--o{ inventory_movements : tiene
   suppliers ||--o{ purchases : recibe
   purchases ||--|{ purchase_items : contiene
@@ -44,9 +49,10 @@ erDiagram
 | `sale_payments` | Cobros de ventas | `sale_id`, `customer_id`, `amount`, `method`, `kind` (`inicial` \| `abono`), `voided` |
 | `returns` / `return_items` | Devoluciones | `total`, `cost_total` (0 si no se reingresó), `credit_applied`, `refund_amount`, `refund_method`, `restock`, `reason` |
 | `expenses` / `incomes` | Gastos y otros ingresos | `category`, `description`, `date`, `amount`, `method`, `voided` |
-| `cash_sessions` | Aperturas y cierres de caja | `opened_at`, `opened_by`, `opening_amount`, `closed_at`, `closed_by`, `expected_amount`, `counted_amount`, `difference`, `status` (`abierta` \| `cerrada`) |
+| `terminals` | Computadoras de la tienda. La 1 es la PC principal | `name` (único, sin distinguir mayúsculas), `active`, `last_seen_at` |
+| `cash_sessions` | Aperturas y cierres de caja, una por PC | `terminal_id`, `opened_at`, `opened_by`, `opening_amount`, `closed_at`, `closed_by`, `expected_amount`, `counted_amount`, `difference`, `status` (`abierta` \| `cerrada`) |
 | `money_movements` | **Libro de dinero**: toda entrada y salida | `date`, `direction` (`in` \| `out`), `amount`, `method`, `category`, `ref_type`/`ref_id`, `session_id` (solo efectivo con caja abierta), `user_id` |
-| `audit_log` | Historial | `created_at`, `user_id`, `action`, `entity`, `entity_id`, `details` (JSON) |
+| `audit_log` | Historial | `created_at`, `user_id`, `terminal_id` (PC desde la que se hizo), `action`, `entity`, `entity_id`, `details` (JSON) |
 
 ## Estados
 
@@ -54,7 +60,8 @@ erDiagram
 |---|---|
 | Venta y compra (`status`) | `pendiente`, `parcial`, `pagado`, `anulada`. "Vencido" no se guarda: se calcula (saldo > 0 y `due_date` < hoy) |
 | Producto (calculado) | `agotado` (stock ≤ 0), `bajo` (stock ≤ mínimo), `ok` |
-| Caja | `abierta`, `cerrada` (solo una abierta a la vez) |
+| Caja | `abierta`, `cerrada` (una abierta a la vez **por computadora**) |
+| Computadora (`terminals.active`) | 1 activa, 0 desactivada: no puede entrar ni operar |
 
 ## Tipos de movimiento
 
@@ -66,7 +73,7 @@ erDiagram
 |---|---|
 | `venta`, `abono_cliente`, `otro_ingreso`, `deposito_caja`, `anulacion_compra`, `anulacion_gasto` | `compra`, `pago_proveedor`, `gasto`, `devolucion`, `retiro_caja`, `anulacion_venta`, `anulacion_ingreso` |
 
-**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`.
+**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`, `conectar_pc`, `editar_pc`.
 
 ## Datos derivados (no se guardan)
 
@@ -74,5 +81,5 @@ Se calculan al consultar (`reports.js`, `products.summary`):
 - ventas netas, costo de lo vendido y ganancias;
 - valor del inventario;
 - saldos de clientes y proveedores (suma de `balance`);
-- efectivo esperado de la caja abierta;
+- efectivo esperado de cada caja abierta, y el efectivo de la tienda (suma de las cajas de todas las PCs activas);
 - productos más vendidos.

@@ -98,7 +98,8 @@ App.register({
       page.appendChild(el(html`
         <div class="cash-closed card">
           <div class="cash-icon">${icon('cash', 'huge')}</div>
-          <h2>La caja está cerrada</h2>
+          <h2>La caja de esta computadora está cerrada</h2>
+          ${st.terminal ? html`<p class="muted">${icon('pc')} ${st.terminal.name}</p>` : ''}
           ${last ? html`<p class="muted">Último cierre: ${Fmt.datetime(last.closed_at)} · Efectivo contado ${Fmt.money(last.counted_amount)} · Diferencia <b class="${last.difference < 0 ? 'text-danger' : last.difference > 0 ? 'text-warn' : 'text-ok'}">${Fmt.money(last.difference)}</b></p>` : html`<p class="muted">Todavía no se ha abierto ninguna caja.</p>`}
           <div class="open-form">
             <label class="field"><span>Efectivo inicial</span><input id="open-amount" type="number" min="0" step="0.01" value="${last ? last.counted_amount : 0}"></label>
@@ -114,7 +115,7 @@ App.register({
       const s = st.open;
       page.appendChild(el(html`
         <div>
-          <div class="toolbar"><div class="tl"><span class="muted">Abierta el ${Fmt.datetime(s.opened_at)}</span></div>
+          <div class="toolbar"><div class="tl"><span class="muted">${st.terminal ? html`${icon('pc')} <b>${st.terminal.name}</b> · ` : ''}Abierta el ${Fmt.datetime(s.opened_at)}</span></div>
             <div class="tr">
               <button class="btn" id="cash-in">${icon('plus')} Entrada de efectivo</button>
               <button class="btn" id="cash-out">${icon('outbox')} Retiro</button>
@@ -192,15 +193,28 @@ App.register({
       };
     }
 
+    if (admin && st.others && st.others.length) {
+      page.appendChild(el(html`<div class="card"><h3>Cajas abiertas en otras computadoras</h3>${table({
+        columns: [
+          { key: 'terminal_name', label: 'PC' },
+          { key: 'opened_at', label: 'Apertura', datetime: true },
+          { key: 'opened_by_name', label: 'Abrió' },
+          { key: 'opening_amount', label: 'Inicial', money: true },
+          { key: 'total_in', label: 'Entradas', money: true },
+          { key: 'total_out', label: 'Salidas', money: true },
+          { key: 'expected', label: 'Esperado', money: true },
+        ],
+        rows: st.others,
+      })}</div>`));
+    }
+
     if (admin) {
       const hist = await api('cash.history');
       const h = el(html`<div class="card"><h3>Historial de cierres</h3>${table({
         columns: [
-          { key: 'id', label: '#' },
-          { key: 'opened_at', label: 'Apertura', datetime: true },
-          { key: 'opened_by_name', label: 'Abrió' },
-          { key: 'closed_at', label: 'Cierre', datetime: true },
-          { key: 'closed_by_name', label: 'Cerró' },
+          { key: 'terminal_name', label: 'PC' },
+          { key: 'opened_at', label: 'Apertura', render: (r) => html`${Fmt.datetime(r.opened_at)}<br><small class="muted">${r.opened_by_name}</small>` },
+          { key: 'closed_at', label: 'Cierre', render: (r) => (r.closed_at ? html`${Fmt.datetime(r.closed_at)}<br><small class="muted">${r.closed_by_name}</small>` : '') },
           { key: 'opening_amount', label: 'Inicial', money: true },
           { key: 'expected_amount', label: 'Esperado', money: true, render: (r) => (r.status === 'cerrada' ? Fmt.money(r.expected_amount) : '') },
           { key: 'counted_amount', label: 'Real', money: true, render: (r) => (r.status === 'cerrada' ? Fmt.money(r.counted_amount) : '') },
@@ -213,7 +227,7 @@ App.register({
       onRowClick(h, hist, async (r) => {
         const d = await api('cash.session', { id: r.id });
         modal({
-          title: `Caja #${d.id} · ${Fmt.datetime(d.opened_at)}`,
+          title: `Caja #${d.id} · ${d.terminal_name || ''} · ${Fmt.datetime(d.opened_at)}`,
           width: 820,
           body: html`
             <div class="kv cols-4">

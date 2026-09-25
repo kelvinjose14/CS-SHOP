@@ -252,14 +252,32 @@ const MIGRATIONS = [
   );
   CREATE INDEX ix_audit_date ON audit_log(created_at);
   `,
+
+  // v2: varias computadoras en red. Cada PC tiene su caja y queda en el historial.
+  `
+  CREATE TABLE terminals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT
+  );
+  INSERT INTO terminals (id, name, created_at) VALUES (1, 'Principal', strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime'));
+
+  ALTER TABLE cash_sessions ADD COLUMN terminal_id INTEGER REFERENCES terminals(id);
+  UPDATE cash_sessions SET terminal_id = 1;
+  CREATE INDEX ix_cash_terminal ON cash_sessions(terminal_id, status);
+
+  ALTER TABLE audit_log ADD COLUMN terminal_id INTEGER REFERENCES terminals(id);
+  `,
 ];
 
 function migrate(db) {
   let version = db.value('PRAGMA user_version');
   while (version < MIGRATIONS.length) {
-    db.sql.exec(MIGRATIONS[version]);
+    db.exec(MIGRATIONS[version]);
     version++;
-    db.sql.run(`PRAGMA user_version = ${version}`);
+    db.exec(`PRAGMA user_version = ${version}`);
   }
 }
 

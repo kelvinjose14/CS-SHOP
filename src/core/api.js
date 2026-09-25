@@ -1,6 +1,8 @@
 'use strict';
-// Punto de entrada único de la lógica del negocio. Cada método declara quién puede usarlo;
-// el usuario de la sesión lo mantiene el proceso principal, no la interfaz.
+// Punto de entrada único de la lógica del negocio. Cada método declara quién puede usarlo.
+// Cada computadora inicia su propia sesión y recibe un token; el usuario de la sesión
+// lo guarda este módulo, no la interfaz.
+const crypto = require('crypto');
 const { AppError } = require('./util');
 const users = require('./services/users');
 const products = require('./services/products');
@@ -8,6 +10,7 @@ const purchases = require('./services/purchases');
 const sales = require('./services/sales');
 const finance = require('./services/finance');
 const reports = require('./services/reports');
+const terminals = require('./services/terminals');
 
 const ALL = ['admin', 'vendedor'];
 const ADMIN = ['admin'];
@@ -69,39 +72,82 @@ const METHODS = {
   'reports.topProducts': [ADMIN, reports.topProducts],
   'reports.audit': [ADMIN, reports.auditLog],
   'reports.range': [ALL, reports.range],
+
+  'terminals.list': [ADMIN, terminals.list],
+  'terminals.save': [ADMIN, terminals.save],
 };
+
+const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 horas sin actividad
+const TOUCH_EVERY = 60 * 1000;
 
 function createApi(db) {
   users.ensureDefaultUsers(db);
-  db.save();
-  let current = null;
+  const sessions = new Map(); // token -> { user, terminal, lastSeen, touched }
+
+  function find(token) {
+    const s = token ? sessions.get(token) : null;
+    if (s && Date.now() - s.lastSeen > SESSION_TTL) {
+      sessions.delete(token);
+      return null;
+    }
+    return s || null;
+  }
 
   return {
-    get user() {
-      return current;
+    // Registra (o reutiliza) una computadora que se conecta a la principal.
+    pair(name) {
+      const t = terminals.register(db, name);
+      return { id: t.id, name: t.name };
     },
-    login(params) {
-      current = users.login({ db }, params || {});
-      return current;
+    setTerminalName(id, name) {
+      return terminals.rename(db, id, name);
     },
-    logout() {
-      current = null;
+    login(params, { terminal = terminals.PRINCIPAL } = {}) {
+      terminals.check(db, terminal);
+      const user = users.login({ db, terminal }, params || {});
+      const token = crypto.randomBytes(24).toString('hex');
+      sessions.set(token, { user, terminal, lastSeen: Date.now(), touched: 0 });
+      return { token, user };
     },
-    call(name, params) {
+    logout(token) {
+      sessions.delete(token);
+    },
+    user(token) {
+      const s = find(token);
+      return s ? s.user : null;
+    },
+    // Al restaurar un respaldo o cerrar la base, todas las PCs vuelven a entrar.
+    closeAll() {
+      sessions.clear();
+    },
+    call(token, name, params) {
       const entry = METHODS[name];
       if (!entry) throw new AppError(`Operación desconocida: ${name}`, 'NOT_FOUND');
-      if (!current) throw new AppError('Debe iniciar sesión.', 'AUTH');
+      if (!token) throw new AppError('Debe iniciar sesión.', 'AUTH');
+      const s = find(token);
+      if (!s) throw new AppError('Su sesión terminó. Vuelva a entrar.', 'AUTH');
+      try {
+        terminals.check(db, s.terminal);
+      } catch (err) {
+        sessions.delete(token);
+        throw err;
+      }
       // Refresca el usuario (pudo ser desactivado o cambiar de rol).
-      const fresh = db.get('SELECT * FROM users WHERE id = ?', [current.id]);
+      const fresh = db.get('SELECT * FROM users WHERE id = ?', [s.user.id]);
       if (!fresh || !fresh.active) {
-        current = null;
+        sessions.delete(token);
         throw new AppError('Su usuario fue desactivado.', 'AUTH');
       }
-      current = users.publicUser(fresh);
+      s.user = users.publicUser(fresh);
+      s.lastSeen = Date.now();
+      if (s.lastSeen - s.touched > TOUCH_EVERY) {
+        terminals.touch(db, s.terminal);
+        s.touched = s.lastSeen;
+      }
       const [roles, fn] = entry;
-      if (!roles.includes(current.role)) throw new AppError('No tiene permiso para realizar esta operación.', 'FORBIDDEN');
-      const result = fn({ db, user: current }, params || {});
-      if (name === 'auth.changePassword') current = result;
+      if (!roles.includes(s.user.role)) throw new AppError('No tiene permiso para realizar esta operación.', 'FORBIDDEN');
+      const result = fn({ db, user: s.user, terminal: s.terminal }, params || {});
+      if (name === 'auth.changePassword') s.user = result;
       return result;
     },
   };

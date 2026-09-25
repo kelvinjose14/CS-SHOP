@@ -31,6 +31,7 @@ const App = {
 
   async start() {
     this.info = await window.capsApi.info();
+    if (this.info.needsSetup) return this.showSetup();
     if (this.info.user) {
       this.user = this.info.user;
       await this.enter();
@@ -44,8 +45,16 @@ const App = {
     Fmt.currency = this.settings.currency || 'RD$';
   },
 
-  showLogin(message) {
+  // Nombre de esta PC y, si está conectada, a qué principal.
+  pcLabel() {
+    const i = this.info;
+    if (!i.terminal) return '';
+    return i.mode === 'terminal' ? `${i.terminal.name} · conectada a ${i.server.name || i.server.host}` : `${i.terminal.name} · PC principal`;
+  },
+
+  showLogin(message, code) {
     document.body.className = 'login-page';
+    const canSetup = this.info.mode === 'terminal' && CONNECTION_ERRORS.includes(code);
     setHTML(document.body, html`
       <div class="login">
         <div class="login-card">
@@ -56,6 +65,7 @@ const App = {
             <div class="login-error">${message || ''}</div>
             <button class="btn primary block" type="submit">Entrar</button>
           </form>
+          <p class="login-hint">${icon('pc')} ${this.pcLabel()}${canSetup ? html` · <a href="#" id="login-setup">Configurar esta PC</a>` : ''}</p>
           <p class="login-hint">Sistema de inventario y contabilidad · v${this.info.version}</p>
         </div>
       </div>`);
@@ -64,21 +74,30 @@ const App = {
       const f = formData(e.target);
       try {
         this.user = await window.capsApi.login(f.username, f.password);
+        this.info = await window.capsApi.info();
         await this.enter();
       } catch (err) {
+        if (CONNECTION_ERRORS.includes(err.code)) return this.showLogin(err.message, err.code);
         $('.login-error').textContent = err.message;
       }
     };
+    const setup = $('#login-setup');
+    if (setup) setup.onclick = (e) => { e.preventDefault(); this.showSetup({ back: () => this.showLogin(), terminalOnly: true }); };
   },
 
-  onLoggedOut(message) {
+  onLoggedOut(message, code) {
+    // Varias llamadas pueden fallar a la vez: se conserva el primer aviso.
+    if (!this.user && $('#login-form')) return;
     this.user = null;
-    this.showLogin(message);
+    const off = $('#offline');
+    if (off) off.remove();
+    this.showLogin(message, code);
   },
 
   async logout() {
     await window.capsApi.logout();
-    this.onLoggedOut();
+    this.user = null;
+    this.showLogin();
   },
 
   async enter() {
@@ -133,7 +152,7 @@ const App = {
         <nav>${nav}</nav>
         <div class="side-user">
           <div class="avatar">${this.user.name.slice(0, 1).toUpperCase()}</div>
-          <div class="who"><strong>${this.user.name}</strong><small>${this.isAdmin() ? 'Administrador' : 'Vendedor'}</small></div>
+          <div class="who"><strong>${this.user.name}</strong><small>${this.isAdmin() ? 'Administrador' : 'Vendedor'} · ${this.info.terminal ? this.info.terminal.name : ''}</small></div>
           <button class="icon-btn" id="btn-password" title="Cambiar contraseña">${icon('user')}</button>
           <button class="icon-btn" id="btn-logout" title="Cerrar sesión">${icon('logout')}</button>
         </div>
@@ -165,7 +184,7 @@ const App = {
       await route.render(page, params);
     } catch (err) {
       console.error(err);
-      if (err.code !== 'AUTH') setHTML(page, html`<div class="error-box">${err.message}</div>`);
+      if (!SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') setHTML(page, html`<div class="error-box">${err.message}</div>`);
     }
     this.refreshCashBadge();
   },

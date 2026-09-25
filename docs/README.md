@@ -2,16 +2,16 @@
 
 Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP · Tienda de Gorras**.
 
-Versión documentada: **1.0.0** (25/09/2026). Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
+Versión documentada: **1.0.0** (25/09/2026), más el trabajo en red de O2, aún sin publicar. Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
 
 ## ¿Qué leer?
 
 | Si usted es… | Empiece por |
 |---|---|
-| **Dueño o administrador** | [Primeros pasos](manual/01-primeros-pasos.md) → [Rutina diaria](manual/02-rutina-diaria.md) → el resto del manual según lo que necesite |
+| **Dueño o administrador** | [Primeros pasos](manual/01-primeros-pasos.md) → [Varias computadoras](manual/13-varias-computadoras.md) (si hay más de una) → [Rutina diaria](manual/02-rutina-diaria.md) → el resto del manual según lo que necesite |
 | **Vendedor** | [Rutina diaria](manual/02-rutina-diaria.md) → [Ventas](manual/03-ventas.md) → [Caja](manual/07-caja.md) → [Clientes y cobros](manual/06-clientes-y-cobros.md) |
 | **Quien decide qué se construye** | [Requisitos](producto/requisitos.md) → [Objetivos](producto/objetivos.md) → [Decisiones](producto/decisiones.md) |
-| **Desarrollador** | [Arquitectura](tecnico/arquitectura.md) → [Modelo de datos](tecnico/modelo-de-datos.md) → [Desarrollo y publicación](tecnico/desarrollo-y-publicacion.md) → [Reglas de negocio](producto/reglas-de-negocio.md) |
+| **Desarrollador** | [Arquitectura](tecnico/arquitectura.md) → [Red](tecnico/red.md) → [Modelo de datos](tecnico/modelo-de-datos.md) → [Desarrollo y publicación](tecnico/desarrollo-y-publicacion.md) → [Reglas de negocio](producto/reglas-de-negocio.md) |
 
 ## Manual de uso
 
@@ -29,6 +29,7 @@ Versión documentada: **1.0.0** (25/09/2026). Los cambios de cada versión está
 | 10 | [Usuarios y permisos](manual/10-usuarios-y-permisos.md) | Qué puede hacer cada perfil y cómo crear usuarios |
 | 11 | [Configuración y respaldos](manual/11-configuracion-y-respaldos.md) | Ajustes del negocio, copias de seguridad y cambio de computadora |
 | 12 | [Problemas frecuentes](manual/12-problemas-frecuentes.md) | Mensajes de error y qué hacer |
+| 13 | [Varias computadoras en red](manual/13-varias-computadoras.md) | PC principal, conectar otras PCs, caja por PC y sin conexión |
 
 ## Producto: lo que queremos construir
 
@@ -42,6 +43,7 @@ Versión documentada: **1.0.0** (25/09/2026). Los cambios de cada versión está
 - [Arquitectura](tecnico/arquitectura.md)
 - [Modelo de datos](tecnico/modelo-de-datos.md)
 - [Desarrollo y publicación](tecnico/desarrollo-y-publicacion.md)
+- [Red: varias computadoras](tecnico/red.md)
 
 ## Convenciones de esta documentación
 

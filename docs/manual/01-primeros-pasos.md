@@ -3,7 +3,7 @@
 **Para qué sirve:** dejar el sistema instalado, con contraseñas propias, configurado y con los datos iniciales cargados.
 **Quién:** Administrador (el dueño). Se hace una sola vez.
 
-> **Importante:** la versión 1.0.0 funciona en **una sola computadora**. Todavía no permite que varias computadoras de la tienda compartan los mismos datos. Ese es el siguiente objetivo del proyecto (ver [Objetivos](../producto/objetivos.md), O2). Mientras tanto, instálelo solo en la computadora de la caja.
+> **Varias computadoras:** si la tienda tendrá más de una, haga esta página en la **PC principal**: la que siempre está encendida y guarda los datos. Después conecte las demás siguiendo [Varias computadoras en red](13-varias-computadoras.md). Si es una sola computadora, esa es la principal.
 
 ## 1.1 Requisitos de la computadora
 
@@ -18,6 +18,9 @@
 2. Abra el archivo.
 3. Si Windows muestra **"Windows protegió su PC"**, pulse **Más información** y luego **Ejecutar de todas formas**. El aviso sale porque el instalador aún no tiene firma digital (pendiente en [Objetivos](../producto/objetivos.md), O4).
 4. Elija la carpeta de instalación y termine. Se crea el acceso directo **CAPS Shop** en el escritorio y en el menú Inicio.
+5. Abra CAPS Shop. La primera vez sale **Configurar esta computadora**: elija **Esta es la PC principal**, escriba un nombre para la computadora (por ejemplo "Caja" u "Oficina") y pulse **Configurar como PC principal**. El programa se reinicia ([detalle](13-varias-computadoras.md#132-preparar-la-pc-principal)).
+
+   Si ya tenía la versión 1.0.0 instalada, esta pantalla no sale: la computadora queda como principal con todos sus datos.
 
 Los datos se guardan en `%APPDATA%\CAPS Shop\data`. Desinstalar el programa **no** borra los datos.
 

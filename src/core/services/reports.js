@@ -126,11 +126,15 @@ function cashflow(ctx, params = {}) {
   };
 }
 
+// Efectivo de la tienda: suma de la caja de cada PC activa (abierta: lo esperado; cerrada: lo contado en el último cierre).
 function currentCash(ctx) {
-  const s = openCashSession(ctx.db);
-  if (s) return finance.cashStatus(ctx).open.expected;
-  const last = ctx.db.get("SELECT counted_amount FROM cash_sessions WHERE status = 'cerrada' ORDER BY id DESC LIMIT 1");
-  return last ? round2(last.counted_amount) : 0;
+  let total = 0;
+  for (const t of ctx.db.all('SELECT id FROM terminals WHERE active = 1')) {
+    const s = openCashSession(ctx.db, t.id);
+    if (s) total += finance.sessionSummary(ctx.db, s).expected;
+    else total += ctx.db.value("SELECT counted_amount FROM cash_sessions WHERE status = 'cerrada' AND terminal_id = ? ORDER BY id DESC LIMIT 1", [t.id]) || 0;
+  }
+  return round2(total);
 }
 
 function topProducts(ctx, params = {}) {
@@ -176,7 +180,7 @@ function dashboard(ctx) {
     payables: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM purchases WHERE status <> 'anulada'")),
     payables_overdue: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM purchases WHERE status <> 'anulada' AND balance > 0 AND due_date < ?", [t])),
     cash: currentCash(ctx),
-    cash_open: !!openCashSession(db),
+    cash_open: !!openCashSession(db, ctx.terminal),
     inventory: inv,
     low_stock: lowStock,
     out_of_stock: outOfStock,
@@ -201,7 +205,8 @@ function auditLog(ctx, { from, to, user_id, action, entity, search } = {}) {
   if (entity) { where.push('a.entity = ?'); params.push(entity); }
   if (search) { where.push('a.details LIKE ?'); params.push(`%${search}%`); }
   return ctx.db.all(
-    `SELECT a.*, u.name AS user_name FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
+    `SELECT a.*, u.name AS user_name, t.name AS terminal_name FROM audit_log a
+       LEFT JOIN users u ON u.id = a.user_id LEFT JOIN terminals t ON t.id = a.terminal_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY a.id DESC LIMIT 3000`,
     params
   );

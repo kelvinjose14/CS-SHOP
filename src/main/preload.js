@@ -1,13 +1,11 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Un Error que cruza contextBridge pierde sus propiedades (solo queda el mensaje), así que se rechaza
+// con un objeto simple: la interfaz necesita el código (AUTH, OFFLINE…) para saber qué mostrar.
 async function unwrap(p) {
   const r = await p;
-  if (!r.ok) {
-    const err = new Error(r.error);
-    err.code = r.code;
-    throw err;
-  }
+  if (!r.ok) throw { message: r.error, code: r.code }; // eslint-disable-line no-throw-literal
   return r.data;
 }
 
@@ -16,6 +14,17 @@ contextBridge.exposeInMainWorld('capsApi', {
   login: (username, password) => unwrap(ipcRenderer.invoke('auth:login', { username, password })),
   logout: () => unwrap(ipcRenderer.invoke('auth:logout')),
   call: (name, params) => unwrap(ipcRenderer.invoke('api:call', name, params)),
+  ping: () => unwrap(ipcRenderer.invoke('net:ping')),
+  setup: {
+    discover: () => unwrap(ipcRenderer.invoke('setup:discover')),
+    test: (opts) => unwrap(ipcRenderer.invoke('setup:test', opts)),
+    principal: (opts) => unwrap(ipcRenderer.invoke('setup:principal', opts)),
+    terminal: (opts) => unwrap(ipcRenderer.invoke('setup:terminal', opts)),
+  },
+  net: {
+    setShare: (on) => unwrap(ipcRenderer.invoke('net:setShare', on)),
+    newKey: () => unwrap(ipcRenderer.invoke('net:newKey')),
+  },
   saveText: (opts) => unwrap(ipcRenderer.invoke('file:saveText', opts)),
   savePdf: (opts) => unwrap(ipcRenderer.invoke('file:savePdf', opts)),
   printPage: () => unwrap(ipcRenderer.invoke('print:page')),

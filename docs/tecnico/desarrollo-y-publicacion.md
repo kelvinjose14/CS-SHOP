@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- Node.js 22 y npm.
+- Node.js 22.13 o superior, y npm. La base usa `node:sqlite`, incluido en Node; muestra un aviso "ExperimentalWarning" que se puede ignorar.
 - Para ejecutar la aplicación en Linux sin pantalla: `xvfb-run`.
 - El instalador de Windows se genera en CI (`windows-latest`). En Linux, NSIS necesita wine de 32 bits, así que no se compila ahí.
 
@@ -11,7 +11,7 @@
 ```bash
 npm install          # dependencias (descarga Electron)
 npm start            # abre la aplicación
-npm test             # pruebas del núcleo: node --test test/*.test.js
+npm test             # todas las pruebas: node --test test/*.test.js
 npm run dist         # instalador de Windows en dist/ (solo en Windows)
 npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema)
 ```
@@ -21,12 +21,22 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
   ```bash
   CAPSSHOP_DATA=/tmp/capsshop-prueba npm start
   ```
+
+  Una base nueva abre primero **Configurar esta computadora**. Para probar con datos de muestra, copie `test/fixtures/v1.0.0.db` como `capsshop.db` en esa carpeta: abre como PC principal.
 - **Usuarios iniciales** de una base nueva: `admin` / `admin123` y `vendedor` / `vendedor123`. Se exige cambiar la contraseña al entrar.
 
 ## Pruebas
 
-- **`test/core.test.js`:** 14 pruebas del núcleo. Cada una crea una base temporal y ejercita el sistema real a través de `createApi`.
-- **Qué cubren:**
+| Archivo | Pruebas | Qué cubre |
+|---|---|---|
+| `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
+| `test/migration.test.js` | 2 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; respaldos válidos |
+| `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
+| `test/network.test.js` | 9 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión y corte a mitad de una operación |
+
+`test/helpers.js` simula una computadora que guarda su token de sesión.
+
+- **Qué cubre `core.test.js`** (cada prueba crea una base temporal):
   - Permisos del vendedor.
   - Compras y costo promedio.
   - Ventas con descuento y cambio.
@@ -40,7 +50,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
   - Campos vacíos.
   - Límites del vendedor.
   - Anulación de compra.
-- **Qué no cubren:** la interfaz y el proceso principal (IPC, archivos, respaldos e impresión). Hoy se prueban a mano. Automatizarlo es parte de [O3](../producto/objetivos.md#o3-calidad-para-producción).
+- **Qué no cubren:** la interfaz y el proceso principal de Electron (IPC, configurar la PC, archivos, respaldos e impresión). Hoy se prueban a mano, como se indica abajo. Automatizarlo es parte de [O3](../producto/objetivos.md#o3-calidad-para-producción).
 
 **Regla:** toda regla de negocio nueva o cambiada lleva su prueba y su actualización en [Reglas de negocio](../producto/reglas-de-negocio.md).
 
@@ -53,9 +63,33 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
    - Si escribe, use `ctx.db.tx(() => …)` y registre en el historial con `audit()`.
    - Si mueve existencia, use `changeStock()`. Si mueve dinero, use `ledger()`.
 2. Regístrela en la tabla `METHODS` de `src/core/api.js` con sus roles (`ALL` o `ADMIN`).
-3. Úsela desde la interfaz con `api('modulo.accion', params)` (`renderer/js/lib.js`).
+3. Úsela desde la interfaz con `api('modulo.accion', params)` (`renderer/js/lib.js`). Funciona igual en la PC principal y en las conectadas: no hay que tocar la red.
+   - Si necesita saber la computadora, use `ctx.terminal`.
 4. Agregue su prueba en `test/core.test.js`.
 5. Si cambia la base, agregue una migración **al final** de `MIGRATIONS` en `schema.js`.
+
+## Probar varias computadoras en una sola máquina
+
+Cada instancia necesita su propia carpeta de datos. `CAPSSHOP_DATA` también separa el bloqueo de "una sola instancia".
+
+```bash
+# PC principal con datos de muestra
+mkdir -p /tmp/pc-a && cp test/fixtures/v1.0.0.db /tmp/pc-a/capsshop.db
+CAPSSHOP_DATA=/tmp/pc-a npm start      # Configuración → Red → Permitir que otras computadoras se conecten
+
+# PC conectada (otra terminal)
+CAPSSHOP_DATA=/tmp/pc-b npm start      # Conectar a la PC principal → Buscar → clave → nombre
+```
+
+- En Linux sin pantalla, anteponga `xvfb-run -a`.
+- Con `CAPSSHOP_NO_RELAUNCH=1`, al guardar la configuración el programa se cierra en lugar de reiniciarse. Sirve para automatizar la prueba con Playwright.
+- Usuarios de la base de muestra: `admin` / `admin123` y `vendedor` / `vendedor123`.
+
+**Recorrido mínimo antes de unir un cambio de red:**
+1. La conectada vende.
+2. La principal ve la venta, la existencia y la caja de la otra PC.
+3. Se cierra la principal: la conectada muestra **Sin conexión**.
+4. Se abre la principal: la conectada se recupera y pide entrar de nuevo.
 
 ## Integración continua
 
@@ -89,6 +123,7 @@ Se usa versionado semántico:
 5. Verifique:
    - que el instalador esté adjunto;
    - que se instale sobre la versión anterior sin perder datos. Los datos viven en `%APPDATA%`, fuera de la carpeta del programa.
+   - **con varias PCs:** que todas tengan la misma versión. La principal rechaza a las de otra versión.
 
 > La versión 1.0.0 quedó con la etiqueta en la rama de trabajo (`claude/lucid-tesla-gqar2k`), con código idéntico a `main`. Las siguientes deben apuntar a `main`.
 

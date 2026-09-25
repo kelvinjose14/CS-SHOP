@@ -37,6 +37,7 @@ function audit(ctx, action, entity, entityId, details) {
   ctx.db.insert('audit_log', {
     created_at: now(),
     user_id: ctx.user ? ctx.user.id : null,
+    terminal_id: ctx.terminal ?? null,
     action,
     entity,
     entity_id: entityId ?? null,
@@ -44,17 +45,18 @@ function audit(ctx, action, entity, entityId, details) {
   });
 }
 
-function openCashSession(db) {
-  return db.get("SELECT * FROM cash_sessions WHERE status = 'abierta' ORDER BY id DESC LIMIT 1");
+// Caja abierta de una computadora (cada PC tiene la suya; la 1 es la principal).
+function openCashSession(db, terminalId = 1) {
+  return db.get("SELECT * FROM cash_sessions WHERE status = 'abierta' AND terminal_id = ? ORDER BY id DESC LIMIT 1", [terminalId]);
 }
 
-// Registra una entrada o salida de dinero. El efectivo se asocia a la caja abierta.
+// Registra una entrada o salida de dinero. El efectivo se asocia a la caja abierta de la PC que lo registra.
 function ledger(ctx, { direction, amount, method, category, refType, refId, description, date }) {
   amount = round2(amount);
   if (amount <= 0) return null;
   let sessionId = null;
   if (method === 'efectivo') {
-    const session = openCashSession(ctx.db);
+    const session = openCashSession(ctx.db, ctx.terminal);
     if (session) sessionId = session.id;
     else if (getSetting(ctx.db, 'require_open_cash') === '1') {
       throw new AppError('La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.', 'CASH_CLOSED');
