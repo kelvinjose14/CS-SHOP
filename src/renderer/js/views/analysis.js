@@ -332,7 +332,7 @@ const AUDIT_LABELS = {
   pago_proveedor: 'Pago a proveedor', anular_compra: 'Compra anulada', crear_cliente: 'Cliente creado', editar_cliente: 'Cliente editado',
   registrar_venta: 'Venta', abono_cliente: 'Abono de cliente', devolucion: 'Devolución', anular_venta: 'Venta anulada',
   registrar_gasto: 'Gasto', anular_gasto: 'Gasto anulado', registrar_ingreso: 'Otro ingreso', anular_ingreso: 'Ingreso anulado',
-  apertura_caja: 'Apertura de caja', cierre_caja: 'Cierre de caja', retiro_caja: 'Retiro de caja', entrada_caja: 'Entrada a caja',
+  apertura_caja: 'Apertura de caja', cierre_caja: 'Cierre de caja', retiro_caja: 'Retiro de caja', entrada_caja: 'Entrada a caja', conectar_pc: 'Computadora conectada', editar_pc: 'Computadora editada',
 };
 
 function auditDetails(d) {
@@ -371,6 +371,7 @@ App.register({
     const cols = [
       { key: 'created_at', label: 'Fecha y hora', datetime: true },
       { key: 'user_name', label: 'Usuario' },
+      { key: 'terminal_name', label: 'PC' },
       { key: 'action', label: 'Acción', render: (r) => html`<span class="chip">${AUDIT_LABELS[r.action] || r.action}</span>`, csv: (r) => AUDIT_LABELS[r.action] || r.action },
       { key: 'entity_id', label: 'Ref.', render: (r) => (r.entity === 'venta' ? Fmt.saleNo(r.entity_id) : r.entity === 'compra' ? Fmt.purchaseNo(r.entity_id) : r.entity_id ? `${r.entity} #${r.entity_id}` : '') },
       { key: 'details', label: 'Detalle', render: (r) => auditDetails(r.details), csv: (r) => auditDetails(r.details), cls: 'wrap' },

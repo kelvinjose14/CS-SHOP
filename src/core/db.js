@@ -1,44 +1,37 @@
 'use strict';
-// Envoltura sobre sql.js (SQLite en WebAssembly, sin dependencias nativas).
-// La base de datos vive en memoria y se guarda en disco después de cada transacción.
+// Envoltura sobre node:sqlite (SQLite incluido en Node y Electron, sin módulos nativos).
+// La base vive en un archivo en modo WAL: cada transacción escribe solo lo que cambió.
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
-const initSqlJs = require('sql.js');
+const { DatabaseSync } = require('node:sqlite');
 const { migrate } = require('./schema');
 
-function wasmPath() {
-  const p = require.resolve('sql.js/dist/sql-wasm.wasm');
-  // En la app empaquetada el .wasm se extrae fuera del asar.
-  return p.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
-}
-
 class Database {
-  constructor(sqlDb, file) {
-    this.sql = sqlDb;
-    this.file = file;
+  constructor(file) {
+    this.file = file || null;
+    this.sql = new DatabaseSync(this.file || ':memory:');
     this.depth = 0;
-    this.dirty = false;
-    this.pragmas();
+    this.stmts = new Map();
+    this.sql.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000');
+    if (this.file) this.sql.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL');
   }
 
-  pragmas() {
-    this.sql.run('PRAGMA foreign_keys = ON');
+  prepare(query) {
+    let stmt = this.stmts.get(query);
+    if (!stmt) {
+      stmt = this.sql.prepare(query);
+      this.stmts.set(query, stmt);
+    }
+    return stmt;
   }
 
   all(query, params = []) {
-    const stmt = this.sql.prepare(query);
-    try {
-      stmt.bind(normalize(params));
-      const rows = [];
-      while (stmt.step()) rows.push(stmt.getAsObject());
-      return rows;
-    } finally {
-      stmt.free();
-    }
+    return this.prepare(query).all(...normalize(params));
   }
 
   get(query, params = []) {
-    return this.all(query, params)[0];
+    return this.prepare(query).get(...normalize(params));
   }
 
   value(query, params = []) {
@@ -47,12 +40,13 @@ class Database {
   }
 
   run(query, params = []) {
-    this.sql.run(query, normalize(params));
-    this.dirty = true;
-    return {
-      id: this.value('SELECT last_insert_rowid() AS id'),
-      changes: this.sql.getRowsModified(),
-    };
+    const r = this.prepare(query).run(...normalize(params));
+    return { id: Number(r.lastInsertRowid), changes: Number(r.changes) };
+  }
+
+  // Varias sentencias sin parámetros (migraciones).
+  exec(query) {
+    this.sql.exec(query);
   }
 
   insert(table, data) {
@@ -67,79 +61,68 @@ class Database {
     this.run(`UPDATE ${table} SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map((k) => data[k]), id]);
   }
 
-  // Transacción anidable: sólo la más externa hace COMMIT y guarda en disco.
+  // Transacción anidable: sólo la más externa hace COMMIT.
   tx(fn) {
-    if (this.depth === 0) this.sql.run('BEGIN');
+    if (this.depth === 0) this.sql.exec('BEGIN IMMEDIATE');
     this.depth++;
     try {
       const result = fn();
       this.depth--;
-      if (this.depth === 0) {
-        this.sql.run('COMMIT');
-        this.save();
-      }
+      if (this.depth === 0) this.sql.exec('COMMIT');
       return result;
     } catch (err) {
       this.depth--;
-      if (this.depth === 0) this.sql.run('ROLLBACK');
+      if (this.depth === 0) this.sql.exec('ROLLBACK');
       throw err;
     }
   }
 
-  save() {
-    if (!this.file || !this.dirty) return;
-    const data = this.sql.export();
-    this.pragmas(); // export() reinicia los pragmas
-    const tmp = this.file + '.tmp';
-    fs.writeFileSync(tmp, Buffer.from(data));
-    fs.renameSync(tmp, this.file);
-    this.dirty = false;
-  }
-
-  exportBuffer() {
-    const data = this.sql.export();
-    this.pragmas();
-    return Buffer.from(data);
+  // Copia consistente de la base en un archivo nuevo (respaldos).
+  backupTo(target) {
+    const tmp = target + '.tmp';
+    fs.rmSync(tmp, { force: true });
+    this.sql.prepare('VACUUM INTO ?').run(tmp);
+    fs.renameSync(tmp, target);
   }
 
   close() {
-    this.save();
+    this.stmts.clear();
     this.sql.close();
   }
 }
 
 function normalize(params) {
-  if (Array.isArray(params)) return params.map((v) => (v === undefined ? null : typeof v === 'boolean' ? Number(v) : v));
-  return params;
+  return params.map((v) => (v === undefined ? null : typeof v === 'boolean' ? Number(v) : v));
 }
 
-let SQL = null;
 async function openDatabase(file) {
-  if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmPath() });
-  let sqlDb;
-  if (file && fs.existsSync(file)) {
-    sqlDb = new SQL.Database(fs.readFileSync(file));
-  } else {
-    if (file) fs.mkdirSync(path.dirname(file), { recursive: true });
-    sqlDb = new SQL.Database();
-  }
-  const db = new Database(sqlDb, file);
+  if (file) fs.mkdirSync(path.dirname(file), { recursive: true });
+  const db = new Database(file);
   db.tx(() => migrate(db));
-  db.dirty = true;
-  db.save();
   return db;
 }
 
+// Borra el archivo de la base junto con sus archivos WAL.
+function removeDatabaseFiles(file) {
+  for (const f of [file, file + '-wal', file + '-shm']) fs.rmSync(f, { force: true });
+}
+
 // Valida que un archivo sea una base de datos de CAPS Shop antes de restaurarla.
+// Se revisa una copia para no tocar el archivo elegido.
 async function validateDatabaseFile(file) {
-  if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmPath() });
-  const probe = new SQL.Database(fs.readFileSync(file));
+  const probe = path.join(os.tmpdir(), `capsshop-validar-${process.pid}-${Date.now()}.db`);
+  fs.copyFileSync(file, probe);
+  let sql = null;
   try {
-    const ok = probe.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('products','sales','users')");
-    return ok.length > 0 && ok[0].values.length === 3;
+    sql = new DatabaseSync(probe);
+    const tables = sql.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('products','sales','users')").get().n;
+    return tables === 3 && sql.prepare('PRAGMA quick_check').get().quick_check === 'ok';
+  } catch {
+    return false;
   } finally {
-    probe.close();
+    if (sql) sql.close();
+    removeDatabaseFiles(probe);
   }
 }
 
-module.exports = { openDatabase, validateDatabaseFile };
+module.exports = { openDatabase, validateDatabaseFile, removeDatabaseFiles };

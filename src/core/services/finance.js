@@ -1,7 +1,7 @@
 'use strict';
 // Gastos, otros ingresos y control de caja.
 const { AppError, now, today, round2, money, text, date, method } = require('../util');
-const { audit, ledger, openCashSession, getSetting } = require('./common');
+const { audit, ledger, openCashSession, getSetting, isAdmin } = require('./common');
 
 // ---------- Gastos / Otros ingresos ----------
 
@@ -118,16 +118,33 @@ function sessionSummary(db, session) {
   };
 }
 
+function cashMovements(db, sessionId, order = 'DESC') {
+  return db.all(
+    `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id
+      WHERE m.session_id = ? AND m.method = 'efectivo' ORDER BY m.id ${order}`,
+    [sessionId]
+  ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category }));
+}
+
+// Caja de la PC que consulta. El administrador ve además las cajas abiertas en otras PCs.
 function cashStatus(ctx) {
-  const session = openCashSession(ctx.db);
-  const last = ctx.db.get("SELECT * FROM cash_sessions WHERE status = 'cerrada' ORDER BY id DESC LIMIT 1");
-  const out = { open: session ? sessionSummary(ctx.db, session) : null, last_closed: last || null, require_open: getSetting(ctx.db, 'require_open_cash') === '1' };
-  if (out.open) {
-    out.open.movements = ctx.db.all(
-      `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id
-        WHERE m.session_id = ? AND m.method = 'efectivo' ORDER BY m.id DESC`,
-      [session.id]
-    ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category }));
+  const terminal = ctx.terminal ?? 1;
+  const session = openCashSession(ctx.db, terminal);
+  const last = ctx.db.get("SELECT * FROM cash_sessions WHERE status = 'cerrada' AND terminal_id = ? ORDER BY id DESC LIMIT 1", [terminal]);
+  const out = {
+    terminal: ctx.db.get('SELECT id, name FROM terminals WHERE id = ?', [terminal]) || null,
+    open: session ? sessionSummary(ctx.db, session) : null,
+    last_closed: last || null,
+    require_open: getSetting(ctx.db, 'require_open_cash') === '1',
+  };
+  if (out.open) out.open.movements = cashMovements(ctx.db, session.id);
+  if (isAdmin(ctx)) {
+    out.others = ctx.db.all(
+      `SELECT cs.*, t.name AS terminal_name, u.name AS opened_by_name FROM cash_sessions cs
+         JOIN terminals t ON t.id = cs.terminal_id LEFT JOIN users u ON u.id = cs.opened_by
+        WHERE cs.status = 'abierta' AND cs.terminal_id <> ? ORDER BY t.name`,
+      [terminal]
+    ).map((s) => sessionSummary(ctx.db, s));
   }
   return out;
 }
@@ -135,8 +152,8 @@ function cashStatus(ctx) {
 function cashOpen(ctx, { amount, note }) {
   const opening = money(amount, 'Efectivo inicial');
   return ctx.db.tx(() => {
-    if (openCashSession(ctx.db)) throw new AppError('Ya hay una caja abierta.');
-    const id = ctx.db.insert('cash_sessions', { opened_at: now(), opened_by: ctx.user.id, opening_amount: opening, note: text(note, 'Nota'), status: 'abierta' });
+    if (openCashSession(ctx.db, ctx.terminal)) throw new AppError('Ya hay una caja abierta en esta computadora.');
+    const id = ctx.db.insert('cash_sessions', { opened_at: now(), opened_by: ctx.user.id, opening_amount: opening, note: text(note, 'Nota'), status: 'abierta', terminal_id: ctx.terminal ?? 1 });
     audit(ctx, 'apertura_caja', 'caja', id, { efectivo_inicial: opening });
     return id;
   });
@@ -146,7 +163,7 @@ function cashMovement(ctx, { type, amount, description }) {
   const amt = money(amount, 'Monto', { allowZero: false });
   const desc = text(description, 'Descripción', { required: true });
   return ctx.db.tx(() => {
-    const s = openCashSession(ctx.db);
+    const s = openCashSession(ctx.db, ctx.terminal);
     if (!s) throw new AppError('No hay caja abierta.');
     if (type === 'retiro') {
       const { expected } = sessionSummary(ctx.db, s);
@@ -161,7 +178,7 @@ function cashMovement(ctx, { type, amount, description }) {
 function cashClose(ctx, { counted, note }) {
   const real = money(counted, 'Efectivo contado');
   return ctx.db.tx(() => {
-    const s = openCashSession(ctx.db);
+    const s = openCashSession(ctx.db, ctx.terminal);
     if (!s) throw new AppError('No hay caja abierta.');
     const sum = sessionSummary(ctx.db, s);
     const difference = round2(real - sum.expected);
@@ -179,7 +196,8 @@ function cashHistory(ctx, { from, to } = {}) {
   if (from) { where.push('date(cs.opened_at) >= ?'); params.push(from); }
   if (to) { where.push('date(cs.opened_at) <= ?'); params.push(to); }
   return ctx.db.all(
-    `SELECT cs.*, uo.name AS opened_by_name, uc.name AS closed_by_name FROM cash_sessions cs
+    `SELECT cs.*, t.name AS terminal_name, uo.name AS opened_by_name, uc.name AS closed_by_name FROM cash_sessions cs
+       LEFT JOIN terminals t ON t.id = cs.terminal_id
        LEFT JOIN users uo ON uo.id = cs.opened_by LEFT JOIN users uc ON uc.id = cs.closed_by
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY cs.id DESC LIMIT 500`,
     params
@@ -187,14 +205,11 @@ function cashHistory(ctx, { from, to } = {}) {
 }
 
 function cashSession(ctx, { id }) {
-  const s = ctx.db.get('SELECT * FROM cash_sessions WHERE id = ?', [id]);
+  const s = ctx.db.get('SELECT cs.*, t.name AS terminal_name FROM cash_sessions cs LEFT JOIN terminals t ON t.id = cs.terminal_id WHERE cs.id = ?', [id]);
   if (!s) throw new AppError('Sesión de caja no encontrada.');
   const out = sessionSummary(ctx.db, s);
-  out.movements = ctx.db.all(
-    `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id WHERE m.session_id = ? AND m.method = 'efectivo' ORDER BY m.id`,
-    [id]
-  ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category }));
+  out.movements = cashMovements(ctx.db, id, 'ASC');
   return out;
 }
 
-module.exports = { expenses, incomes, cashStatus, cashOpen, cashMovement, cashClose, cashHistory, cashSession, CASH_LABELS };
+module.exports = { expenses, incomes, cashStatus, cashOpen, cashMovement, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS };

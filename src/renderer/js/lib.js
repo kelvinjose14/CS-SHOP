@@ -46,6 +46,8 @@ const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${Stri
 
 /* ---------- Iconos (trazos simples) ---------- */
 const ICONS = {
+  pc: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/>',
+  wifi: '<path d="M2 9a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0"/><path d="M12 19.5v.01"/>',
   home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
   cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h12l2-8H6.2"/>',
   receipt: '<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
@@ -78,11 +80,14 @@ const ICONS = {
 const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`);
 
 /* ---------- Llamadas al sistema ---------- */
+// Errores que obligan a entrar de nuevo (sesión vencida, PC desactivada, clave o versión distinta).
+const SESSION_ERRORS = ['AUTH', 'TERMINAL', 'KEY', 'VERSION'];
 async function api(name, params, { silent = false } = {}) {
   try {
     return await window.capsApi.call(name, params);
   } catch (err) {
-    if (err.code === 'AUTH') { App.onLoggedOut(err.message); throw err; }
+    if (SESSION_ERRORS.includes(err.code)) { App.onLoggedOut(err.message, err.code); throw err; }
+    if (err.code === 'OFFLINE') { App.showOffline(err.message); throw err; }
     if (!silent) toast(err.message, 'error');
     throw err;
   }

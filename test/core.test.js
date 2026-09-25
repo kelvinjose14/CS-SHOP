@@ -7,11 +7,12 @@ const path = require('path');
 const { openDatabase } = require('../src/core/db');
 const { createApi } = require('../src/core/api');
 const { today } = require('../src/core/util');
+const { client } = require('./helpers');
 
 async function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-'));
   const db = await openDatabase(path.join(dir, 'test.db'));
-  const api = createApi(db);
+  const api = client(createApi(db));
   api.login({ username: 'admin', password: 'admin123' });
   const call = (n, p) => api.call(n, p);
   call('cash.open', { amount: 1000 });
@@ -164,7 +165,7 @@ test('la base de datos persiste en disco', async () => {
   const { dir, db, call, productId } = await setup();
   db.close();
   const db2 = await openDatabase(path.join(dir, 'test.db'));
-  const api2 = createApi(db2);
+  const api2 = client(createApi(db2));
   api2.login({ username: 'admin', password: 'admin123' });
   assert.equal(api2.call('products.get', { id: productId }).name, 'Gorra NY');
   void call;
