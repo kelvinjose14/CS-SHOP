@@ -1,0 +1,78 @@
+# Modelo de datos
+
+- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **1**.
+- **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
+- **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.
+- **Montos:** números reales redondeados a 2 decimales. El costo de producto usa 4 decimales.
+
+## Relaciones
+
+```mermaid
+erDiagram
+  users ||--o{ audit_log : registra
+  products ||--o{ inventory_movements : tiene
+  suppliers ||--o{ purchases : recibe
+  purchases ||--|{ purchase_items : contiene
+  purchases ||--o{ purchase_payments : se_paga_con
+  products ||--o{ purchase_items : ""
+  customers ||--o{ sales : compra
+  sales ||--|{ sale_items : contiene
+  sales ||--o{ sale_payments : se_cobra_con
+  sales ||--o{ returns : tiene
+  returns ||--|{ return_items : contiene
+  products ||--o{ sale_items : ""
+  cash_sessions ||--o{ money_movements : agrupa_efectivo
+```
+
+`money_movements` también referencia de forma genérica, con `ref_type` y `ref_id`, la venta, el abono, la compra, el pago, el gasto, el ingreso, la devolución o la caja que lo originó.
+
+## Tablas
+
+| Tabla | Qué guarda | Columnas clave |
+|---|---|---|
+| `users` | Usuarios | `username` (único, sin distinguir mayúsculas), `role` (`admin` \| `vendedor`), `password_hash`, `password_salt`, `must_change`, `active` |
+| `settings` | Configuración clave/valor | Claves y valores por defecto en `DEFAULT_SETTINGS` (`common.js`) |
+| `products` | Productos | `sku` (único), `barcode` (único si existe), `photo` (archivo), `cost`, `price_retail`, `price_wholesale`, `stock`, `min_stock`, `active` |
+| `inventory_movements` | Cada cambio de existencia | `type`, `qty` (con signo), `stock_before`, `stock_after`, `unit_cost`, `ref_type`/`ref_id`, `note`, `user_id` |
+| `suppliers` | Proveedores | `name`, contacto, `active` |
+| `customers` | Clientes | `name`, contacto, `document`, `active` |
+| `purchases` | Compras | `supplier_id`, `date`, `due_date`, `invoice_ref`, `payment_type` (`contado` \| `credito`), `total`, `paid`, `balance`, `status`, anulación (`voided_at`, `voided_by`, `void_reason`) |
+| `purchase_items` | Líneas de compra | `product_id`, `qty`, `unit_cost`, `subtotal` |
+| `purchase_payments` | Pagos a proveedores | `purchase_id`, `amount`, `method`, `date`, `voided` |
+| `sales` | Ventas | `customer_id`, `date`, `sale_type` (`detalle` \| `mayor`), `payment_type`, `subtotal`, `discount`, `total`, `cost_total`, `paid`, `change_given`, `returned_total`, `balance`, `due_date`, `status`, anulación |
+| `sale_items` | Líneas de venta | `description`, `qty`, `unit_price`, `line_discount`, `net_total` (con el descuento general repartido), `unit_cost`, `returned_qty` |
+| `sale_payments` | Cobros de ventas | `sale_id`, `customer_id`, `amount`, `method`, `kind` (`inicial` \| `abono`), `voided` |
+| `returns` / `return_items` | Devoluciones | `total`, `cost_total` (0 si no se reingresó), `credit_applied`, `refund_amount`, `refund_method`, `restock`, `reason` |
+| `expenses` / `incomes` | Gastos y otros ingresos | `category`, `description`, `date`, `amount`, `method`, `voided` |
+| `cash_sessions` | Aperturas y cierres de caja | `opened_at`, `opened_by`, `opening_amount`, `closed_at`, `closed_by`, `expected_amount`, `counted_amount`, `difference`, `status` (`abierta` \| `cerrada`) |
+| `money_movements` | **Libro de dinero**: toda entrada y salida | `date`, `direction` (`in` \| `out`), `amount`, `method`, `category`, `ref_type`/`ref_id`, `session_id` (solo efectivo con caja abierta), `user_id` |
+| `audit_log` | Historial | `created_at`, `user_id`, `action`, `entity`, `entity_id`, `details` (JSON) |
+
+## Estados
+
+| Entidad | Valores |
+|---|---|
+| Venta y compra (`status`) | `pendiente`, `parcial`, `pagado`, `anulada`. "Vencido" no se guarda: se calcula (saldo > 0 y `due_date` < hoy) |
+| Producto (calculado) | `agotado` (stock ≤ 0), `bajo` (stock ≤ mínimo), `ok` |
+| Caja | `abierta`, `cerrada` (solo una abierta a la vez) |
+
+## Tipos de movimiento
+
+**Inventario** (`inventory_movements.type`): `inicial`, `compra`, `venta`, `devolucion`, `ajuste`, `entrada`, `salida`, `anulacion_venta`, `anulacion_compra`.
+
+**Dinero** (`money_movements.category`):
+
+| Entran (`in`) | Salen (`out`) |
+|---|---|
+| `venta`, `abono_cliente`, `otro_ingreso`, `deposito_caja`, `anulacion_compra`, `anulacion_gasto` | `compra`, `pago_proveedor`, `gasto`, `devolucion`, `retiro_caja`, `anulacion_venta`, `anulacion_ingreso` |
+
+**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`.
+
+## Datos derivados (no se guardan)
+
+Se calculan al consultar (`reports.js`, `products.summary`):
+- ventas netas, costo de lo vendido y ganancias;
+- valor del inventario;
+- saldos de clientes y proveedores (suma de `balance`);
+- efectivo esperado de la caja abierta;
+- productos más vendidos.
