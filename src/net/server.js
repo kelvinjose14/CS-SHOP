@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { AppError } = require('../core/util');
+const secure = require('./secure');
 
 const PORT = 47810;
 const DISCOVERY_PORT = 47811;
@@ -16,21 +17,11 @@ const REPLAY_TTL = 5 * 60 * 1000;
 const LIMIT_WINDOW = 60 * 1000;
 const KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I
 
-// Clave de conexión de la tienda, por ejemplo "K7M2-P9QX".
+// Clave de conexión de la tienda, por ejemplo "K7M2P-9QXA4" (10 caracteres, unos 50 bits).
+// 256 es múltiplo de 32, así que cada carácter sale con la misma probabilidad.
 function newKey() {
-  const bytes = crypto.randomBytes(8);
-  const chars = [...bytes].map((b) => KEY_ALPHABET[b % KEY_ALPHABET.length]).join('');
-  return `${chars.slice(0, 4)}-${chars.slice(4)}`;
-}
-
-function normalizeKey(k) {
-  return String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-function sameKey(a, b) {
-  const x = Buffer.from(normalizeKey(a));
-  const y = Buffer.from(normalizeKey(b));
-  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+  const chars = [...crypto.randomBytes(10)].map((b) => KEY_ALPHABET[b % KEY_ALPHABET.length]).join('');
+  return `${chars.slice(0, 5)}-${chars.slice(5)}`;
 }
 
 // Guarda la foto que envía la interfaz y la reemplaza por el nombre del archivo.
@@ -137,8 +128,9 @@ function send(res, status, body) {
  * @param {() => object} o.info    datos públicos: business_name, server_id, name
  * @param {string} o.version       versión del programa; las PCs deben tener la misma
  * @param {string} o.photosDir
+ * @param {object} [o.log]         registro de errores (por defecto, la consola)
  */
-function createServer({ getApi, getKey, info, version, photosDir }) {
+function createServer({ getApi, getKey, info, version, photosDir, log = consoleLog }) {
   const replays = new Map(); // `${token}:${request_id}` -> { at, body }
   const logins = limiter(5);
   const keys = limiter(10);
@@ -149,34 +141,12 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
     replays.set(k, { at: t, body });
   }
 
-  async function route(req, res, url) {
-    if (req.method === 'GET' && url.pathname === '/v1/hello') {
-      return send(res, 200, { ok: true, data: { app: 'caps-shop', version, ...info() } });
-    }
-    const ip = req.socket.remoteAddress;
-    if (keys.blocked(ip)) throw Object.assign(new AppError('Demasiados intentos con una clave incorrecta. Espere un minuto.', 'RATE'), { status: 429 });
-    if (!sameKey(req.headers['x-caps-key'], getKey())) {
-      keys.fail(ip);
-      throw Object.assign(new AppError('Clave de conexión incorrecta. Revísela en la PC principal: Configuración → Red.', 'KEY'), { status: 401 });
-    }
-    keys.clear(ip);
-    const theirs = req.headers['x-caps-version'];
-    if (theirs !== version) throw Object.assign(versionMismatch(version, theirs), { status: 409 });
-
-    const photo = /^\/v1\/foto\/(.+)$/.exec(url.pathname);
-    if (req.method === 'GET' && photo) {
-      const img = readPhoto(photosDir, safeDecode(photo[1]));
-      if (!img) return send(res, 404, { ok: false, error: 'Foto no encontrada.', code: 'NOT_FOUND' });
-      res.writeHead(200, { 'content-type': img.type, 'content-length': img.data.length, 'cache-control': 'max-age=86400' });
-      return res.end(img.data);
-    }
-    if (req.method !== 'POST') return send(res, 404, { ok: false, error: 'Ruta desconocida.', code: 'NOT_FOUND' });
-
-    const body = await readJson(req);
+  // Operaciones de la red, ya descifradas. Devuelve la respuesta (que después se cifra).
+  function handle(pathname, body, ip) {
     const api = getApi();
-    switch (url.pathname) {
+    switch (pathname) {
       case '/v1/pair':
-        return send(res, 200, { ok: true, data: api.pair(body.name) });
+        return { ok: true, data: api.pair(body.name) };
       case '/v1/login': {
         const who = `${ip}|${String(body.username || '').toLowerCase()}`;
         if (logins.blocked(who)) throw new AppError('Demasiados intentos fallidos. Espere un minuto e intente de nuevo.', 'RATE');
@@ -186,7 +156,7 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
         try {
           const data = api.login({ username: body.username, password: body.password }, { terminal });
           logins.clear(who);
-          return send(res, 200, { ok: true, data });
+          return { ok: true, data };
         } catch (err) {
           if (err.code === 'AUTH') logins.fail(who);
           throw err;
@@ -194,23 +164,62 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
       }
       case '/v1/logout':
         api.logout(body.token);
-        return send(res, 200, { ok: true, data: null });
+        return { ok: true, data: null };
       case '/v1/call': {
+        // Un reintento (mismo request_id) recibe el mismo resultado: la operación no se repite.
         const replayKey = body.request_id ? `${body.token}:${body.request_id}` : null;
         const seen = replayKey && replays.get(replayKey);
-        if (seen) return send(res, 200, seen.body);
+        if (seen) return seen.body;
         let out;
         try {
           out = { ok: true, data: callApi(api, body.token, body.name, body.params, photosDir) };
         } catch (err) {
-          out = errorBody(err);
+          out = errorBody(err, log);
         }
         if (replayKey) remember(replayKey, out);
-        return send(res, 200, out);
+        return out;
+      }
+      case '/v1/foto': {
+        const img = readPhoto(photosDir, body.name);
+        return { ok: true, data: img ? { type: img.type, data: img.data.toString('base64') } : null };
       }
       default:
-        return send(res, 404, { ok: false, error: 'Ruta desconocida.', code: 'NOT_FOUND' });
+        throw Object.assign(new AppError('Ruta desconocida.', 'NOT_FOUND'), { status: 404 });
     }
+  }
+
+  async function route(req, res, url) {
+    if (req.method === 'GET' && url.pathname === '/v1/hello') {
+      return send(res, 200, { ok: true, data: { app: 'caps-shop', version, ...info() } });
+    }
+    const theirs = req.headers['x-caps-version'];
+    if (theirs !== version) throw Object.assign(versionMismatch(version, theirs), { status: 409 });
+    if (req.method !== 'POST') throw Object.assign(new AppError('Ruta desconocida.', 'NOT_FOUND'), { status: 404 });
+    const ip = req.socket.remoteAddress;
+    if (keys.blocked(ip)) throw Object.assign(new AppError('Demasiados intentos con una clave incorrecta. Espere un minuto.', 'RATE'), { status: 429 });
+
+    // Si el mensaje no se puede descifrar, la otra PC tiene otra clave (o alguien lo alteró).
+    const k = secure.deriveKey(getKey(), info().server_id);
+    const envelope = await readJson(req);
+    const body = secure.isSealed(envelope) ? secure.open(k, envelope) : null;
+    if (!body) {
+      keys.fail(ip);
+      throw Object.assign(new AppError('Clave de conexión incorrecta. Revísela en la PC principal: Configuración → Red.', 'KEY'), { status: 401 });
+    }
+    keys.clear(ip);
+
+    let out;
+    if (!Number.isFinite(body.ts) || Math.abs(Date.now() - body.ts) > secure.MAX_SKEW) {
+      out = { ok: false, error: 'La fecha y hora de esta computadora no coinciden con las de la PC principal (más de 10 minutos de diferencia). Corrija la fecha y hora de Windows.', code: 'CLOCK' };
+    } else {
+      try {
+        out = handle(url.pathname, body, ip);
+      } catch (err) {
+        out = errorBody(err, log);
+      }
+    }
+    // La respuesta repite el nonce del pedido: así no se puede cambiar por la de otro pedido.
+    return send(res, 200, secure.seal(k, { ...out, nonce: body.nonce }));
   }
 
   const server = http.createServer((req, res) => {
@@ -218,7 +227,7 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
     Promise.resolve()
       .then(() => route(req, res, new URL(req.url, 'http://localhost')))
       .catch((err) => {
-        if (!res.headersSent) send(res, err.status || 200, errorBody(err));
+        if (!res.headersSent) send(res, err.status || 200, errorBody(err, log));
         else res.destroy();
       });
   });
@@ -226,8 +235,11 @@ function createServer({ getApi, getKey, info, version, photosDir }) {
   return server;
 }
 
-function errorBody(err) {
-  if (!err.userFacing) console.error(err);
+const consoleLog = { error: (origin, message, err) => console.error(`[${origin}] ${message}`, err || '') };
+
+// Error para enviar a la otra PC. Los inesperados (fallas del programa) quedan en el registro.
+function errorBody(err, log = consoleLog) {
+  if (!err.userFacing) log.error('red', `Error inesperado atendiendo a otra computadora: ${err.message}`, err);
   return { ok: false, error: err.userFacing ? err.message : `Error inesperado: ${err.message}`, code: err.code || 'ERROR' };
 }
 
@@ -249,7 +261,7 @@ function close(server) {
 }
 
 // Responde a las PCs que buscan la principal en la red ("Buscar" en la pantalla de configuración).
-function startDiscovery({ info, httpPort, port = DISCOVERY_PORT }) {
+function startDiscovery({ info, httpPort, port = DISCOVERY_PORT, log = consoleLog }) {
   const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
   sock.on('message', (msg, rinfo) => {
     if (msg.toString() !== DISCOVER_MSG) return;
@@ -260,10 +272,10 @@ function startDiscovery({ info, httpPort, port = DISCOVERY_PORT }) {
     sock.once('error', reject);
     sock.bind(port, () => {
       sock.off('error', reject);
-      sock.on('error', (err) => console.error('Descubrimiento en la red:', err.message));
+      sock.on('error', (err) => log.error('red', 'Falla en el descubrimiento en la red', err));
       resolve({ port: sock.address().port, close: () => sock.close() });
     });
   });
 }
 
-module.exports = { PORT, DISCOVERY_PORT, DISCOVER_MSG, newKey, normalizeKey, sameKey, callApi, readPhoto, safeDecode, versionMismatch, createServer, listen, close, startDiscovery };
+module.exports = { PORT, DISCOVERY_PORT, DISCOVER_MSG, newKey, callApi, readPhoto, safeDecode, versionMismatch, limiter, createServer, listen, close, startDiscovery };

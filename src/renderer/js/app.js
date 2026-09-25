@@ -65,7 +65,7 @@ const App = {
             <div class="login-error">${message || ''}</div>
             <button class="btn primary block" type="submit">Entrar</button>
           </form>
-          <p class="login-hint">${icon('pc')} ${this.pcLabel()}${canSetup ? html` · <a href="#" id="login-setup">Configurar esta PC</a>` : ''}</p>
+          <p class="login-hint">${icon('pc')} ${this.pcLabel()}${canSetup ? html` · <a href="#" id="login-setup">Configurar esta PC</a> · <a href="#" id="login-diag">Guardar diagnóstico</a>` : ''}</p>
           <p class="login-hint">Sistema de inventario y contabilidad · v${this.info.version}</p>
         </div>
       </div>`);
@@ -80,6 +80,11 @@ const App = {
         if (CONNECTION_ERRORS.includes(err.code)) return this.showLogin(err.message, err.code);
         $('.login-error').textContent = err.message;
       }
+    };
+    const diag = $('#login-diag');
+    if (diag) diag.onclick = async (e) => {
+      e.preventDefault();
+      try { if (await window.capsApi.support.diagnostic()) toast('Diagnóstico guardado.'); } catch (err) { toast(err.message, 'error'); }
     };
     const setup = $('#login-setup');
     if (setup) setup.onclick = (e) => { e.preventDefault(); this.showSetup({ back: () => this.showLogin(), terminalOnly: true }); };
@@ -242,5 +247,13 @@ function toolbar(page, { left = '', right = '' } = {}) {
 function statCard(label, value, { tone = '', sub = '', iconName } = {}) {
   return html`<div class="stat ${tone}">${iconName ? html`<div class="stat-icon">${icon(iconName)}</div>` : ''}<div><div class="stat-label">${label}</div><div class="stat-value">${value}</div>${sub ? html`<div class="stat-sub">${sub}</div>` : ''}</div></div>`;
 }
+
+// Errores de la interfaz no capturados: quedan en el registro para el soporte.
+window.addEventListener('error', (e) => window.capsApi.logError(`${e.message} (${e.filename}:${e.lineno})\n${e.error && e.error.stack ? e.error.stack : ''}`));
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e.reason || {};
+  if (r.code) return; // errores de la aplicación con mensaje para el usuario (ya se mostraron)
+  window.capsApi.logError(`Promesa sin capturar: ${r.message || r}\n${r.stack || ''}`);
+});
 
 window.addEventListener('DOMContentLoaded', () => App.start());

@@ -1,5 +1,6 @@
 'use strict';
 // Esquema de la base de datos y migraciones versionadas (PRAGMA user_version).
+const { AppError } = require('./util');
 
 const MIGRATIONS = [
   // v1: esquema inicial
@@ -270,15 +271,35 @@ const MIGRATIONS = [
 
   ALTER TABLE audit_log ADD COLUMN terminal_id INTEGER REFERENCES terminals(id);
   `,
+
+  // v3: índices de las tablas de detalle. Con 3 años de datos, la lista de ventas tardaba segundos
+  // (docs/tecnico/rendimiento.md).
+  `
+  CREATE INDEX ix_sale_items_sale ON sale_items(sale_id);
+  CREATE INDEX ix_sale_items_product ON sale_items(product_id);
+  CREATE INDEX ix_sale_payments_sale ON sale_payments(sale_id);
+  CREATE INDEX ix_sale_payments_customer ON sale_payments(customer_id);
+  CREATE INDEX ix_purchase_items_purchase ON purchase_items(purchase_id);
+  CREATE INDEX ix_purchase_payments_purchase ON purchase_payments(purchase_id);
+  CREATE INDEX ix_purchases_supplier ON purchases(supplier_id);
+  CREATE INDEX ix_returns_sale ON returns(sale_id);
+  CREATE INDEX ix_return_items_return ON return_items(return_id);
+  CREATE INDEX ix_audit_action ON audit_log(action);
+  `,
 ];
 
-function migrate(db) {
+// Aplica las migraciones que falten. Se llama dentro de una transacción: si una falla, no queda nada a medias.
+function migrate(db, migrations = MIGRATIONS) {
   let version = db.value('PRAGMA user_version');
-  while (version < MIGRATIONS.length) {
-    db.exec(MIGRATIONS[version]);
+  if (version > migrations.length) {
+    // Una versión anterior del programa no debe tocar una base creada por una más nueva.
+    throw new AppError('Esta base de datos es de una versión más nueva de CAPS Shop. Instale la versión más reciente del programa.', 'SCHEMA');
+  }
+  while (version < migrations.length) {
+    db.exec(migrations[version]);
     version++;
     db.exec(`PRAGMA user_version = ${version}`);
   }
 }
 
-module.exports = { migrate, SCHEMA_VERSION: MIGRATIONS.length };
+module.exports = { migrate, MIGRATIONS, SCHEMA_VERSION: MIGRATIONS.length };

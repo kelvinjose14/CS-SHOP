@@ -201,7 +201,8 @@ Fuente: `src/core/api.js` y `users.js`.
 - **Contraseñas:**
   - Tienen un mínimo de 6 caracteres.
   - Se guardan cifradas con scrypt y una sal por usuario.
-  - Si el administrador crea o restablece una contraseña, se exige cambiarla al entrar.
+  - Si el administrador crea o restablece una contraseña, y con las contraseñas iniciales, se exige cambiarla al entrar. Lo exige el núcleo: hasta cambiarla, solo se puede leer la configuración y cambiar la contraseña, también desde otra PC.
+  - Tras 5 intentos fallidos en un minuto, ese usuario queda bloqueado un minuto en esa computadora.
 - Un usuario desactivado pierde la sesión en su siguiente operación.
 - El administrador no puede quitarse su propio rol ni desactivarse.
 - El **historial** (`audit_log`) registra fecha, hora, usuario, acción y detalle de cada operación que cambia datos, además de los inicios de sesión. No se puede editar desde el programa.

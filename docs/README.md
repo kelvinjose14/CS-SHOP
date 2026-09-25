@@ -2,7 +2,7 @@
 
 Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP · Tienda de Gorras**.
 
-Versión documentada: **1.0.0** (25/09/2026), más el trabajo en red de O2, aún sin publicar. Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
+Versión documentada: **1.0.0** (25/09/2026), más lo hecho en O2 (red) y O3 (calidad), aún sin publicar. Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
 
 ## ¿Qué leer?
 
@@ -44,6 +44,8 @@ Versión documentada: **1.0.0** (25/09/2026), más el trabajo en red de O2, aún
 - [Modelo de datos](tecnico/modelo-de-datos.md)
 - [Desarrollo y publicación](tecnico/desarrollo-y-publicacion.md)
 - [Red: varias computadoras](tecnico/red.md)
+- [Seguridad](tecnico/seguridad.md)
+- [Rendimiento](tecnico/rendimiento.md)
 
 ## Convenciones de esta documentación
 

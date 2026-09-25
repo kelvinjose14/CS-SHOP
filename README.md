@@ -38,7 +38,9 @@ Toda la documentación está en [`docs/`](docs/README.md), en español:
 ```bash
 npm install
 npm start     # abre la aplicación
-npm test      # pruebas del núcleo, la migración y la red
+npm test      # pruebas de lógica, migración, respaldos, permisos y red
+npm run test:ui    # pruebas de interfaz con la app real
+npm run test:perf  # rendimiento con 3 años de datos
 ```
 
 Cómo compilar el instalador y publicar una versión: [Desarrollo y publicación](docs/tecnico/desarrollo-y-publicacion.md).

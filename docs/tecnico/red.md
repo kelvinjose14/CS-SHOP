@@ -18,7 +18,7 @@ flowchart LR
     UIT[Interfaz] -->|IPC| MT[main.js + backend remoto]
     MT --> CLI[net/client.js]
   end
-  CLI -->|HTTP JSON + clave| SRV
+  CLI -->|HTTP con JSON cifrado| SRV
 ```
 
 **Por qué funciona sin cambiar las reglas de negocio:**
@@ -48,22 +48,31 @@ Al guardar la configuración, el programa se reinicia. Con `CAPSSHOP_NO_RELAUNCH
 
 ## Protocolo
 
-HTTP con JSON, puerto TCP **47810**. `src/net/server.js` implementa el servidor y `src/net/client.js`, el cliente.
+HTTP con JSON, puerto TCP **47810**. `src/net/server.js` implementa el servidor, `src/net/client.js` el cliente y `src/net/secure.js` el cifrado.
 
-| Ruta | Clave | Cuerpo | Respuesta |
+| Ruta | Cifrada | Contenido (descifrado) | Respuesta |
 |---|---|---|---|
 | `GET /v1/hello` | No | — | `version`, `server_id`, `name` (PC principal), `business_name` |
-| `POST /v1/pair` | Sí | `name` | `{ id, name }` de la PC (la registra, o reutiliza la que tiene ese nombre) |
+| `POST /v1/pair` | Sí | `name` | `{ id, name }` de la PC (la registra, o reutiliza la que tiene ese nombre si está activa) |
 | `POST /v1/login` | Sí | `username`, `password`, `terminal` | `{ token, user }` |
 | `POST /v1/logout` | Sí | `token` | — |
 | `POST /v1/call` | Sí | `token`, `name`, `params`, `request_id` | Resultado de la operación `name` de `METHODS` |
-| `GET /v1/foto/<archivo>` | Sí | — | La imagen |
+| `POST /v1/foto` | Sí | `name` | `{ type, data }` (imagen en base64) o `null` |
 
-**Formato de respuesta:** siempre `{ ok: true, data }` o `{ ok: false, error, code }`, igual que por IPC. El mensaje de `AppError` llega tal cual a la pantalla.
+**Formato:**
+- **Rutas cifradas:** el cuerpo es `{ iv, data }` (AES-256-GCM). Dentro van el contenido de la tabla, más `ts` (hora) y `nonce`.
+- **Respuesta:** al descifrarla es `{ ok: true, data }` o `{ ok: false, error, code }`, igual que por IPC, y repite el `nonce`. El mensaje de `AppError` llega tal cual a la pantalla.
+- **Llave:** se deriva de la clave de conexión y del `server_id` ([Seguridad](seguridad.md#red-cifrada)). **La clave nunca viaja.**
 
-**Cabeceras:**
-- `X-Caps-Key`: la clave de conexión. No distingue mayúsculas, espacios ni guiones.
-- `X-Caps-Version`: debe ser **igual** a la versión de la principal. Si no, responde con el código `VERSION`.
+**Errores antes de descifrar** (sin cifrar y con código HTTP):
+
+| HTTP | Código | Causa |
+|---|---|---|
+| 409 | `VERSION` | La cabecera `X-Caps-Version` no es **igual** a la versión de la principal |
+| 401 | `KEY` | El mensaje no se pudo descifrar: la otra PC tiene otra clave, o alguien alteró el mensaje |
+| 429 | `RATE` | Demasiados intentos con clave incorrecta desde esa IP |
+
+**Error dentro de la respuesta cifrada:** `CLOCK`, si la hora del mensaje difiere más de 10 minutos de la de la principal.
 
 **Descubrimiento (botón Buscar):**
 - La terminal envía `CAPS-SHOP-DISCOVER` por UDP al puerto **47811**: a `255.255.255.255` y a la dirección de difusión de cada red.
@@ -110,7 +119,7 @@ Decisión DT-14:
 
 ## Seguridad
 
-- **La clave de conexión** es aleatoria: 8 caracteres, unos 40 bits. Sin ella solo se puede consultar `hello`, que no tiene datos del negocio.
+- **Sin la clave** solo se puede consultar `hello`, que no tiene datos del negocio.
 - **Límite de intentos:**
   - 10 claves incorrectas por minuto desde una IP la bloquean un minuto;
   - 5 contraseñas incorrectas por minuto, por IP y usuario, bloquean el inicio de sesión.
@@ -120,11 +129,9 @@ Decisión DT-14:
 - **Reconfigurar una PC conectada sin sesión** (desde la pantalla de entrada) solo permite volver a conectarla, no convertirla en principal.
 - **Una petición mal formada** (URL o nombre de foto inválidos) recibe un error y no detiene el servidor.
 - **Permisos:** se comprueban en la principal, igual que antes. Una terminal no puede saltárselos.
-- **Tráfico sin cifrar** dentro de la red de la tienda. Una persona conectada a la misma red con herramientas especiales podría ver contraseñas y datos. Mitigaciones:
-  - usar una red con contraseña, sin clientes conectados a la misma WiFi;
-  - cambiar la clave si alguien ajeno la conoce.
-
-  El cifrado (HTTPS) está en la revisión de seguridad de [O3](../producto/objetivos.md#o3-calidad-para-producción).
+- **Tráfico cifrado y autenticado** con la clave de conexión (AES-256-GCM, llave derivada con scrypt). Quien mire la red no ve contraseñas, datos ni la clave. Detalle en [Seguridad](seguridad.md#red-cifrada) (DT-17).
+- **Clave de 10 caracteres** (unos 50 bits), por ejemplo `K7M2P-9QXA4`. Cámbiela si alguien ajeno la conoce.
+- **Hora:** todas las PCs deben tener la fecha y hora de Windows bien puestas, con menos de 10 minutos de diferencia.
 - **Firewall de Windows:** la primera vez que la principal comparte, Windows pregunta. Hay que permitir **Redes privadas**. El instalador todavía no crea la regla ([O4](../producto/objetivos.md#o4-instalación-y-operación)).
 
 ## Pruebas
@@ -132,7 +139,8 @@ Decisión DT-14:
 | Archivo | Qué comprueba |
 |---|---|
 | `test/terminals.test.js` | Caja por PC, sesiones independientes, renombrar y desactivar PCs |
-| `test/network.test.js` | Servidor real en `127.0.0.1`: clave, versión, permisos, bloqueo de intentos, **40 ventas simultáneas desde 2 PCs con existencia 30**, reintento sin duplicar, fotos, descubrimiento, cambio de dirección, "sin conexión" y corte a mitad de una operación |
+| `test/network.test.js` | Servidor real en `127.0.0.1`: clave, versión, permisos, bloqueo de intentos, **40 ventas simultáneas desde 2 PCs con existencia 30**, reintento sin duplicar, fotos, descubrimiento, cambio de dirección, "sin conexión", corte a mitad de una operación, **tráfico capturado sin secretos**, mensaje alterado y hora desfasada |
+| `test/ui/network.test.js` | Dos instancias reales de la app: configurar la PC conectada, vender, ver la venta y la caja en la principal, fotos por la red, sin conexión y reconexión |
 | `test/migration.test.js` | La base de la 1.0.0 (`test/fixtures/v1.0.0.db`) abre sin perder datos |
 
 **Prueba manual con dos PCs en una sola máquina:** ver [Desarrollo y publicación](desarrollo-y-publicacion.md#probar-varias-computadoras-en-una-sola-máquina).

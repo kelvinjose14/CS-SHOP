@@ -9,9 +9,21 @@ const { openDatabase } = require('../src/core/db');
 const { createApi } = require('../src/core/api');
 const net = require('../src/net/server');
 const { createClient, discover } = require('../src/net/client');
+const secure = require('../src/net/secure');
 
 const VERSION = '9.9.9';
 const KEY = 'K7M2-P9QX';
+
+// Pedido cifrado "a mano", como lo haría una PC conectada; devuelve la respuesta descifrada.
+async function sealedPost(port, path, body, { ts = Date.now() } = {}) {
+  const k = secure.deriveKey(KEY, 'srv-1');
+  const r = await fetch(`http://127.0.0.1:${port}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-caps-version': VERSION },
+    body: JSON.stringify(secure.seal(k, { ...body, ts, nonce: 'prueba' })),
+  });
+  return secure.open(k, await r.json());
+}
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 async function start(t) {
@@ -28,6 +40,7 @@ async function start(t) {
     const c = connect();
     const terminal = (await c.pair(name)).id;
     const { token, user } = await c.login(username, password, terminal);
+    await c.call(token, 'auth.changePassword', { current: password, password }); // contraseña inicial
     return { c, terminal, token, user, call: (n, p) => c.call(token, n, p) };
   }
   return { dir, db, api, port, info, connect, pc };
@@ -38,7 +51,7 @@ test('saludo, clave y versión', async (t) => {
   const hello = await connect().hello();
   assert.equal(hello.version, VERSION);
   assert.equal(hello.server_id, 'srv-1');
-  await assert.rejects(connect({ key: 'MALA-CLAV' }).pair('Caja 2'), (e) => e.code === 'KEY' && /Clave de conexión incorrecta/.test(e.message));
+  await assert.rejects(connect({ key: 'MALAS-CLAVE' }).pair('Caja 2'), (e) => e.code === 'KEY' && /Clave de conexión incorrecta/.test(e.message));
   assert.equal((await connect({ key: 'k7m2 p9qx' }).pair('Caja 2')).name, 'Caja 2', 'la clave no distingue mayúsculas ni espacios');
   await assert.rejects(connect({ version: '1.0.0' }).pair('Caja 2'), (e) => e.code === 'VERSION' && /versión 9\.9\.9 y esta computadora la 1\.0\.0/.test(e.message));
 });
@@ -97,10 +110,10 @@ test('un reintento con el mismo request_id no repite la venta', async (t) => {
   const productId = await A.call('products.save', { name: 'Gorra', cost: 100, price_retail: 200, initial_stock: 5 });
   await A.call('cash.open', { amount: 0 });
   const body = { token: A.token, name: 'sales.create', request_id: 'r-1', params: { payment_type: 'contado', items: [{ product_id: productId, qty: 1 }], payments: [{ method: 'efectivo', amount: 200 }] } };
-  const post = () => fetch(`http://127.0.0.1:${port}/v1/call`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-caps-key': KEY, 'x-caps-version': VERSION }, body: JSON.stringify(body) }).then((r) => r.json());
-  const first = await post();
-  const second = await post();
-  assert.deepEqual(second, first);
+  const first = await sealedPost(port, '/v1/call', body);
+  const second = await sealedPost(port, '/v1/call', body);
+  assert.equal(first.ok, true);
+  assert.equal(second.data, first.data, 'mismo número de venta');
   assert.equal((await A.call('products.get', { id: productId })).stock, 4);
 });
 
@@ -114,19 +127,58 @@ test('las fotos se suben y se descargan por la red', async (t) => {
   assert.equal(img.type, 'image/png');
   assert.ok(img.data.length > 20);
   assert.equal(await connect().photo('../capsshop.db'), null);
-  assert.equal(await connect({ key: 'MALA-CLAV' }).photo(photo), null);
+  await assert.rejects(connect({ key: 'MALAS-CLAVE' }).photo(photo), (e) => e.code === 'KEY');
 });
 
 test('una petición mal formada no tumba la PC principal', async (t) => {
   const { port, connect } = await start(t);
-  const raw = (path) => new Promise((resolve) => {
-    const req = require('http').request({ host: '127.0.0.1', port, path, headers: { 'x-caps-key': KEY, 'x-caps-version': VERSION } }, (res) => { res.resume(); resolve(res.statusCode); });
+  const raw = (path, method = 'GET', body) => new Promise((resolve) => {
+    const req = require('http').request({ host: '127.0.0.1', port, path, method, headers: { 'x-caps-version': VERSION } }, (res) => { res.resume(); resolve(res.statusCode); });
     req.on('error', () => resolve('error'));
-    req.end();
+    req.end(body);
   });
-  assert.equal(await raw('/v1/foto/%E0%A4%A'), 404);
-  assert.equal(await raw('//[::1'), 200);
+  assert.equal(typeof (await raw('//[::1')), 'number', 'responde aunque la URL sea inválida');
+  assert.equal(await raw('/v1/call', 'POST', '{no es json'), 200);
+  assert.equal(await raw('/v1/call', 'POST', JSON.stringify({ iv: 'x', data: 'y' })), 401);
   assert.equal((await connect().hello()).server_id, 'srv-1', 'el servidor sigue atendiendo');
+});
+
+test('la red va cifrada: ni la clave, ni las contraseñas, ni los datos viajan en claro', async (t) => {
+  const { port } = await start(t);
+  // Un intermediario que copia todo lo que pasa entre la PC conectada y la principal.
+  const captured = [];
+  const proxy = require('net').createServer((inbound) => {
+    const outbound = require('net').connect(port, '127.0.0.1');
+    inbound.on('data', (d) => { captured.push(d); outbound.write(d); });
+    outbound.on('data', (d) => { captured.push(d); inbound.write(d); });
+    inbound.on('error', () => {}); outbound.on('error', () => {});
+    inbound.on('close', () => outbound.destroy()); outbound.on('close', () => inbound.destroy());
+  });
+  await new Promise((r) => proxy.listen(0, '127.0.0.1', r));
+  t.after(() => new Promise((r) => proxy.close(r)));
+  const c = createClient({ host: '127.0.0.1', port: proxy.address().port, key: KEY, version: VERSION });
+  const terminal = (await c.pair('Caja 2')).id;
+  const { token } = await c.login('admin', 'admin123', terminal);
+  await c.call(token, 'auth.changePassword', { current: 'admin123', password: 'admin123' });
+  await c.call(token, 'customers.save', { name: 'Cliente Secreto', phone: '8095551234' });
+  const traffic = Buffer.concat(captured).toString('latin1');
+  assert.ok(traffic.includes('/v1/login'), 'se capturó el tráfico');
+  for (const secret of ['K7M2', 'P9QX', 'admin123', token, 'Cliente Secreto', '8095551234', 'customers.save']) {
+    assert.ok(!traffic.includes(secret), `no aparece "${secret}"`);
+  }
+});
+
+test('un mensaje alterado o con la hora muy distinta se rechaza', async (t) => {
+  const { port, pc } = await start(t);
+  const A = await pc('Caja 1', 'admin', 'admin123');
+  const k = secure.deriveKey(KEY, 'srv-1');
+  const env = secure.seal(k, { token: A.token, name: 'products.list', ts: Date.now(), nonce: 'n' });
+  const tampered = { iv: env.iv, data: Buffer.from(Buffer.from(env.data, 'base64').map((b, i) => (i === 3 ? b ^ 1 : b))).toString('base64') };
+  const r = await fetch(`http://127.0.0.1:${port}/v1/call`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-caps-version': VERSION }, body: JSON.stringify(tampered) });
+  assert.equal(r.status, 401);
+  const old = await sealedPost(port, '/v1/call', { token: A.token, name: 'products.list' }, { ts: Date.now() - 11 * 60 * 1000 });
+  assert.equal(old.code, 'CLOCK');
+  assert.match(old.error, /fecha y hora/);
 });
 
 test('sin la PC principal responde "Sin conexión"', async () => {

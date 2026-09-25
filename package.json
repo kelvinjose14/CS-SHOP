@@ -14,7 +14,9 @@
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "dist": "electron-builder --win nsis",
-    "dist:dir": "electron-builder --dir"
+    "dist:dir": "electron-builder --dir",
+    "test:perf": "node test/perf/medir.js",
+    "test:ui": "node --test --test-concurrency=1 test/ui/*.test.js"
   },
   "build": {
     "appId": "com.capsshop.sistema",
@@ -62,6 +64,7 @@
   },
   "devDependencies": {
     "electron": "^44.4.5",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.56.1"
   }
 }

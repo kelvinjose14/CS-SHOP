@@ -12,6 +12,7 @@ const { AppError, today } = require('../core/util');
 const { getSetting } = require('../core/services/common');
 const net = require('../net/server');
 const { createClient } = require('../net/client');
+const log = require('./log');
 
 const PRINCIPAL = 1;
 
@@ -34,6 +35,7 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
   let server = null;
   let discovery = null;
   let networkError = null;
+  const logins = net.limiter(5); // mismo límite de intentos que por la red
 
   const terminalName = () => db.value('SELECT name FROM terminals WHERE id = ?', [PRINCIPAL]);
   const info = () => ({ business_name: getSetting(db, 'business_name'), server_id: config.server_id, name: terminalName() });
@@ -42,10 +44,11 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
     if (server) return;
     networkError = null;
     try {
-      server = net.createServer({ getApi: () => api, getKey: () => config.key, info, version, photosDir });
+      server = net.createServer({ getApi: () => api, getKey: () => config.key, info, version, photosDir, log });
       const port = await net.listen(server, config.port || net.PORT);
-      discovery = await net.startDiscovery({ info, httpPort: () => port }).catch((err) => {
-        console.error('Descubrimiento en la red:', err.message);
+      log.info('red', `Compartiendo en la red, puerto ${port}`);
+      discovery = await net.startDiscovery({ info, httpPort: () => port, log }).catch((err) => {
+        log.error('red', 'No se pudo iniciar el descubrimiento en la red', err);
         return null;
       });
     } catch (err) {
@@ -53,6 +56,7 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       networkError = err.code === 'EADDRINUSE'
         ? `El puerto ${config.port || net.PORT} está ocupado por otro programa. Cierre el otro programa o reinicie la computadora.`
         : `No se pudo compartir en la red: ${err.message}`;
+      log.error('red', networkError, err);
     }
   }
 
@@ -89,7 +93,16 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       };
     },
     async login(username, password) {
-      const r = api.login({ username, password }, { terminal: PRINCIPAL });
+      const who = String(username || '').toLowerCase();
+      if (logins.blocked(who)) throw new AppError('Demasiados intentos fallidos. Espere un minuto e intente de nuevo.', 'RATE');
+      let r;
+      try {
+        r = api.login({ username, password }, { terminal: PRINCIPAL });
+      } catch (err) {
+        if (err.code === 'AUTH') logins.fail(who);
+        throw err;
+      }
+      logins.clear(who);
       token = r.token;
       return r.user;
     },
@@ -107,6 +120,21 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
     },
     async ping() {
       return true;
+    },
+
+    // Datos para el soporte (Guardar diagnóstico). Sin la clave ni datos personales.
+    diagnostics() {
+      const tables = db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+      const size = (f) => (fs.existsSync(f) ? fs.statSync(f).size : 0);
+      const backups = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir).filter((f) => f.endsWith('.db')).sort().slice(-5) : [];
+      return [
+        `Base: versión de esquema ${db.value('PRAGMA user_version')}, ${Math.round(size(dbFile) / 1024)} KB (+ WAL ${Math.round(size(dbFile + '-wal') / 1024)} KB)`,
+        `Integridad: ${db.value('PRAGMA quick_check')}`,
+        `Tablas: ${tables.map((t) => `${t.name}=${db.value(`SELECT COUNT(*) FROM "${t.name}"`)}`).join(', ')}`,
+        `Red: compartir=${!!config.share}, activa=${!!server}, puerto=${config.port || net.PORT}, direcciones=${localAddresses().join(' ') || 'ninguna'}${networkError ? `, error: ${networkError}` : ''}`,
+        `Computadoras: ${db.all('SELECT name, active, last_seen_at FROM terminals ORDER BY id').map((t) => `${t.name}${t.active ? '' : ' (desactivada)'} ${t.last_seen_at || ''}`.trim()).join('; ')}`,
+        `Últimos respaldos: ${backups.join(', ') || 'ninguno'}`,
+      ];
     },
 
     // ---------- Red (solo administrador) ----------
@@ -135,7 +163,7 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
         const files = fs.readdirSync(backupsDir).filter((f) => /^capsshop-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort();
         while (files.length > 30) fs.unlinkSync(path.join(backupsDir, files.shift()));
       } catch (err) {
-        console.error('Respaldo automático falló:', err);
+        log.error('respaldo', 'Falló la copia automática diaria', err);
       }
     },
     backupTo(file) {
@@ -151,6 +179,7 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       requireAdmin();
       fs.mkdirSync(backupsDir, { recursive: true });
       db.backupTo(path.join(backupsDir, `antes-de-restaurar-${Date.now()}.db`));
+      log.info('respaldo', `Restaurando la base desde ${file}`);
       // Se copia al lado antes de tocar la base: si la copia falla, los datos actuales siguen intactos.
       const incoming = dbFile + '.restaurando';
       fs.copyFileSync(file, incoming);
@@ -196,7 +225,17 @@ function createRemote({ version, config, saveConfig }) {
   let token = null;
   let user = null;
 
+  // Se registra solo cuando cambia el estado de la conexión, no en cada reintento.
+  let online = true;
+  const connection = (ok, err) => {
+    if (ok === online) return;
+    online = ok;
+    if (ok) log.info('red', `Conexión recuperada con la PC principal (${client.host})`);
+    else log.warn('red', err.message);
+  };
+
   const forget = (err) => {
+    if (err.code === 'OFFLINE') connection(false, err);
     if (['AUTH', 'TERMINAL', 'KEY', 'VERSION'].includes(err.code)) {
       token = null;
       user = null;
@@ -231,12 +270,20 @@ function createRemote({ version, config, saveConfig }) {
     },
     async call(name, params) {
       const r = await client.call(token, name, params).catch(forget);
+      connection(true);
       if (name === 'auth.changePassword') user = r;
       return r;
     },
     photo: (name) => client.photo(name).catch(() => null),
+    diagnostics() {
+      return [
+        `Conectada a: ${config.server.name || ''} ${client.host}:${client.port} (server_id ${config.server.server_id})`,
+        `Esta computadora: ${config.name} (id ${config.terminal_id}); conexión ${online ? 'activa' : 'caída'}`,
+      ];
+    },
     async ping() {
-      await client.hello();
+      await client.hello().catch(forget);
+      connection(true);
       return true;
     },
     async close() {},

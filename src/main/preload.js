@@ -32,4 +32,9 @@ contextBridge.exposeInMainWorld('capsApi', {
   backupCreate: () => unwrap(ipcRenderer.invoke('backup:create')),
   backupRestore: () => unwrap(ipcRenderer.invoke('backup:restore')),
   backupOpenFolder: () => unwrap(ipcRenderer.invoke('backup:openFolder')),
+  logError: (message) => ipcRenderer.invoke('log:renderer', message).catch(() => {}),
+  support: {
+    diagnostic: () => unwrap(ipcRenderer.invoke('support:diagnostic')),
+    openLogs: () => unwrap(ipcRenderer.invoke('support:openLogs')),
+  },
 });

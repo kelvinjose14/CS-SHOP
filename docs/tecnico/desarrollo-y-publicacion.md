@@ -11,7 +11,9 @@
 ```bash
 npm install          # dependencias (descarga Electron)
 npm start            # abre la aplicación
-npm test             # todas las pruebas: node --test test/*.test.js
+npm test             # pruebas de lógica, migración, respaldos, permisos y red (sin ventanas)
+npm run test:ui      # pruebas de interfaz con la app real (en Linux: xvfb-run -a npm run test:ui)
+npm run test:perf    # rendimiento con 3 años de datos (la base se genera la primera vez)
 npm run dist         # instalador de Windows en dist/ (solo en Windows)
 npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema)
 ```
@@ -27,14 +29,31 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 
 ## Pruebas
 
+**`npm test`** (40 pruebas, sin ventanas):
+
 | Archivo | Pruebas | Qué cubre |
 |---|---|---|
 | `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
-| `test/migration.test.js` | 2 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; respaldos válidos |
+| `test/migration.test.js` | 4 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; migración que falla sin dejar nada a medias; rechazo de una base más nueva; respaldos válidos |
+| `test/backup.test.js` | 5 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal |
+| `test/permissions.test.js` | 1 | Todas las operaciones: el vendedor recibe "sin permiso" en las de administrador; sin sesión, nada; con la contraseña inicial, solo cambiarla |
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
-| `test/network.test.js` | 9 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión y corte a mitad de una operación |
+| `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
+| `test/log.test.js` | 1 | Registro de errores: pila, 14 días, últimas líneas |
 
-`test/helpers.js` simula una computadora que guarda su token de sesión.
+`test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
+
+**`npm run test:ui`** (`test/ui/`): abre la aplicación real con Playwright (`playwright-core`, dependencia de desarrollo) y una carpeta de datos temporal con la base de muestra y sus fotos. Cualquier error de la página o de la consola hace fallar la prueba.
+
+| Archivo | Qué recorre |
+|---|---|
+| `screens.test.js` | Todas las pantallas y los 15 reportes como administrador, y las del vendedor |
+| `flows.test.js` | Venta con lector y cambio, compra a crédito, abono, devolución, anulación y cierre de caja con faltante, comprobando los números |
+| `network.test.js` | Dos instancias: principal y conectada, venta, caja de la otra PC, fotos por la red, sin conexión y reconexión |
+| `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan |
+| `installed.test.js` | El programa **instalado**: solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
+
+**`npm run test:perf`:** ver [Rendimiento](rendimiento.md).
 
 - **Qué cubre `core.test.js`** (cada prueba crea una base temporal):
   - Permisos del vendedor.
@@ -50,7 +69,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
   - Campos vacíos.
   - Límites del vendedor.
   - Anulación de compra.
-- **Qué no cubren:** la interfaz y el proceso principal de Electron (IPC, configurar la PC, archivos, respaldos e impresión). Hoy se prueban a mano, como se indica abajo. Automatizarlo es parte de [O3](../producto/objetivos.md#o3-calidad-para-producción).
+- **Qué queda a mano:** la impresión en una impresora real, y Windows 10/11 de escritorio (el CI usa Windows Server). Los dos se prueban en el piloto (O6).
 
 **Regla:** toda regla de negocio nueva o cambiada lleva su prueba y su actualización en [Reglas de negocio](../producto/reglas-de-negocio.md).
 
@@ -93,12 +112,16 @@ CAPSSHOP_DATA=/tmp/pc-b npm start      # Conectar a la PC principal → Buscar �
 
 ## Integración continua
 
-`.github/workflows/build-windows.yml` ("Instalador Windows") corre en `windows-latest`:
+`.github/workflows/build-windows.yml` ("Instalador Windows") tiene dos trabajos:
 
-| Evento | Qué hace |
+| Trabajo | Qué hace |
 |---|---|
-| Pull request | `npm ci`, `npm test` e instalador como artefacto descargable |
-| Ejecución manual (Actions → Run workflow) | Lo mismo |
+| `linux` (`ubuntu-latest`) | `npm test`, `xvfb-run npm run test:ui` y `npm run test:perf` |
+| `build` (`windows-latest`) | `npm test` y `npm run test:ui`. Luego construye el instalador (artefacto descargable) y lo **instala de verdad**: instalación silenciosa (`/S`), prueba del programa instalado, reinstalación encima conservando los datos y desinstalación que no borra los datos |
+
+| Evento | Qué corre |
+|---|---|
+| Pull request y ejecución manual (Actions → Run workflow) | Los dos trabajos |
 | Etiqueta `v*` (al publicar una versión) | Lo mismo y, además, adjunta `CAPS-Shop-Setup-<versión>.exe` a la versión en GitHub Releases |
 
 No se une un pull request con CI en rojo.

@@ -23,10 +23,12 @@ src/
   net/         Red local, sin Electron
     server.js    Servidor HTTP de la PC principal y descubrimiento UDP
     client.js    Cliente de las PCs conectadas: reintentos, sin conexión, búsqueda
+    secure.js    Cifrado de la red con la clave de conexión (AES-256-GCM)
   main/        Proceso principal de Electron
     main.js      Ventana, IPC, configurar esta PC, protocolo de fotos, respaldos, CSV/PDF e impresión
     backend.js   Local (PC principal: base en este proceso) o remoto (PC conectada: todo por la red)
     config.js    config.json de esta PC (modo, clave, principal)
+    log.js       Registro de errores en <datos>/registros (14 días) para el diagnóstico
     preload.js   Puente seguro: expone window.capsApi a la interfaz
   renderer/    Interfaz (HTML, CSS y JavaScript sin framework ni compilación)
     index.html   Carga los scripts en orden
@@ -34,8 +36,10 @@ src/
     js/lib.js    Utilidades: html seguro, formatos, tablas, modales, gráficos, exportar
     js/app.js    Inicio de sesión, menú y navegación (objeto App)
     js/views/*.js  Una pantalla o grupo de pantallas por archivo; cada una se registra con App.register
-test/              Pruebas (node --test): núcleo, migración, computadoras y red
-test/fixtures/     Base de muestra de la versión 1.0.0
+test/              Pruebas (node --test): núcleo, migración, respaldos, permisos, computadoras y red
+test/ui/           Pruebas de interfaz con la app real (Playwright)
+test/perf/         Rendimiento con 3 años de datos simulados
+test/fixtures/     Base de muestra de la versión 1.0.0 y sus fotos
 build/             Íconos del instalador
 .github/workflows/build-windows.yml  CI: pruebas + instalador de Windows + publicación en Releases
 ```
@@ -72,7 +76,7 @@ sequenceDiagram
 
 - **Permisos:** `api.js` define para cada operación los roles permitidos (`ALL` o `ADMIN`). Cada computadora tiene su sesión (token). El usuario se vuelve a leer de la base en cada llamada: si fue desactivado, se cierra la sesión.
 - **En una PC conectada** el paso `main → api` va por la red: `backend.js` → `net/client.js` → `POST /v1/call` → `net/server.js` → `api.call` en la PC principal ([Red](red.md)).
-- **Errores:** las validaciones lanzan `AppError`, cuyo mensaje se muestra tal cual al usuario. Cualquier otro error se muestra como "Error inesperado: …".
+- **Errores:** las validaciones lanzan `AppError`, cuyo mensaje se muestra tal cual al usuario. Cualquier otro error se muestra como "Error inesperado: …", pide guardar el diagnóstico y queda en el registro (`log.js`), con su pila. También van al registro los errores no capturados del proceso principal y los de la interfaz.
 - **Transacciones:** cada operación que escribe corre dentro de `db.tx()` (`BEGIN IMMEDIATE`). Si algo falla, no se guarda nada (ROLLBACK). Las transacciones se pueden anidar: solo la exterior confirma.
 - **Libro de dinero:** todo cobro o pago llama a `ledger()` (`common.js`), que registra la entrada o salida. Si es en efectivo, la asocia a la caja abierta **de la PC que registra** o la rechaza si esa caja está cerrada.
 - **Existencias:** todo cambio pasa por `changeStock()` (`common.js`), que valida que no quede negativa y registra el movimiento.
@@ -95,23 +99,27 @@ Carpeta de datos: `%APPDATA%\CAPS Shop\data`. En pruebas se cambia con la variab
 - **Contenido:** CSP en `index.html` (`script-src 'self'`). Todo texto dinámico pasa por `html`/`esc` (`lib.js`) antes de insertarse.
 - **Contraseñas:** scrypt con sal por usuario (`users.js`).
 - **Instancias:** una sola por computadora (`requestSingleInstanceLock`), para no abrir la base dos veces.
-- **Red:** clave de conexión, versión igual en todas las PCs y límite de intentos. El tráfico va sin cifrar dentro de la red de la tienda ([Red](red.md#seguridad)).
+- **Red:** cifrada y autenticada con la clave de conexión, que nunca viaja. Además, versión igual en todas las PCs y límite de intentos ([Seguridad](seguridad.md)).
 
 ## Límites actuales
 
-Lo que falta para producción, con el objetivo que lo resuelve ([Objetivos](../producto/objetivos.md)). Los límites de la 1.0.0 que resolvió O2 están al final.
+Lo que falta para producción, con el objetivo que lo resuelve ([Objetivos](../producto/objetivos.md)). Los límites que ya se resolvieron están al final.
 
 | Límite | Dónde | Consecuencia | Objetivo |
 |---|---|---|---|
-| Sin rendimiento medido con años de datos | `db.js` | Sin cifras, aunque ya no se reescribe la base completa | O3 |
-| Red sin cifrar (HTTP) | `net/server.js` | Alguien en la misma red podría leer el tráfico | O3 |
 | Sin modo sin conexión | `net/client.js` | Si la principal se apaga, las demás no trabajan (DT-15) | Futuro, si se pide |
-| Sin registro de errores en archivo | `main.js` usa `console.error` | Sin diagnóstico en la tienda | O3 |
-| Interfaz sin pruebas automáticas ni linter | `renderer/` | Regresiones visuales sin detectar | O3 |
-| Scripts globales sin módulos ni compilación | `renderer/js` | Sencillo, pero sin verificación de tipos ni aislamiento | Revisar en O3 si crece |
+| Sin linter ni verificación de tipos | Todo el código | Errores de escritura se detectan solo con las pruebas | Si el código crece |
+| Scripts globales sin módulos ni compilación | `renderer/js` | Sencillo, pero sin aislamiento entre pantallas | Si el código crece |
+| Probado en Windows Server (CI), no en Windows 10/11 de escritorio | CI | Diferencias de escritorio sin detectar | O6 (piloto) |
 | Respaldos sin fotos y en el mismo disco | `backend.js` (`autoBackup`, `backupTo`) | Riesgo de pérdida | O4 |
 | Sin firma ni actualización automática | `package.json` (`build`) | Advertencia de Windows e instalación manual en cada PC | O4 |
 | El instalador no crea la regla del firewall | `package.json` (`nsis`) | Windows pregunta la primera vez que la principal comparte | O4 |
+
+**Resueltos en O3:**
+- **Rendimiento:** medido con 3 años de datos; todo por debajo de 1 s tras la migración 3 ([Rendimiento](rendimiento.md)).
+- **Red:** cifrada ([Seguridad](seguridad.md)).
+- **Registro de errores:** con **Guardar diagnóstico**.
+- **Pruebas:** de interfaz y del programa instalado, en CI.
 
 **Resueltos en O2:**
 - La base vivía en memoria de un solo proceso (sql.js) y se reescribía completa en cada operación. Ahora usa `node:sqlite` en modo WAL.
