@@ -1,0 +1,75 @@
+{
+  "name": "caps-shop",
+  "productName": "CAPS Shop",
+  "version": "1.0.0",
+  "description": "Sistema de inventario, contabilidad y ventas para CAPS._.SHOP - Tienda de Gorras",
+  "main": "src/main/main.js",
+  "author": "CAPS._.SHOP",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --win nsis",
+    "dist:dir": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.capsshop.sistema",
+    "productName": "CAPS Shop",
+    "copyright": "CAPS._.SHOP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.map",
+      "!node_modules/sql.js/dist/*.zip",
+      "!node_modules/sql.js/dist/*debug*",
+      "!node_modules/sql.js/dist/sql-asm*",
+      "!node_modules/sql.js/dist/*browser*",
+      "!node_modules/sql.js/dist/worker*"
+    ],
+    "asarUnpack": [
+      "node_modules/sql.js/dist/sql-wasm.wasm"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CAPS Shop",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "CAPS-Shop-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Office"
+    }
+  },
+  "dependencies": {
+    "sql.js": "^1.14.2"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  }
+}
