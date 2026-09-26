@@ -29,23 +29,24 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 
 ## Pruebas
 
-**`npm test`** (71 pruebas, sin ventanas):
+**`npm test`** (82 pruebas, sin ventanas):
 
 | Archivo | Pruebas | Qué cubre |
 |---|---|---|
 | `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
 | `test/migration.test.js` | 4 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; migración que falla sin dejar nada a medias; rechazo de una base más nueva; respaldos válidos |
-| `test/backup.test.js` | 8 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal; **copia fuera de la PC** con fotos, memoria desconectada, aviso de 7 días y restaurar trayendo las fotos |
+| `test/backup.test.js` | 9 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal; **copia fuera de la PC** con fotos, memoria desconectada, aviso de 7 días y restaurar trayendo las fotos; **copia con contraseña** sin nada legible y restaurada solo con la contraseña |
 | `test/updates.test.js` | 2 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
 | `test/permissions.test.js` | 1 | Todas las operaciones: el vendedor recibe "sin permiso" en las de administrador; sin sesión, nada; con la contraseña inicial, solo cambiarla |
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
-| `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
+| `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos (solo con sesión), búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
 | `test/log.test.js` | 1 | Registro de errores: pila, 14 días, últimas líneas |
 | `test/o5.test.js` | 6 | Saldos iniciales, depósito al banco y retiro, aportes del dueño, precio obligatorio, historial en español y código de recuperación |
 | `test/import.test.js` | 5 | Leer CSV y Excel reales, importar con vista previa y errores por fila, Code 128 e impresora de recibos |
 | `test/release.test.js` | 3 | Notas de la versión desde el CHANGELOG y etiqueta igual a `package.json` |
 | `test/auditoria.test.js` | 7 | Correcciones de la [auditoría](auditoria.md): venta sin precio, listas sin tope, costo al anular una compra, anular abonos, pagos y movimientos de caja, y que ninguna respuesta al vendedor traiga costos |
 | `test/o6.test.js` | 5 | Conteo de inventario (vista previa, aplicar, ventas durante el conteo, permisos), la lista de aceptación igual a los requisitos y los números de los ejercicios de la capacitación |
+| `test/controles.test.js` | 10 | Controles de la [auditoría](auditoria.md), secciones 2 y 4: motivo al abrir la caja, depósitos por verificar, inventario con productos desactivados, clientes desactivados, límite de crédito y deuda vencida, fechas y textos largos, costos sospechosos y categorías, reglas de la base, contraseñas de 8 y separador del CSV según la región |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -60,6 +61,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `o5.test.js` | Depósito al banco, saldo inicial, aportes, importar desde CSV, etiquetas, impresora de recibos, historial en español y recuperar la contraseña con el código |
 | `auditoria.test.js` | Tablas de más de 1,000 filas (aviso, totales y "Mostrar todas"), anular un movimiento de caja y un abono, y un producto sin precio en la venta |
 | `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
+| `controles.test.js` | Motivo al abrir la caja, depósitos por verificar desde el aviso del Inicio, crédito autorizado por el administrador, compra a costo 0 confirmada, cliente con deuda que no se desactiva, CSV sin fórmulas, ninguna pantalla desbordada a 1,100 px, navegación bloqueada, y copia externa con contraseña y su restauración |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

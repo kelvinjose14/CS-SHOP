@@ -20,7 +20,7 @@ Menú **Inventario** → **Compras** → **Nueva compra**.
 ![Nueva compra](img/compra-nueva.jpg)
 
 1. **Proveedor:** elíjalo de la lista. Con el botón **+** se crea uno nuevo sin salir de la compra.
-2. **Fecha** de la compra y **No. factura del proveedor** (opcional).
+2. **Fecha** de la compra (hoy o antes, no futura) y **No. factura del proveedor** (opcional).
 3. **Productos:** busque cada gorra (o escanéela) y agréguela. Si el producto no existe, créelo primero en **Inventario**. En cada línea:
    - **Cantidad** y **Costo unitario** (lo que costó cada una).
    - **Nuevo precio detalle** y **Nuevo precio mayor**: solo si quiere cambiar los precios de venta. Déjelos vacíos para mantener los actuales.
@@ -28,6 +28,9 @@ Menú **Inventario** → **Compras** → **Nueva compra**.
    - **Contado:** se paga todo ahora con el **Método de pago** elegido.
    - **Crédito:** escriba el **Monto pagado ahora** (puede ser 0) y la **Fecha de vencimiento**. Se propone la fecha de la compra más los días de crédito configurados.
 5. Revise el **Total** y, en crédito, el **Balance pendiente**. Pulse **Registrar compra**.
+6. Si algún **costo es 0**, o menos de la mitad o más del doble del costo actual de esa gorra, sale **Revisar costos** con la lista. Es para atrapar errores de tecleo, que cambiarían el costo promedio y la ganancia:
+   - si es correcto (por ejemplo, mercancía regalada o una oferta del proveedor), pulse **Sí, son correctos**; queda anotado en el historial;
+   - si no, pulse **Cancelar** y corrija el costo.
 
 ### Qué cambia en el sistema
 - **Inventario:** sube la existencia de cada producto. Queda un movimiento "Compra" con el costo unitario.
@@ -80,3 +83,5 @@ Al **anular una compra**, el costo promedio de sus productos vuelve a como estab
 | **No hay balance pendiente para pagar.** | Esa compra o proveedor ya está pagado |
 | **La caja está cerrada…** | Se pagó en efectivo sin caja abierta: abra la caja o use otro método |
 | **Existencia insuficiente de "…" (disponible: N).** al anular | Esas gorras ya se vendieron: no se puede anular la compra completa |
+| **Fecha de la compra no puede ser posterior a hoy.** | Registre la compra el día que llega la mercancía, o con una fecha anterior |
+| **Fecha de vencimiento no puede ser anterior al …** | El vencimiento debe ser la fecha de la compra o una posterior |

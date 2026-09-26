@@ -7,19 +7,20 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.2.0)
+## Estado actual (versión 1.3.0)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 71 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación y las correcciones de la auditoría;
-  - 13 de interfaz con la app real;
+  - 82 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación y las correcciones y controles de la auditoría;
+  - 17 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
 - Actualizaciones con aviso desde GitHub y copia diaria fuera de la PC, con fotos (O4).
 - Guía de soporte y recuperación ([manual 14](../manual/14-soporte-y-recuperacion.md)).
+- Todos los hallazgos de la [auditoría de producción](../tecnico/auditoria.md) corregidos (1.2.0 y 1.3.0), salvo la firma del instalador, que depende del dueño.
 - Instalador de Windows generado y publicado automáticamente en GitHub.
 
 **Lo que NO está listo para producción:**
@@ -234,7 +235,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | Plan del piloto: instalación, carga de datos, semana de uso y criterios | [Plan del piloto](../piloto/README.md) | Hecho |
 | Capacitación del dueño y del vendedor, con ejercicios comprobados | [Capacitación](../piloto/capacitacion.md) (los números los verifica `test/o6.test.js`) | Hecho |
 | Revisión diaria y registro de problemas | [Bitácora](../piloto/bitacora.md) | Hecho |
-| Lista de aceptación con todos los requisitos (128) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
+| Lista de aceptación con todos los requisitos (131) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
 | **Instalación en las PCs reales y carga de los datos reales** | [Plan, Día 0](../piloto/README.md#día-0-instalación-y-carga-de-datos) | **Pendiente (en la tienda)** |
 | **Capacitación** | [Capacitación](../piloto/capacitacion.md) | **Pendiente (en la tienda)** |
 | **Una semana de uso real** con revisión diaria | [Bitácora](../piloto/bitacora.md) | **Pendiente (en la tienda)** |

@@ -4,6 +4,36 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.3.0] - 2026-09-26
+
+Controles de la [auditoría de producción](docs/tecnico/auditoria.md) (secciones 2 y 4). La base pasa a la versión 5 al abrir: todas las PCs deben tener la 1.3.0 (actualice primero la PC principal).
+
+### Agregado
+- **Depósitos por verificar** (Caja): el administrador compara cada depósito al banco con el estado de cuenta y lo marca **En el banco** o **No llegó**. Si no llegó, se descuenta del banco como dinero que salió del negocio. El Inicio avisa mientras haya depósitos sin revisar.
+- **Límite de crédito** por cliente y control de **deuda vencida** al vender a crédito: el vendedor no puede seguir y el administrador autoriza la venta, que queda en el historial. Se puede apagar el control de deuda vencida en Configuración.
+- **Copia externa con contraseña** (opcional): la copia de la memoria USB o la nube va cifrada; restaurarla pide la contraseña.
+- **Formato del CSV** según la región de Windows de cada PC, o fijo desde Configuración (coma, o punto y coma con decimales con coma).
+- Clientes: **Ver desactivados** en la lista, y lo vencido y el límite en el detalle.
+
+### Cambiado
+- Abrir la caja con otro monto que el contado en el último cierre **pide el motivo**; la diferencia queda en la caja y en los historiales.
+- Solo el administrador desactiva o reactiva clientes, y no si deben. A un cliente desactivado no se le vende.
+- Un producto desactivado con existencia **sigue contando** en el valor del inventario; al desactivarlo, la pantalla avisa.
+- Una compra con costo 0, o menos de la mitad o más del doble del costo actual, **pide confirmación**.
+- Los gastos y otros ingresos solo aceptan las categorías de Configuración.
+- Las contraseñas nuevas piden **8 caracteres** como mínimo (las que ya existen siguen sirviendo).
+- Las fotos se piden por la red con la sesión iniciada.
+
+### Corregido
+- Se aceptaban fechas que no existen (31 de febrero), gastos y compras con fecha futura y vencimientos anteriores a la venta.
+- Los textos más largos que el máximo se cortaban sin avisar; ahora se rechazan con un mensaje.
+- En la ventana más pequeña (1,100 px), Gastos, Otros ingresos, Contabilidad y Caja se salían de la pantalla.
+- Un nombre que empieza con `=` se ejecutaba como fórmula al abrir el CSV en Excel.
+- La ventana del programa no impedía navegar a otra página.
+
+### Técnico
+- Migración 5: `customers.credit_limit`, diferencia y motivo de apertura en `cash_sessions`, tabla `deposit_checks`, índices del libro de dinero y **reglas en la base** que rechazan montos y movimientos imposibles como segunda defensa.
+
 ## [1.2.0] - 2026-09-26
 
 Para el piloto en la tienda (O6). Una PC con la 1.1.0 la ofrece al administrador en **Configuración → Actualizaciones**; con la 1.0.0, instálela encima.
@@ -109,6 +139,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.3.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.0
 [1.2.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.0.0

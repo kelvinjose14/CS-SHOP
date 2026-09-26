@@ -7,6 +7,8 @@
 | Acción | Vendedor | Administrador |
 |---|:---:|:---:|
 | Registrar y editar clientes | ✔ | ✔ |
+| Desactivar o reactivar clientes y ponerles límite de crédito | ✘ | ✔ |
+| Autorizar una venta a crédito que pasa el límite o a quien tiene deuda vencida | ✘ | ✔ |
 | Vender a crédito | ✔ | ✔ |
 | Ver cuentas por cobrar | ✔ | ✔ |
 | Registrar abonos | ✔ si **El vendedor puede registrar abonos de clientes** está activado en Configuración | ✔ |
@@ -16,9 +18,12 @@
 Menú **Finanzas** → **Clientes**.
 
 - **Nuevo cliente:** **Nombre** (obligatorio), **Teléfono**, **Cédula / RNC**, **Correo**, **Dirección** y **Notas**. También se puede crear desde **Nueva venta** con el botón **+** junto al cliente.
-- La lista muestra de cada cliente la **Última compra**, el **Total comprado**, el **Balance pendiente** y el **Próx. vencimiento**.
-- Al pulsar un cliente se ven todas sus compras, su historial de pagos y los botones **Editar** y **Registrar abono**.
-- Para dar de baja un cliente, en **Editar** desmarque **Activo**. No se borran clientes.
+- La lista muestra de cada cliente la **Última compra**, el **Total comprado**, el **Balance pendiente**, el **Próx. vencimiento** y el **Límite de crédito**.
+- Al pulsar un cliente se ven lo que debe, lo **vencido**, su límite, todas sus compras, su historial de pagos y los botones **Editar** y **Registrar abono**.
+- **Límite de crédito** (administrador): en **Editar**, lo máximo que el cliente puede deber. **0 = sin límite** (así se crean).
+- **Dar de baja un cliente** (administrador): en **Editar** desmarque **Activo**. No se borran clientes.
+  - No se puede si el cliente **debe**: primero cobre o anule lo pendiente.
+  - A un cliente desactivado **no se le vende**. Para verlo, marque **Ver desactivados** en la lista; para volver a venderle, márquelo **Activo** otra vez.
 
 ### Saldo inicial (administrador)
 
@@ -34,6 +39,14 @@ El saldo aparece en **Cuentas por cobrar** marcado como **Saldo inicial** y se c
 ## 6.2 Vender a crédito
 
 En **Nueva venta**, elija el cliente, marque **Crédito**, revise la **Fecha de vencimiento** y, si deja un adelanto, escríbalo como **Abono inicial**. Detalle en [Ventas](03-ventas.md#31-hacer-una-venta).
+
+Junto al nombre del cliente se ve cuánto **debe**, cuánto tiene **vencido** y su **límite**. La venta a crédito **se detiene** si:
+- el cliente tiene deuda **vencida** (se puede apagar en Configuración → **Vender a crédito a quien tiene deuda vencida solo con autorización del administrador**);
+- o si, con lo que queda a crédito en esta venta, pasaría su **límite de crédito**.
+
+El vendedor ve el motivo y no puede seguir: puede cobrar de contado, pedir un abono inicial mayor o llamar al administrador. El administrador ve el motivo y puede pulsar **Autorizar venta**; la autorización queda en el historial de movimientos.
+
+**Ejemplo:** Ana tiene límite de RD$ 1,000 y debe RD$ 800. Una gorra de RD$ 400 a crédito se detiene (debería RD$ 1,200). Con un abono inicial de RD$ 300, quedan RD$ 100 a crédito y pasa.
 
 ## 6.3 Cuentas por cobrar
 
@@ -90,3 +103,9 @@ La deuda vuelve a quedar como antes y el dinero sale con el mismo método; si fu
 | **La caja está cerrada…** | Abono en efectivo sin caja abierta: abra la caja |
 | **Es el cobro de una venta de contado: para corregirlo, anule la venta.** | Anule la venta completa y vuelva a registrarla |
 | **Ese dinero ya se le devolvió al cliente en una devolución…** | El abono ya se compensó con una devolución: no hay que anularlo |
+| **… tiene … vencido. Solo el administrador puede autorizar otra venta a crédito.** | Cobre de contado, o pida al cliente que abone lo vencido, o al administrador que autorice |
+| **… con esta venta debería … y su límite de crédito es …** | Pida un abono inicial mayor, o que el administrador autorice o suba el límite |
+| **… está desactivado: no se le puede vender.** | El administrador puede reactivarlo en Clientes (marque **Ver desactivados**) |
+| **… debe …: no se puede desactivar hasta que salde su cuenta.** | Cobre o anule lo pendiente antes de desactivarlo |
+| **Solo el administrador puede desactivar o reactivar clientes.** | Pídaselo al administrador |
+| **Fecha de vencimiento no puede ser anterior al …** | El vencimiento debe ser la fecha de la venta o una posterior |

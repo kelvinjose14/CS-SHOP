@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.2.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales) y lo preparado para el piloto (O6). Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.3.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales) lo preparado para el piloto (O6) y los controles de la [auditoría de producción](../tecnico/auditoria.md). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -18,7 +18,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 102 | 1 | 0 |
 | No funcionales | 14 | 12 | 1 | 1 |
-| Nuevos detectados (aprobados, DT-24, DT-25 y DT-28) | 11 | 11 | 0 | 0 |
+| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31 y DT-35) | 14 | 14 | 0 | 0 |
 
 
 > Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
@@ -107,7 +107,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
-| RF-CAJ-01 | Efectivo inicial | Se indica al abrir | Cumple | Caja |
+| RF-CAJ-01 | Efectivo inicial | Se indica al abrir. Si no es lo contado en el último cierre de esa PC, se pide el motivo (DT-29) | Cumple | Caja |
 | RF-CAJ-02 | Ventas en efectivo | Línea en el resumen | Cumple | Caja |
 | RF-CAJ-03 | Otros ingresos | Línea en el resumen | Cumple | Caja |
 | RF-CAJ-04 | Gastos pagados en efectivo | Línea en el resumen | Cumple | Caja |
@@ -216,19 +216,19 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-03 | Windows 10/11 de 64 bits | Instalación y uso verificados en Windows real | Parcial: el CI instala, usa, reinstala y desinstala el programa en Windows Server en cada cambio. Falta Windows 10/11 de escritorio (piloto, O6) |
 | RNF-04 | Copias de seguridad automáticas | Una copia diaria, con las últimas 30 | Cumple (en el mismo disco) |
 | RNF-05 | Copias fuera de la computadora | Copia automática a USB o nube, incluidas las fotos | Cumple: copia diaria con fotos a una memoria USB o carpeta de OneDrive o Google Drive, con aviso a los 7 días (DT-20) |
-| RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Cumple: código de recuperación de un solo uso (RF-NUE-06). Revisado en [Seguridad](../tecnico/seguridad.md) |
+| RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Cumple: contraseñas de 8 caracteres como mínimo y código de recuperación de un solo uso (RF-NUE-06). Revisado en [Seguridad](../tecnico/seguridad.md) y en la [auditoría](../tecnico/auditoria.md) |
 | RNF-07 | Integridad de datos | Cada operación es atómica, queda en disco al confirmarse y no se abren dos instancias | Cumple (SQLite en modo WAL; una venta que se reintenta por la red no se duplica) |
-| RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Cumple: con 19,710 ventas, lo más lento tarda 60 ms en el núcleo y 0.3 s en pantalla ([Rendimiento](../tecnico/rendimiento.md)) |
+| RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Cumple: con 19,710 ventas, lo más lento tarda 170 ms en el núcleo (flujo de dinero de 3 años) y 0.3 s en pantalla ([Rendimiento](../tecnico/rendimiento.md)) |
 | RNF-09 | Instalador firmado | Windows no muestra la advertencia al instalar | Falta: el CI está listo para firmar, pero no se compró el certificado (DT-18) |
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 71 pruebas de lógica, 13 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 82 pruebas de lógica, 17 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 salió de la [auditoría de producción](../tecnico/auditoria.md).
+Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md).
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
@@ -243,6 +243,9 @@ Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicier
 | RF-NUE-09 | Incluir las fotos en la copia de seguridad | La copia fuera de la PC lleva las fotos y restaurar las recupera | Cumple (O4) | Configuración → Copias de seguridad |
 | RF-NUE-10 | Conteo de inventario de muchos productos a la vez (DT-25) | Hoja de conteo imprimible; se cuenta escribiendo o con el lector; se revisan las diferencias y se aplican todas con un motivo; lo vendido mientras se contaba no se ajusta | Cumple (O6) | Inventario → **Conteo** |
 | RF-NUE-11 | Anular un abono, un pago a proveedor o un movimiento de caja registrado por error (auditoría 3.4, DT-28) | El administrador lo anula con motivo; la deuda vuelve a como estaba y el dinero con un movimiento contrario, en la caja del original. Queda en el historial | Cumple | Detalle de cliente, proveedor y venta; Caja |
+| RF-NUE-12 | Revisar los depósitos al banco contra el estado de cuenta (auditoría 4.2, DT-30) | Cada depósito queda por verificar; el administrador lo marca **En el banco** o **No llegó** (se descuenta del banco y queda como salida del negocio). El Inicio avisa mientras haya pendientes | Cumple (1.3.0) | Caja → **Depósitos por verificar** |
+| RF-NUE-13 | Límite de crédito y deuda vencida (auditoría 2.3 y 2.4, DT-31) | Límite por cliente (0 = sin límite); una venta a crédito que lo pasa, o a quien tiene deuda vencida, la detiene el sistema: el vendedor no sigue y el administrador la autoriza. Solo el administrador desactiva clientes, y no si deben | Cumple (1.3.0) | Clientes, Nueva venta, Configuración |
+| RF-NUE-14 | Copia externa protegida con contraseña (auditoría 4.3, DT-35) | Opcional. Con contraseña, la copia de la memoria va cifrada, las copias sin cifrar se borran y restaurar pide la contraseña | Cumple (1.3.0) | Configuración → Copias de seguridad |
 
 ## 4. Fuera de alcance
 

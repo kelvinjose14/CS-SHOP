@@ -17,6 +17,7 @@ Cada regla indica dónde está en el código. Todos los ejemplos numéricos est�
 - El costo se guarda con 4 decimales para no acumular errores de redondeo. En pantalla se muestra con 2.
 - Cada venta **guarda el costo del momento** en cada línea (`sale_items.unit_cost`). Si después cambia el costo, las ventas pasadas no cambian.
 - Editar el costo a mano en **Inventario** también queda registrado en el historial (`cambio_precio`).
+- **Costo sospechoso** (DT-33): si una línea de compra tiene costo **0**, o menos de **la mitad** o más **del doble** del costo actual, la compra se detiene y pide confirmación (código `COST_CONFIRM`). Confirmada, queda en el historial (`costos_confirmados`). Si el producto no tenía costo, solo se confirma el costo 0.
 - **Al anular una compra** (`voidPurchase`), el costo vuelve a como estaría sin ella:
   - si nada volvió a cambiar el costo después de esa compra, vuelve **exactamente al de antes**: la mercancía que queda es la que ya estaba;
   - si otra compra lo cambió después, se quita del promedio lo que aportó la anulada: (existencia × costo − cantidad × costo de compra) / (existencia − cantidad);
@@ -66,10 +67,16 @@ Fuente: `src/core/services/sales.js` (`create`).
   - Si la opción está desactivada, no puede descontar nada.
 - **Reparto del descuento:** el descuento general se reparte entre las líneas en proporción a su importe. Así cada línea sabe su **precio neto cobrado**, que se usa en las devoluciones.
 - **Contado:** lo recibido debe cubrir el total. El cambio solo puede salir de pagos en efectivo, y lo que se registra como cobrado es el total, no lo recibido.
+- **Cliente desactivado:** no se le vende, ni de contado ni a crédito (DT-31).
 - **Crédito:**
   - Requiere cliente.
   - El abono inicial es opcional y no puede superar el total.
-  - La fecha de vencimiento por defecto es la fecha de hoy más los días de crédito configurados.
+  - La fecha de vencimiento por defecto es la fecha de hoy más los días de crédito configurados. No puede ser anterior a hoy.
+  - **Control de crédito** (DT-31). La venta se detiene si:
+    - el cliente tiene deuda vencida y está activada **Vender a crédito a quien tiene deuda vencida solo con autorización** (lo está por defecto);
+    - o si tiene **límite de crédito** (mayor que 0) y lo que debe más lo que queda a crédito en esta venta pasa ese límite.
+  - El vendedor no puede seguir (`CREDIT_BLOCKED`). El administrador ve el motivo y puede autorizarla (`CREDIT_CONFIRM`); la autorización queda en el historial de la venta (`credito_autorizado`).
+  - **Ejemplo:** Ana tiene límite de RD$ 1,000 y debe RD$ 800. Una venta de RD$ 400 a crédito se detiene (debería RD$ 1,200). Con un abono inicial de RD$ 300, quedan RD$ 100 a crédito y pasa (RD$ 900). Es la prueba `test/controles.test.js`.
 - **Pagos mixtos:** una venta puede tener varios pagos con distintos métodos: **Efectivo**, **Tarjeta**, **Transferencia** y **Otro**.
 - **Fecha:** la venta siempre lleva la fecha y hora actuales. No se pueden registrar ventas con fecha anterior.
 - **Número:** `V-` seguido del número interno con 6 cifras (por ejemplo, V-000120).
@@ -84,7 +91,7 @@ Fuente: `src/core/services/common.js` (`changeStock`) y `products.js`.
   - **Agotado:** existencia ≤ 0.
   - **Stock bajo:** 0 < existencia ≤ stock mínimo.
   - **Normal:** el resto.
-- **Valor del inventario:** existencia × costo, sumando solo los productos con existencia positiva. El **valor a precio de venta** usa el precio al detalle. La **ganancia potencial** es la diferencia entre ambos.
+- **Valor del inventario:** existencia × costo, sumando los productos con existencia positiva, **también los desactivados** (DT-32): desactivar un producto lo quita de la venta, pero la mercancía sigue en la tienda. El **valor a precio de venta** usa el precio al detalle. La **ganancia potencial** es la diferencia entre ambos.
 - **SKU:** si se deja vacío, se asigna `CS-` más el siguiente número con 5 cifras. El SKU y el código de barras no se pueden repetir.
 - Los productos no se borran; se desactivan.
 
@@ -104,6 +111,7 @@ Fuente: `src/core/util.js` (`accountStatus`), `sales.js` (`pay`) y `purchases.js
 - **Abono a un cliente o proveedor:** se reparte empezando por la factura con **fecha de vencimiento más próxima**. Sin fecha de vencimiento, cuenta la fecha de la venta o compra.
 - Un abono no puede superar el saldo pendiente.
 - El vendedor solo puede registrar abonos si la opción está activada.
+- **Clientes desactivados** (DT-31): solo el administrador desactiva o reactiva un cliente, y no si debe algo. Un cliente que ya estaba desactivado con deuda sigue en cuentas por cobrar.
 - **Saldo inicial** (RF-NUE-01): lo que un cliente o proveedor ya debía al empezar a usar el sistema. Se guarda como una venta o compra a crédito **sin artículos** (`opening = 1`), con su fecha y vencimiento. Se cobra o se paga con abonos como cualquier otra, y suma a las cuentas por cobrar o por pagar, pero no aparece en las listas de ventas y compras ni en los reportes del período. Lo registra solo el administrador.
 
 ## 6. Devoluciones
@@ -160,11 +168,17 @@ Fuente: `src/core/services/finance.js` (`sessionSummary`, `cashStatus`), `common
 - **Efectivo de la tienda** (Inicio y Flujo de dinero) = suma, por cada computadora activa, de su efectivo esperado si la caja está abierta, o de lo contado en su último cierre si está cerrada.
 - **Efectivo esperado** = efectivo inicial + todas las entradas en efectivo de la sesión − todas las salidas en efectivo de la sesión.
 - **Diferencia al cerrar** = efectivo real contado − efectivo esperado. Negativa es faltante; positiva, sobrante.
+- **Apertura** (DT-29): el efectivo inicial debería ser lo contado al cerrar la última caja de esa computadora. Si es otro monto, se pide el **motivo** (`OPENING_REASON`). La **diferencia al abrir** (efectivo inicial − contado al cerrar) y el motivo quedan en la caja, en el historial de cierres y en el historial de movimientos. La primera caja de una computadora no se compara con nada.
 - **Movimientos manuales de efectivo** (DT-22):
   - **Entrada de efectivo:** sencillo o cambio que se pone en la gaveta. Cualquier usuario.
   - **Depósito al banco:** el efectivo sale de la caja y entra al banco (método transferencia). **No es gasto ni salida del negocio.** Cualquier usuario, con descripción obligatoria.
   - **Retiro:** dinero que sale del negocio (por ejemplo, para el dueño). **Solo el administrador.**
 - Un depósito o un retiro no puede superar el efectivo esperado.
+- **Depósitos por verificar** (DT-30): cada depósito al banco queda **por verificar** hasta que el administrador lo compara con el estado de cuenta:
+  - **En el banco:** queda verificado. Se puede desmarcar si fue un error.
+  - **No llegó:** se registra una salida del banco (método transferencia) por el mismo monto, con el concepto **Depósitos que no llegaron al banco**. Es dinero que salió del negocio y cuenta en el flujo. No se deshace.
+  - Un depósito revisado ya no se puede anular, y uno anulado no se revisa.
+  - Mientras haya depósitos por verificar, el Inicio del administrador lo avisa.
 - Un gasto o una compra con **fecha anterior** pagados en efectivo salen de la **caja abierta hoy**. Su fecha solo afecta los reportes.
 
 **Ejemplo:** la caja abre con RD$ 1,000 y se vende en efectivo por RD$ 2,300. El efectivo esperado es **RD$ 3,300**. Si se cuentan RD$ 3,250, la diferencia es **−RD$ 50** (faltante).
@@ -198,6 +212,7 @@ Fuente: `reports.js` (`cashflow`).
   - Retiros de caja.
   - Ventas anuladas.
   - Ingresos anulados.
+  - Depósitos que no llegaron al banco (DT-30).
 - **Depósitos al banco:** no son entrada ni salida; el dinero cambia de lugar. Se muestran aparte y en **Por método de pago** (sale del efectivo y entra a transferencia).
 - **Ejemplo:** con RD$ 1,000 en la caja, se depositan RD$ 400 al banco y el dueño retira RD$ 100. En la caja quedan **RD$ 500**. En el flujo, salió **RD$ 100** (el retiro); por método, el efectivo baja RD$ 500 y la transferencia sube RD$ 400. Es la prueba `test/o5.test.js`.
 
@@ -209,6 +224,9 @@ Fuente: `reports.js` (`cashflow`).
 - **Año:** del 1 de enero al 31 de diciembre.
 - **Rango:** las dos fechas elegidas, incluidas.
 - Los gráficos van por día; si el período dura más de 62 días, van por mes.
+- **Fechas válidas** (DT-33): toda fecha debe existir en el calendario (no se acepta el 31 de febrero).
+  - Gastos, otros ingresos, aportes, compras, pagos a proveedores y saldos iniciales no pueden tener fecha futura.
+  - Un vencimiento no puede ser anterior a la fecha de su venta, compra o saldo inicial.
 - Montos: se redondean a 2 decimales.
 - Fechas en pantalla: DD/MM/AAAA.
 
@@ -219,7 +237,7 @@ Fuente: `src/core/api.js` y `users.js`.
 - Cada operación del núcleo declara qué perfiles pueden usarla ([tabla de permisos](../manual/10-usuarios-y-permisos.md#101-los-dos-perfiles)). El permiso se comprueba en el núcleo, no solo en la pantalla.
 - El vendedor nunca recibe costos ni ganancias: el núcleo los quita de las respuestas.
 - **Contraseñas:**
-  - Tienen un mínimo de 6 caracteres.
+  - Tienen un mínimo de **8 caracteres** al ponerlas o cambiarlas (las que ya existían siguen sirviendo).
   - Se guardan cifradas con scrypt y una sal por usuario.
   - Si el administrador crea o restablece una contraseña, y con las contraseñas iniciales, se exige cambiarla al entrar. Lo exige el núcleo: hasta cambiarla, solo se puede leer la configuración y cambiar la contraseña, también desde otra PC.
   - Tras 5 intentos fallidos en un minuto, ese usuario queda bloqueado un minuto en esa computadora.

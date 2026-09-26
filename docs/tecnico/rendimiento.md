@@ -54,7 +54,25 @@ Núcleo, en milisegundos, peor de 3 intentos:
 | Flujo de dinero | 161 ms |
 | Las demás | Menos de 120 ms |
 
+## Resultados de la 1.3.0 (26/09/2026)
+
+Con la migración 5 y los controles de la [auditoría](auditoria.md). La base de prueba ahora deposita cada día en el banco lo que pasa del fondo de caja (1,095 depósitos) y abre la caja con lo contado al cerrar.
+
+| Pantalla u operación | ms |
+|---|---:|
+| Inicio (administrador / vendedor) | 10.6 / 8.0 |
+| Ventas (mes / año / todas) | 2.5 / 27.1 / 162.3 |
+| Clientes / cliente con más compras | 18.1 / 19.1 |
+| **Depósitos al banco (todos / por verificar)** | **10.9 / 8.1** |
+| Detalle de un cierre | 0.7 |
+| Contabilidad (3 años) | 20.3 |
+| Flujo de dinero (3 años) | 170.2 |
+| Historial de movimientos (3 años) | 81.2 |
+| Registrar una venta | 4.6 |
+
+**Hallazgo:** la lista de depósitos y el aviso del Inicio tardaban **1.5 s**. Por cada depósito buscaban su anulación en todo el libro de dinero (`ref_type = 'anulacion' AND ref_id = …`), que no tenía índice. La migración 5 agrega los índices `money_movements(ref_type, ref_id)` y `(category, method)`. También el detalle de un cierre bajó de 14 ms a 0.7 ms.
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.
-- **Historial de movimientos:** muestra como máximo 3,000 registros por consulta. El filtro de fechas y el de acción permiten llegar a los anteriores.
+- **Historial de movimientos y listas largas:** desde la 1.2.0 traen todas las filas del período. La pantalla dibuja las primeras 1,000 y ofrece **Mostrar todas**; los totales, el CSV y el PDF usan todas.

@@ -51,7 +51,7 @@ Menú **Análisis** → **Flujo de dinero**.
 - **Por método de pago:** entradas, salidas y neto de efectivo, tarjeta, transferencia y otro.
 - **Detalle de movimientos:** cada entrada y salida. **Exportar** y **PDF**.
 
-> Los **depósitos al banco** no cuentan como entrada ni salida: el dinero solo cambia de lugar. Se ven en **Efectivo depositado al banco** y en **Por método de pago**. Los **aportes del dueño** sí cuentan como dinero que entró (tarjeta **Aportes del dueño**), pero no como ganancia. En la captura, de una versión anterior, los depósitos registrados como **Retiro** aparecen como salidas. Ver [Caja, 7.5](07-caja.md#75-depósito-al-banco-o-retiro).
+> Los **depósitos al banco** no cuentan como entrada ni salida: el dinero solo cambia de lugar. Se ven en **Efectivo depositado al banco** y en **Por método de pago**. Los **aportes del dueño** sí cuentan como dinero que entró (tarjeta **Aportes del dueño**), pero no como ganancia. En la captura, de una versión anterior, los depósitos registrados como **Retiro** aparecen como salidas. Un depósito que no llegó al banco (marcado en [Depósitos por verificar](07-caja.md#74-depósitos-por-verificar-administrador)) sí es una salida: **Depósitos que no llegaron al banco**. Ver [Caja, 7.6](07-caja.md#76-depósito-al-banco-o-retiro).
 
 ## 9.3 Reportes
 
