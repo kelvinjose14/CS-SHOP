@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.3.1] - 2026-09-26
+
+Corrección menor de la 1.3.0. Se instala encima o desde Configuración → Actualizaciones.
+
 ### Corregido
 - Los mensajes del sistema escriben los montos como en pantalla, con el símbolo de la moneda y separador de miles ("RD$ 6,600.00" en vez de "6600.00"): crédito vencido o sobre el límite, costos por confirmar, apertura de caja, abonos y pagos.
 
@@ -142,6 +146,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.3.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.1
 [1.3.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.0
 [1.2.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0
