@@ -7,13 +7,13 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.0.0 y lo hecho después, sin publicar)
+## Estado actual (versión 1.1.0)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 56 de lógica, migración, respaldos, permisos, red, actualizaciones, importación y etiquetas;
+  - 59 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas y publicación;
   - 10 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.

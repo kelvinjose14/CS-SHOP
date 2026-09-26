@@ -4,17 +4,17 @@ Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP �
 
 ## Estado
 
-**Versión publicada: 1.0.0**, que funciona en una sola computadora. En desarrollo, sin publicar ([cambios](CHANGELOG.md)):
+**Versión publicada: 1.1.0**, para el piloto en la tienda ([cambios](CHANGELOG.md)):
 - **Varias computadoras en red:** una PC principal guarda los datos y las demás se conectan a ella, cada una con su caja ([manual](docs/manual/13-varias-computadoras.md)).
 - **Funciones:** están todas las del pedido original (102 de 103 requisitos cumplen) y las 9 nuevas: saldos iniciales, depósito al banco, aportes del dueño, importar desde Excel, etiquetas, recibo directo a la impresora y recuperación de la contraseña ([Requisitos](docs/producto/requisitos.md)).
 - **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).
-- **Todavía no está lista para producción:** falta firmar el instalador (hace falta comprar un certificado) y probarla en la tienda con Windows 10/11 y datos reales. El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
+- **Todavía no está en producción:** falta el piloto en la tienda con Windows 10/11 y datos reales, y la firma del cliente (O6). Al aceptarse, sale la 2.0.0. El instalador todavía no está firmado (hace falta comprar un certificado). El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
 
 ## Instalar
 
 1. Descargue `CAPS-Shop-Setup-X.Y.Z.exe` de [Releases](https://github.com/kelvinjose14/CS-SHOP/releases).
 2. Ejecútelo. Windows puede mostrar "Windows protegió su PC" porque el instalador no está firmado: pulse **Más información** → **Ejecutar de todas formas**.
-3. Abra **CAPS Shop** desde el escritorio. En la versión en desarrollo, la primera vez se elige si es la **PC principal** o si se conecta a una ([Varias computadoras](docs/manual/13-varias-computadoras.md)).
+3. Abra **CAPS Shop** desde el escritorio. La primera vez se elige si es la **PC principal** o si se conecta a una ([Varias computadoras](docs/manual/13-varias-computadoras.md)).
 4. Entre con un usuario inicial. El sistema pide cambiar la contraseña la primera vez.
 
 | Usuario | Contraseña inicial | Perfil |

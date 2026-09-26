@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.1.0] - 2026-09-26
+
+Versión para el piloto en la tienda (O6). Incluye los objetivos O2 a O5. Una computadora con la 1.0.0 se actualiza instalando esta encima: los datos se conservan y se migran solos.
+
 ### Agregado
 - **Saldos iniciales** de clientes y proveedores: lo que ya se debía al empezar. Se cobra o se paga con abonos, pero no cuenta como venta ni compra.
 - **Depósito al banco** en Caja, separado del **Retiro**. El depósito no es salida del negocio en el Flujo de dinero. El vendedor deposita; solo el administrador retira.
@@ -88,4 +92,5 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.1.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.0.0

@@ -29,7 +29,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 
 ## Pruebas
 
-**`npm test`** (45 pruebas, sin ventanas):
+**`npm test`** (59 pruebas, sin ventanas):
 
 | Archivo | Pruebas | Qué cubre |
 |---|---|---|
@@ -41,6 +41,9 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
 | `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
 | `test/log.test.js` | 1 | Registro de errores: pila, 14 días, últimas líneas |
+| `test/o5.test.js` | 6 | Saldos iniciales, depósito al banco y retiro, aportes del dueño, precio obligatorio, historial en español y código de recuperación |
+| `test/import.test.js` | 5 | Leer CSV y Excel reales, importar con vista previa y errores por fila, Code 128 e impresora de recibos |
+| `test/release.test.js` | 3 | Notas de la versión desde el CHANGELOG y etiqueta igual a `package.json` |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -52,6 +55,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `flows.test.js` | Venta con lector y cambio, compra a crédito, abono, devolución, anulación y cierre de caja con faltante, comprobando los números |
 | `network.test.js` | Dos instancias: principal y conectada, venta, caja de la otra PC, fotos por la red, sin conexión y reconexión |
 | `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan; copia fuera de la PC y aviso del Inicio |
+| `o5.test.js` | Depósito al banco, saldo inicial, aportes, importar desde CSV, etiquetas, impresora de recibos, historial en español y recuperar la contraseña con el código |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).
@@ -138,12 +142,11 @@ Se usa versionado semántico:
    - Suba `version` en `package.json`. El nombre del instalador sale de ahí.
    - Mueva las notas de **Sin publicar** a la nueva versión en `CHANGELOG.md`, con la fecha.
 2. Una el pull request a `main`.
-3. En GitHub → **Releases** → **Draft a new release**:
-   - **Choose a tag:** `vX.Y.Z`, con **Create new tag on publish**.
-   - **Target: `main`**. Revíselo siempre: si la rama principal del repositorio no es `main`, GitHub propone otra.
-   - Título `CAPS Shop X.Y.Z` y, como descripción, las notas del CHANGELOG.
-   - **Publish release**.
-4. El flujo de CI arranca con la etiqueta. En unos 5 minutos aparecen adjuntos a la versión:
+3. Cree la etiqueta `vX.Y.Z` sobre el commit de unión en `main`, de una de estas dos formas:
+   - **Desde la terminal:** `git fetch origin main && git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
+   - **En GitHub** → **Releases** → **Draft a new release**: **Choose a tag** `vX.Y.Z` con **Create new tag on publish**, **Target: `main`** (revíselo siempre: si la rama principal del repositorio no es `main`, GitHub propone otra) y **Publish release**.
+4. El flujo de CI arranca con la etiqueta y, en unos 5 minutos, crea o completa la versión **CAPS Shop vX.Y.Z**:
+   - la descripción son las notas de esa versión en `CHANGELOG.md`, sacadas por `scripts/notas-version.js`. Si la etiqueta no coincide con `package.json` o el CHANGELOG no tiene la sección, el CI falla antes de construir nada;
    - el `.exe`;
    - `latest.yml` y el `.blockmap`, que usan las PCs instaladas para enterarse de la versión nueva ([Actualizaciones](#actualizaciones)).
 5. Verifique:
