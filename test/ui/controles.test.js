@@ -124,12 +124,12 @@ test('CSV sin fórmulas y con el separador de la región; ventana mínima; naveg
   const right = await win.$eval('#e-list [data-void]', (b) => b.getBoundingClientRect().right);
   assert.ok(right <= 1100, `botón anular visible (${right})`);
 
-  // La ventana no sale de la aplicación.
-  await win.evaluate(() => { window.location.href = 'https://example.com/'; });
+  // La ventana no sale de la aplicación. Con direcciones file: (una https abriría el navegador de la PC).
+  await win.evaluate(() => { window.location.href = 'file:///etc/hosts'; });
   await win.waitForTimeout(500);
   assert.match(win.url(), /index\.html/);
   assert.equal(await win.evaluate(() => typeof App), 'object');
-  assert.equal(await win.evaluate(() => window.open('https://example.com/')), null);
+  assert.equal(await win.evaluate(() => window.open('file:///etc/hosts')), null);
   assert.deepEqual(errors, []);
 });
 
