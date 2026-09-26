@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Agregado
+- **Conteo de inventario** (Inventario → Conteo): se cuentan muchas gorras con el lector o a mano, con hoja de conteo imprimible, y se aplican todas las diferencias con un motivo. Lo vendido mientras se contaba no se ajusta; el conteo sin terminar se guarda en la PC.
+- **Kit del piloto** en `docs/piloto/`: plan, capacitación con ejercicios comprobados, bitácora y lista de aceptación generada de los requisitos.
+- Publicar una versión desde GitHub Actions (**Run workflow** con **Publicar**), sin crear la etiqueta a mano.
+
 ## [1.1.0] - 2026-09-26
 
 Versión para el piloto en la tienda (O6). Incluye los objetivos O2 a O5. Una computadora con la 1.0.0 se actualiza instalando esta encima: los datos se conservan y se migran solos.

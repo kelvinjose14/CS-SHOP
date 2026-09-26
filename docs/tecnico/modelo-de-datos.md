@@ -69,7 +69,7 @@ erDiagram
 
 ## Tipos de movimiento
 
-**Inventario** (`inventory_movements.type`): `inicial`, `compra`, `venta`, `devolucion`, `ajuste`, `entrada`, `salida`, `anulacion_venta`, `anulacion_compra`.
+**Inventario** (`inventory_movements.type`): `inicial`, `compra`, `venta`, `devolucion`, `ajuste`, `entrada`, `salida`, `conteo`, `anulacion_venta`, `anulacion_compra`.
 
 **Dinero** (`money_movements.category`):
 
@@ -79,7 +79,7 @@ erDiagram
 
 `deposito_banco` son **dos** movimientos: sale en efectivo de la caja y entra por transferencia. El flujo de dinero no los cuenta como entrada ni salida (`TRANSFERS` en `finance.js`).
 
-**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`, `deposito_banco`, `conectar_pc`, `editar_pc`, `aporte_capital`, `anular_aporte`, `saldo_inicial_cliente`, `saldo_inicial_proveedor`, `importar_productos`, `crear_codigo_recuperacion`, `recuperar_contrasena`. El detalle es JSON con claves en español; un cambio se guarda como `{ "antes": …, "despues": … }`.
+**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`, `deposito_banco`, `conectar_pc`, `editar_pc`, `aporte_capital`, `anular_aporte`, `saldo_inicial_cliente`, `saldo_inicial_proveedor`, `importar_productos`, `conteo_inventario`, `crear_codigo_recuperacion`, `recuperar_contrasena`. El detalle es JSON con claves en español; un cambio se guarda como `{ "antes": …, "despues": … }`.
 
 ## Datos derivados (no se guardan)
 

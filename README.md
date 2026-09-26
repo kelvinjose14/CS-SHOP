@@ -32,6 +32,7 @@ Toda la documentación está en [`docs/`](docs/README.md), en español:
 |---|---|
 | **Dueño y vendedor** | [Manual de uso](docs/README.md#manual-de-uso): 14 páginas con capturas |
 | **Decidir qué se construye** | [Requisitos](docs/producto/requisitos.md), [Reglas de negocio](docs/producto/reglas-de-negocio.md), [Objetivos](docs/producto/objetivos.md), [Decisiones](docs/producto/decisiones.md) |
+| **Piloto en la tienda** | [Plan del piloto](docs/piloto/README.md), [Capacitación](docs/piloto/capacitacion.md), [Bitácora](docs/piloto/bitacora.md), [Lista de aceptación](docs/piloto/aceptacion.md) |
 | **Desarrolladores** | [Arquitectura](docs/tecnico/arquitectura.md), [Red](docs/tecnico/red.md), [Modelo de datos](docs/tecnico/modelo-de-datos.md), [Desarrollo y publicación](docs/tecnico/desarrollo-y-publicacion.md) |
 
 ## Desarrollo

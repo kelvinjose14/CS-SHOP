@@ -29,7 +29,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 
 ## Pruebas
 
-**`npm test`** (59 pruebas, sin ventanas):
+**`npm test`** (64 pruebas, sin ventanas):
 
 | Archivo | Pruebas | Qué cubre |
 |---|---|---|
@@ -44,6 +44,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/o5.test.js` | 6 | Saldos iniciales, depósito al banco y retiro, aportes del dueño, precio obligatorio, historial en español y código de recuperación |
 | `test/import.test.js` | 5 | Leer CSV y Excel reales, importar con vista previa y errores por fila, Code 128 e impresora de recibos |
 | `test/release.test.js` | 3 | Notas de la versión desde el CHANGELOG y etiqueta igual a `package.json` |
+| `test/o6.test.js` | 5 | Conteo de inventario (vista previa, aplicar, ventas durante el conteo, permisos), la lista de aceptación igual a los requisitos y los números de los ejercicios de la capacitación |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -56,6 +57,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `network.test.js` | Dos instancias: principal y conectada, venta, caja de la otra PC, fotos por la red, sin conexión y reconexión |
 | `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan; copia fuera de la PC y aviso del Inicio |
 | `o5.test.js` | Depósito al banco, saldo inicial, aportes, importar desde CSV, etiquetas, impresora de recibos, historial en español y recuperar la contraseña con el código |
+| `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

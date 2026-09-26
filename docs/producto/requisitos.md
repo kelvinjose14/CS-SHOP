@@ -18,7 +18,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 102 | 1 | 0 |
 | No funcionales | 14 | 12 | 1 | 1 |
-| Nuevos detectados (aprobados, DT-24) | 9 | 9 | 0 | 0 |
+| Nuevos detectados (aprobados, DT-24 y DT-25) | 10 | 10 | 0 | 0 |
 
 
 > Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
@@ -223,12 +223,12 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 59 pruebas de lógica, 10 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 64 pruebas de lógica, 11 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. Se aprobaron todos (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4.
+Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6).
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
@@ -241,6 +241,7 @@ Surgieron al revisar el sistema. Se aprobaron todos (DT-24) y se hicieron en [O5
 | RF-NUE-07 | Exigir el precio al detalle al crear un producto | Sin precio, o en 0, no se guarda (tampoco al importar) | Cumple | Inventario |
 | RF-NUE-08 | Historial legible en todos los casos | Ningún detalle muestra claves en inglés, tampoco en los registros anteriores | Cumple | Historial de movimientos |
 | RF-NUE-09 | Incluir las fotos en la copia de seguridad | La copia fuera de la PC lleva las fotos y restaurar las recupera | Cumple (O4) | Configuración → Copias de seguridad |
+| RF-NUE-10 | Conteo de inventario de muchos productos a la vez (DT-25) | Hoja de conteo imprimible; se cuenta escribiendo o con el lector; se revisan las diferencias y se aplican todas con un motivo; lo vendido mientras se contaba no se ajusta | Cumple (O6) | Inventario → **Conteo** |
 
 ## 4. Fuera de alcance
 

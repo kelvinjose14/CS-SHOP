@@ -32,6 +32,7 @@ const METHODS = {
   'products.save': [ADMIN, products.save],
   'products.import': [ADMIN, products.importRows],
   'products.adjust': [ADMIN, products.adjust],
+  'products.count': [ADMIN, products.count],
 
   'suppliers.list': [ADMIN, purchases.supplierList],
   'suppliers.get': [ADMIN, purchases.supplierGet],
