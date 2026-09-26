@@ -13,8 +13,8 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 59 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas y publicación;
-  - 10 de interfaz con la app real;
+  - 64 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo y publicación;
+  - 11 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -223,16 +223,22 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 
 ### O6. Piloto en tienda y aceptación
 
-**Estado:** pendiente.
+**Estado:** en curso. Lo que se prepara desde el repositorio está hecho; falta el piloto en la tienda, que hacen el dueño y el responsable del sistema. Decisiones: DT-25, DT-26 y DT-27.
 
 **Meta:** que el cliente use el sistema con datos reales y lo acepte formalmente.
 
-**Entregables:**
-- Instalación en las PCs reales de la tienda, siguiendo el manual.
-- Carga de los datos reales: productos, existencias, proveedores, clientes y saldos iniciales.
-- Capacitación al dueño y al vendedor, con el manual.
-- **Una semana de uso** real, con revisión diaria de la caja y del inventario.
-- **Lista de aceptación**: cada requisito de [Requisitos](requisitos.md) verificado en la tienda y firmado por el cliente.
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Versión para el piloto | **1.1.0** en [Releases](https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0) (DT-26) | Hecho |
+| Conteo de inventario para la revisión diaria (RF-NUE-10) | Inventario → **Conteo** ([manual 4.9](../manual/04-inventario.md#49-conteo-de-inventario-administrador)) | Hecho; sale en la siguiente versión |
+| Plan del piloto: instalación, carga de datos, semana de uso y criterios | [Plan del piloto](../piloto/README.md) | Hecho |
+| Capacitación del dueño y del vendedor, con ejercicios comprobados | [Capacitación](../piloto/capacitacion.md) (los números los verifica `test/o6.test.js`) | Hecho |
+| Revisión diaria y registro de problemas | [Bitácora](../piloto/bitacora.md) | Hecho |
+| Lista de aceptación con los 127 requisitos y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
+| **Instalación en las PCs reales y carga de los datos reales** | [Plan, Día 0](../piloto/README.md#día-0-instalación-y-carga-de-datos) | **Pendiente (en la tienda)** |
+| **Capacitación** | [Capacitación](../piloto/capacitacion.md) | **Pendiente (en la tienda)** |
+| **Una semana de uso real** con revisión diaria | [Bitácora](../piloto/bitacora.md) | **Pendiente (en la tienda)** |
+| **Lista de aceptación firmada** | [Acta](../piloto/aceptacion.md#acta-de-aceptación) | **Pendiente (en la tienda)** |
 
 **Terminado cuando:** el cliente firma la aceptación, y el sistema pasa a producción como versión 2.0.0.
 

@@ -12,6 +12,7 @@ const MOVEMENT_LABELS = {
   salida: 'Salida',
   anulacion_venta: 'Anulación de venta',
   anulacion_compra: 'Anulación de compra',
+  conteo: 'Conteo de inventario',
 };
 
 const missing = (field) => { throw new AppError(`${field} es obligatorio.`); };
@@ -193,6 +194,72 @@ function adjust(ctx, { product_id, type, qty, counted, note }) {
   });
 }
 
+// Conteo de inventario (O6): se cuentan muchos productos y se aplican todas las diferencias de una
+// vez, con un solo motivo. Cada fila trae lo contado y la existencia que el sistema mostraba al
+// empezar a contar (expected). Si se vendió o compró ese producto mientras se contaba, la existencia
+// ya no coincide y esa fila no se aplica: hay que volver a contarlo. Con dryRun no se guarda nada.
+const COUNT_DRY_RUN = Symbol('vista previa del conteo');
+
+function count(ctx, { counts, note, dryRun = false }) {
+  if (!Array.isArray(counts) || !counts.length) throw new AppError('No hay productos contados.');
+  if (counts.length > 10000) throw new AppError('Demasiados productos en un solo conteo.');
+  const reason = dryRun ? text(note, 'Motivo') : text(note, 'Motivo', { required: true });
+  const results = [];
+  try {
+    ctx.db.tx(() => {
+      const seen = new Set();
+      for (const c of counts) {
+        const p = ctx.db.get('SELECT id, name, color, size, sku, stock, cost FROM products WHERE id = ?', [c.product_id]);
+        const row = { product_id: c.product_id, name: p ? [p.name, p.color, p.size].filter(Boolean).join(' · ') : '', sku: p ? p.sku : '' };
+        try {
+          if (!p) throw new AppError('Producto no encontrado.');
+          if (seen.has(p.id)) throw new AppError('Este producto está dos veces en el conteo.');
+          seen.add(p.id);
+          const counted = int(c.counted, 'Cantidad contada');
+          Object.assign(row, { stock: p.stock, counted, diff: counted - p.stock, cost: p.cost });
+          if (c.expected !== undefined && c.expected !== null && Number(c.expected) !== p.stock) {
+            throw new AppError(`La existencia cambió mientras se contaba (era ${c.expected}, ahora ${p.stock}). Vuelva a contarlo.`);
+          }
+          if (row.diff === 0) row.action = 'igual';
+          else {
+            changeStock(ctx, p.id, row.diff, 'conteo', { refType: 'conteo', note: `Conteo: ${reason || ''}`.trim(), allowNegative: false });
+            row.action = 'ajustar';
+          }
+        } catch (err) {
+          if (!err.userFacing) throw err;
+          Object.assign(row, { action: 'error', message: err.message });
+        }
+        results.push(row);
+      }
+      if (dryRun) throw COUNT_DRY_RUN;
+      const changed = results.filter((r) => r.action === 'ajustar');
+      audit(ctx, 'conteo_inventario', 'producto', null, {
+        motivo: reason,
+        productos_contados: results.filter((r) => r.action !== 'error').length,
+        con_diferencia: changed.length,
+        unidades_faltantes: -changed.filter((r) => r.diff < 0).reduce((s, r) => s + r.diff, 0),
+        unidades_sobrantes: changed.filter((r) => r.diff > 0).reduce((s, r) => s + r.diff, 0),
+        cambios: changed.slice(0, 50).map((r) => `${r.name}: ${r.stock} → ${r.counted}`),
+      });
+    });
+  } catch (err) {
+    if (err !== COUNT_DRY_RUN) throw err;
+  }
+  const ok = results.filter((r) => r.action !== 'error');
+  const diffs = ok.filter((r) => r.diff !== 0);
+  return {
+    dryRun: !!dryRun,
+    counted: ok.length,
+    same: ok.length - diffs.length,
+    adjusted: diffs.length,
+    errors: results.length - ok.length,
+    missing_units: -diffs.filter((r) => r.diff < 0).reduce((s, r) => s + r.diff, 0),
+    extra_units: diffs.filter((r) => r.diff > 0).reduce((s, r) => s + r.diff, 0),
+    value: round2(diffs.reduce((s, r) => s + r.diff * r.cost, 0)),
+    results,
+  };
+}
+
 function movements(ctx, { product_id, from, to, type } = {}) {
   const where = [];
   const params = [];
@@ -237,4 +304,4 @@ function summary(ctx) {
   return out;
 }
 
-module.exports = { list, get, findByCode, save, importRows, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };
+module.exports = { list, get, findByCode, save, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };

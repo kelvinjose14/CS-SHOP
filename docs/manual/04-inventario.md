@@ -137,7 +137,26 @@ Para las gorras que no traen código de barras, o para poner el precio.
 
 Cada etiqueta lleva el nombre, color y talla, el código de barras (Code 128) y el precio. Si el producto no tiene código de barras, se imprime su **SKU**: el lector de la caja lo reconoce igual al vender.
 
-## 4.9 Errores comunes
+## 4.9 Conteo de inventario (administrador)
+
+![Conteo de inventario](img/conteo.jpg)
+
+Para contar muchas gorras de una vez y corregir todas las diferencias juntas: al cargar la mercancía el primer día, cada semana o cuando la existencia no cuadra.
+
+1. **Inventario** → **Conteo**.
+2. Cuente con la tienda cerrada o sin vender. Hay tres formas, y se pueden mezclar:
+   - **con el lector:** escanee cada gorra en **Escanee o escriba el código**. Cada lectura suma 1;
+   - **a mano:** escriba lo contado en la columna **Contado**;
+   - **en papel:** **Hoja de conteo** imprime la lista (con el filtro que tenga puesto) para contar con lápiz y después escribirlo.
+3. La columna **Diferencia** muestra en rojo lo que falta y en naranja lo que sobra. **Solo sin contar** ayuda a ver lo que queda.
+4. **Revisar y aplicar** muestra el resumen: cuántas unidades faltan y sobran, y cuánto es al costo. Escriba el **Motivo** (por ejemplo "Conteo semanal") y pulse **Aplicar**.
+
+- **Los productos que deje vacíos no se tocan.** Para revisar solo 10 gorras, cuente esas 10.
+- Si cierra el programa a mitad del conteo, al volver pregunta si quiere **seguir** con ese conteo: lo contado se guarda en esta computadora.
+- Si se vendió o compró una gorra **mientras se contaba**, esa gorra no se ajusta y el resumen pide volver a contarla. Las demás sí se aplican.
+- Cada diferencia queda en **Movimientos de inventario** como **Conteo de inventario**, y el conteo completo en el **Historial de movimientos**.
+
+## 4.10 Errores comunes
 
 | Mensaje | Qué hacer |
 |---|---|
@@ -147,6 +166,7 @@ Cada etiqueta lleva el nombre, color y talla, el código de barras (Code 128) y 
 | **Precio al detalle es obligatorio.** / **Precio al detalle debe ser mayor que cero.** | Todo producto necesita su precio al detalle, para no venderlo en 0 |
 | **No se encontró la columna "Nombre" en la primera fila.** | Al importar, la primera fila del Excel debe tener los títulos. Use la plantilla |
 | **El SKU se repite: ya está en la fila N.** | Al importar, dos filas son el mismo producto. Deje una |
+| **La existencia cambió mientras se contaba (era N, ahora M). Vuelva a contarlo.** | En el conteo, esa gorra se vendió o compró mientras se contaba. Cuéntela de nuevo en un conteo nuevo |
 | **La existencia no cambia con este ajuste.** | El conteo es igual a la existencia actual: no hace falta ajustar |
 | **Existencia insuficiente de "…" (disponible: N).** | Una **Salida** no puede dejar la existencia en negativo |
 | **Motivo es obligatorio.** | Escriba el motivo del ajuste |

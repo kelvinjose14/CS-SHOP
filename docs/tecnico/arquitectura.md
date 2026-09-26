@@ -15,7 +15,7 @@ src/
     services/
       common.js    Configuración, historial (audit), libro de dinero (ledger), cambios de existencia
       users.js     Usuarios, contraseñas, inicio de sesión, código de recuperación y configuración
-      products.js  Productos, importación, ajustes, movimientos y resumen de inventario
+      products.js  Productos, importación, ajustes, conteo de inventario, movimientos y resumen
       purchases.js Proveedores, saldos iniciales, compras, pagos, anulación y cuentas por pagar
       sales.js     Clientes, saldos iniciales, ventas, abonos, devoluciones, anulación y cuentas por cobrar
       finance.js   Gastos, otros ingresos, aportes del dueño y caja (depósito al banco y retiro)
@@ -40,7 +40,8 @@ src/
     js/barcode.js Código de barras Code 128 en SVG para las etiquetas
     js/app.js    Inicio de sesión, menú y navegación (objeto App)
     js/views/*.js  Una pantalla o grupo de pantallas por archivo; cada una se registra con App.register
-test/              Pruebas (node --test): núcleo, migración, respaldos, permisos, computadoras, red, importación y etiquetas
+scripts/           notas-version.js (notas de cada versión para Releases) y lista-aceptacion.js (genera docs/piloto/aceptacion.md)
+test/              Pruebas (node --test): núcleo, migración, respaldos, permisos, computadoras, red, importación, etiquetas y conteo
 test/ui/           Pruebas de interfaz con la app real (Playwright)
 test/perf/         Rendimiento con 3 años de datos simulados
 test/fixtures/     Base de muestra de la versión 1.0.0 y sus fotos

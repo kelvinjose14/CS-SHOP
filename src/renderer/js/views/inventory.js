@@ -45,7 +45,7 @@ App.register({
       right: html`
         <button class="btn" id="p-labels">${icon('tag')} Etiquetas</button>
         <button class="btn" id="p-export">${icon('download')} Exportar</button>
-        ${admin ? html`<button class="btn" id="p-import">${icon('upload')} Importar</button>` : ''}
+        ${admin ? html`<button class="btn" id="p-count">${icon('box')} Conteo</button><button class="btn" id="p-import">${icon('upload')} Importar</button>` : ''}
         ${admin ? html`<button class="btn primary" id="p-new">${icon('plus')} Nuevo producto</button>` : ''}`,
     });
     const listBox = el(html`<div class="card"></div>`);
@@ -78,6 +78,7 @@ App.register({
       $('#p-inactive', tb).onchange = (e) => { state.includeInactive = e.target.checked; load(); };
       $('#p-new', tb).onclick = () => productForm(null, load);
       $('#p-import', tb).onclick = () => importProducts(load);
+      $('#p-count', tb).onclick = () => App.go('count');
     }
     $('#p-labels', tb).onclick = () => labelsDialog(rows.filter((p) => p.active));
     $('#p-export', tb).onclick = () => exportCsv('inventario', productColumns(), rows);
@@ -407,3 +408,197 @@ function importProducts(onDone) {
     };
   };
 }
+
+/* ---------- Conteo de inventario (O6) ---------- */
+// Se cuentan muchos productos (escribiendo o con el lector) y se aplican todas las diferencias de una
+// vez. El borrador se guarda en esta PC por si se cierra el programa a mitad del conteo.
+
+const COUNT_DRAFT = 'capsshop-conteo';
+const countDraft = {
+  load() { try { return JSON.parse(localStorage.getItem(COUNT_DRAFT)) || null; } catch { return null; } },
+  save(d) { try { localStorage.setItem(COUNT_DRAFT, JSON.stringify(d)); } catch { /* sin almacenamiento: el conteo sigue en pantalla */ } },
+  clear() { try { localStorage.removeItem(COUNT_DRAFT); } catch { /* nada */ } },
+};
+
+function countSheetHtml(products, { showStock }) {
+  const rows = products.map((p) => `<tr><td>${esc(p.name)}</td><td>${esc(p.color || '')}</td><td>${esc(p.size || '')}</td><td class="m">${esc(p.sku)}</td><td class="m">${esc(p.barcode || '')}</td>${showStock ? `<td class="r">${p.stock}</td>` : ''}<td class="box"></td></tr>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page { size: letter; margin: 12mm; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #000; }
+    h1 { font-size: 14pt; margin: 0 0 2mm; } p { margin: 0 0 4mm; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #555; padding: 1.6mm 2mm; text-align: left; }
+    th { background: #eee; font-size: 9pt; } .m { font-family: 'Courier New', monospace; font-size: 9pt; } .r { text-align: right; }
+    .box { width: 22mm; } tr { page-break-inside: avoid; }
+  </style></head><body>
+    <h1>${esc(App.settings.business_name)} · Hoja de conteo de inventario</h1>
+    <p>Fecha: ________________ &nbsp; Contó: ______________________ &nbsp; Revisó: ______________________</p>
+    <table><thead><tr><th>Producto</th><th>Color</th><th>Talla</th><th>SKU</th><th>Código</th>${showStock ? '<th>Sistema</th>' : ''}<th>Contado</th></tr></thead><tbody>${rows}</tbody></table>
+  </body></html>`;
+}
+
+App.register({
+  id: 'count', title: 'Conteo de inventario', icon: 'box', group: 'Inventario', roles: ['admin'], hidden: true, navAs: 'products',
+  async render(page) {
+    const products = await api('products.list', {});
+    let draft = countDraft.load();
+    if (draft && Object.keys(draft.counts || {}).length) {
+      const n = Object.keys(draft.counts).length;
+      const keep = await confirmDialog(`Hay un conteo sin terminar en esta computadora (${n} ${n === 1 ? 'producto contado' : 'productos contados'}, empezado el ${Fmt.datetime(draft.started_at)}). ¿Seguir con ese conteo?`, { title: 'Conteo sin terminar', okLabel: 'Seguir' });
+      if (!keep) draft = null;
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date();
+    // expected: la existencia del sistema cuando empezó el conteo (para detectar ventas mientras se cuenta).
+    draft = draft && draft.expected ? draft : {
+      started_at: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:00`,
+      expected: Object.fromEntries(products.map((p) => [p.id, p.stock])),
+      counts: {},
+    };
+    for (const p of products) if (!(p.id in draft.expected)) draft.expected[p.id] = p.stock;
+    const byCode = new Map();
+    for (const p of products) {
+      byCode.set(String(p.sku).toLowerCase(), p);
+      if (p.barcode) byCode.set(String(p.barcode).toLowerCase(), p);
+    }
+
+    const tb = toolbar(page, {
+      left: html`
+        <div class="search">${icon('search')}<input id="ct-scan" placeholder="Escanee o escriba el código y pulse Enter: suma 1" autocomplete="off"></div>
+        <div class="search">${icon('search')}<input id="ct-filter" placeholder="Filtrar por nombre, color, talla…"></div>
+        <label class="check"><input type="checkbox" id="ct-pending"> Solo sin contar</label>`,
+      right: html`
+        <button class="btn" id="ct-sheet">${icon('print')} Hoja de conteo</button>
+        <button class="btn" id="ct-clear">Empezar de nuevo</button>
+        <button class="btn primary" id="ct-review">Revisar y aplicar</button>`,
+    });
+    const info = el(html`<div class="info-box">Cuente con la tienda cerrada o sin vender. Escriba lo contado, o escanee cada gorra con el lector (cada lectura suma 1). <b>Los productos que deje vacíos no se tocan.</b> Nada cambia hasta pulsar <b>Revisar y aplicar</b>.</div>`);
+    page.appendChild(info);
+    const status = el(html`<div class="stats"></div>`);
+    page.appendChild(status);
+    const box = el(html`<div class="card"></div>`);
+    page.appendChild(box);
+
+    setHTML(box, html`<div class="table-wrap"><table class="table" id="ct-table"><thead><tr><th>Producto</th><th>SKU / código</th><th class="r">Sistema</th><th class="r">Contado</th><th class="r">Diferencia</th></tr></thead><tbody>
+      ${products.map((p) => html`<tr data-id="${p.id}"><td><b>${p.name}</b><div class="muted small">${[p.brand, p.color, p.size].filter(Boolean).join(' · ')}</div></td>
+        <td><code>${p.sku}</code>${p.barcode ? html`<div class="muted small">${p.barcode}</div>` : ''}</td>
+        <td class="r">${draft.expected[p.id]}</td>
+        <td class="r"><input type="number" min="0" step="1" class="qty-input" data-count="${p.id}" value="${draft.counts[p.id] ?? ''}"></td>
+        <td class="r" data-diff="${p.id}"></td></tr>`)}
+    </tbody></table></div>`);
+    const rowOf = (id) => $(`tr[data-id="${id}"]`, box);
+    const showDiff = (id) => {
+      const cell = $(`[data-diff="${id}"]`, box);
+      const v = draft.counts[id];
+      if (v === undefined) return setHTML(cell, '');
+      const diff = v - draft.expected[id];
+      setHTML(cell, html`<b class="${diff < 0 ? 'text-danger' : diff > 0 ? 'text-warn' : 'text-ok'}">${diff > 0 ? '+' : ''}${diff}</b>`);
+    };
+    const refreshStatus = () => {
+      const ids = Object.keys(draft.counts);
+      const diffs = ids.filter((id) => draft.counts[id] !== draft.expected[id]);
+      setHTML(status, [
+        statCard('Contados', `${ids.length} de ${products.length}`, { iconName: 'box' }),
+        statCard('Con diferencia', Fmt.num(diffs.length), { tone: diffs.length ? 'warn' : '', iconName: 'alert' }),
+      ]);
+    };
+    const set = (id, value) => {
+      if (value === '' || value === null || value === undefined) delete draft.counts[id];
+      else draft.counts[id] = Math.max(0, Math.floor(Number(value) || 0));
+      countDraft.save(draft);
+      showDiff(id);
+      refreshStatus();
+    };
+    products.forEach((p) => showDiff(p.id));
+    refreshStatus();
+
+    $$('[data-count]', box).forEach((i) => (i.oninput = () => set(Number(i.dataset.count), i.value)));
+    const scan = $('#ct-scan', tb);
+    scan.onkeydown = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const code = scan.value.trim().toLowerCase();
+      scan.value = '';
+      if (!code) return;
+      const p = byCode.get(code);
+      if (!p) return toast(`No hay un producto activo con el código "${code}".`, 'error');
+      const next = (draft.counts[p.id] || 0) + 1;
+      $(`[data-count="${p.id}"]`, box).value = next;
+      set(p.id, next);
+      const tr = rowOf(p.id);
+      tr.classList.remove('flash');
+      void tr.offsetWidth;
+      tr.classList.add('flash');
+      tr.scrollIntoView({ block: 'nearest' });
+    };
+    const applyFilter = () => {
+      const q = $('#ct-filter', tb).value.trim().toLowerCase();
+      const pending = $('#ct-pending', tb).checked;
+      for (const p of products) {
+        const text = [p.name, p.brand, p.model, p.color, p.size, p.sku, p.barcode].filter(Boolean).join(' ').toLowerCase();
+        rowOf(p.id).classList.toggle('hidden', (q && !text.includes(q)) || (pending && draft.counts[p.id] !== undefined));
+      }
+    };
+    $('#ct-filter', tb).oninput = debounce(applyFilter, 150);
+    $('#ct-pending', tb).onchange = applyFilter;
+    $('#ct-clear', tb).onclick = async () => {
+      if (!(await confirmDialog('Se borra lo contado en esta pantalla y se empieza un conteo nuevo con la existencia actual. ¿Empezar de nuevo?', { danger: true, okLabel: 'Empezar de nuevo' }))) return;
+      countDraft.clear();
+      App.reload();
+    };
+    $('#ct-sheet', tb).onclick = () => modal({
+      title: 'Hoja de conteo',
+      width: 460,
+      body: html`<p class="muted">Una hoja para contar a mano, con los productos de la lista (respeta el filtro).</p>
+        <label class="check"><input type="checkbox" name="stock"> Mostrar la existencia del sistema (si no, el conteo es "a ciegas", más confiable)</label>`,
+      actions: [
+        { label: 'Cancelar' },
+        {
+          label: 'Imprimir', primary: true,
+          onClick: async ({ body }) => {
+            const visible = products.filter((p) => !rowOf(p.id).classList.contains('hidden')).map((p) => ({ ...p, stock: draft.expected[p.id] }));
+            await window.capsApi.printHtml(countSheetHtml(visible, { showStock: formData(body).stock }));
+          },
+        },
+      ],
+    });
+    $('#ct-review', tb).onclick = async () => {
+      const counts = Object.entries(draft.counts).map(([id, counted]) => ({ product_id: Number(id), counted, expected: draft.expected[id] }));
+      if (!counts.length) return toast('Todavía no hay productos contados.', 'error');
+      const r = await api('products.count', { counts, dryRun: true });
+      const rows = r.results.filter((x) => x.action !== 'igual');
+      const m = modal({
+        title: 'Revisar el conteo',
+        width: 760,
+        body: html`
+          <div class="kv cols-4">
+            <div><span>Contados</span><b>${r.counted}</b></div>
+            <div><span>Sin diferencia</span><b class="text-ok">${r.same}</b></div>
+            <div><span>Faltan</span><b class="${r.missing_units ? 'text-danger' : ''}">${r.missing_units} unid.</b></div>
+            <div><span>Sobran</span><b class="${r.extra_units ? 'text-warn' : ''}">${r.extra_units} unid.</b></div>
+            <div><span>Diferencia al costo</span><b class="${r.value < 0 ? 'text-danger' : ''}">${Fmt.money(r.value)}</b></div>
+            ${r.errors ? html`<div><span>Con error (no se aplican)</span><b class="text-danger">${r.errors}</b></div>` : ''}
+          </div>
+          ${rows.length ? html`<div class="imp-list"><table class="table"><thead><tr><th>Producto</th><th class="r">Sistema</th><th class="r">Contado</th><th class="r">Diferencia</th></tr></thead><tbody>
+            ${rows.map((x) => html`<tr class="${x.action === 'error' ? 'err' : ''}"><td>${x.name} <code>${x.sku}</code>${x.message ? html`<div class="text-danger small">${x.message}</div>` : ''}</td>
+              <td class="r">${x.stock ?? ''}</td><td class="r">${x.counted ?? ''}</td><td class="r">${x.diff === undefined ? '' : html`<b class="${x.diff < 0 ? 'text-danger' : 'text-warn'}">${x.diff > 0 ? '+' : ''}${x.diff}</b>`}</td></tr>`)}
+          </tbody></table></div>` : html`<p class="text-ok">Todo lo contado coincide con el sistema.</p>`}
+          <label class="field"><span>Motivo *</span><input name="note" placeholder="Ej. Conteo semanal del piloto"></label>`,
+        actions: [
+          { label: 'Seguir contando' },
+          {
+            label: r.adjusted ? `Aplicar ${r.adjusted} ${r.adjusted === 1 ? 'ajuste' : 'ajustes'}` : 'Terminar conteo', primary: true,
+            onClick: async ({ body }) => {
+              const done = await api('products.count', { counts, note: formData(body).note });
+              countDraft.clear();
+              toast(`${done.adjusted ? `Conteo aplicado: ${done.adjusted} ${done.adjusted === 1 ? 'producto ajustado' : 'productos ajustados'}.` : 'Conteo terminado: todo coincide.'}${done.errors ? ` ${done.errors} sin aplicar: vuelva a contarlos en un conteo nuevo.` : ''}`, done.errors ? 'error' : 'ok');
+              App.go('products');
+            },
+          },
+        ],
+      });
+      return m;
+    };
+    scan.focus();
+  },
+});
