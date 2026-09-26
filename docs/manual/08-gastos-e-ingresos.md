@@ -15,7 +15,7 @@ Menú **Finanzas** → **Gastos**.
 1. Pulse **Registrar gasto**.
 2. Complete los campos:
    - **Categoría:** Alquiler, Transporte, Publicidad, Nómina, Servicios, Internet, Delivery u Otros. Se pueden cambiar en [Configuración](11-configuracion-y-respaldos.md).
-   - **Fecha:** puede ser anterior a hoy.
+   - **Fecha:** puede ser anterior a hoy, pero no futura.
    - **Descripción:** por ejemplo "Luz de agosto".
    - **Monto.**
    - **Método de pago.**
@@ -60,3 +60,6 @@ Si en una versión anterior registró aportes como **Otros ingresos → Aporte d
 | **Categoría es obligatorio.** | Elija una categoría |
 | **La caja está cerrada…** | Gasto en efectivo sin caja abierta: abra la caja o use otro método |
 | **El gasto ya está anulado.** | No se puede anular dos veces |
+| **La categoría "…" no está en la lista.** | Solo se usan las categorías de Configuración → **Categorías**: agréguela ahí |
+| **Fecha no puede ser posterior a hoy.** | Un gasto, un ingreso o un aporte se registra cuando ya ocurrió |
+| **Fecha: la fecha … no existe.** | Revise el día y el mes (por ejemplo, no hay 31 de junio) |

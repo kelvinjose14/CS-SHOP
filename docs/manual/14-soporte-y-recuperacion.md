@@ -25,7 +25,7 @@ Necesita la memoria USB o la carpeta de OneDrive o Google Drive con la carpeta *
 1. En la computadora nueva, instale CAPS Shop, la **misma versión** o una más nueva ([Releases](https://github.com/kelvinjose14/CS-SHOP/releases)).
 2. En **Configurar esta computadora**, elija **Esta es la PC principal** y póngale un nombre.
 3. Entre con `admin` / `admin123` y cambie la contraseña cuando lo pida. Es una base vacía; se reemplaza en el paso siguiente.
-4. **Configuración** → **Restaurar desde copia…** → abra la carpeta **CAPS Shop respaldos** y elija el archivo `capsshop-AAAA-MM-DD.db` más reciente.
+4. **Configuración** → **Restaurar desde copia…** → abra la carpeta **CAPS Shop respaldos** y elija el archivo más reciente: `capsshop-AAAA-MM-DD.db`, o `capsshop-AAAA-MM-DD.cifrado` si la copia tiene contraseña (se la pedirá).
 5. Confirme. El programa recupera los datos **y también las fotos**, desde la carpeta `fotos` que está al lado del archivo.
 6. Entre con los usuarios y contraseñas **de la copia**.
 7. **Configuración → Red:**

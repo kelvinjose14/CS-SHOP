@@ -1,15 +1,30 @@
 # Modelo de datos
 
 - **Motor:** SQLite a través de `node:sqlite`, en modo WAL (`src/core/db.js`). Es el mismo formato de archivo que escribía la versión 1.0.0 con sql.js, así que la base se abre tal cual.
-- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **4**.
+- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **5**.
   - **1:** esquema inicial (versión 1.0.0).
   - **2:** computadoras en red. Tabla `terminals`, y columna `terminal_id` en `cash_sessions` y `audit_log`. Las cajas existentes pasan a la PC principal (id 1).
   - **3:** índices de las tablas de detalle (`sale_items`, `sale_payments`, `purchase_items`, `purchase_payments`, `returns`, `return_items`), más `purchases(supplier_id)` y `audit_log(action)`. Con 3 años de datos, la lista de ventas bajó de 16 s a 34 ms ([Rendimiento](rendimiento.md)).
   - **4:** columna `opening` en `sales` y `purchases` (saldos iniciales, RF-NUE-01) y tabla `capital` (aportes del dueño, DT-21).
+  - **5:** controles de la [auditoría](auditoria.md) (versión 1.3.0):
+    - `customers.credit_limit` (DT-31);
+    - `cash_sessions.opening_difference` y `opening_reason` (DT-29);
+    - tabla `deposit_checks` (DT-30);
+    - índices `money_movements(ref_type, ref_id)` y `(category, method)`;
+    - **reglas de la base** (ver abajo).
 - **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten, dentro de una transacción: si una falla, no queda nada a medias. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
 - **Base más nueva que el programa:** no se abre. Sale **"Esta base de datos es de una versión más nueva de CAPS Shop…"**, para que una versión vieja no la dañe.
 - **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.
 - **Montos:** números reales redondeados a 2 decimales. El costo de producto usa 4 decimales.
+- **Reglas de la base** (migración 5, auditoría 2.11): disparadores `chk_<tabla>_ins` y `chk_<tabla>_upd` rechazan la operación completa, con **"La base de datos rechazó el cambio: …"**, si:
+  - un monto de dinero (`money_movements`, `sale_payments`, `purchase_payments`, `expenses`, `incomes`, `capital`) no es mayor que cero;
+  - los importes de una venta, compra o devolución no cuadran (negativos, descuento mayor que el subtotal, devuelto mayor que el total);
+  - una línea tiene cantidad 0 o importes negativos, o se devolvió más de lo vendido;
+  - un producto tiene costo, precios o mínimo negativos;
+  - un movimiento de inventario no cumple `stock_after = stock_before + qty`, o su cantidad es 0;
+  - el efectivo de una caja es negativo.
+
+  Son una segunda defensa: el núcleo valida todo antes. Si una salta, es un error del programa y queda en el registro. La existencia negativa no se restringe, porque la puede permitir la configuración.
 
 ## Relaciones
 
@@ -43,7 +58,7 @@ erDiagram
 | `products` | Productos | `sku` (único), `barcode` (único si existe), `photo` (archivo), `cost`, `price_retail`, `price_wholesale`, `stock`, `min_stock`, `active` |
 | `inventory_movements` | Cada cambio de existencia | `type`, `qty` (con signo), `stock_before`, `stock_after`, `unit_cost`, `ref_type`/`ref_id`, `note`, `user_id` |
 | `suppliers` | Proveedores | `name`, contacto, `active` |
-| `customers` | Clientes | `name`, contacto, `document`, `active` |
+| `customers` | Clientes | `name`, contacto, `document`, `active`, `credit_limit` (0 = sin límite) |
 | `purchases` | Compras | `supplier_id`, `date`, `due_date`, `invoice_ref`, `payment_type` (`contado` \| `credito`), `total`, `paid`, `balance`, `status`, anulación (`voided_at`, `voided_by`, `void_reason`), `opening` (1 = saldo inicial con el proveedor, sin artículos) |
 | `purchase_items` | Líneas de compra | `product_id`, `qty`, `unit_cost`, `subtotal` |
 | `purchase_payments` | Pagos a proveedores | `purchase_id`, `amount`, `method`, `date`, `voided` |
@@ -54,8 +69,9 @@ erDiagram
 | `expenses` / `incomes` | Gastos y otros ingresos | `category`, `description`, `date`, `amount`, `method`, `voided` |
 | `capital` | Aportes del dueño: entran al flujo, no son ganancia (DT-21) | `date`, `amount`, `method`, `description`, `voided`, `void_reason` |
 | `terminals` | Computadoras de la tienda. La 1 es la PC principal | `name` (único, sin distinguir mayúsculas), `active`, `last_seen_at` |
-| `cash_sessions` | Aperturas y cierres de caja, una por PC | `terminal_id`, `opened_at`, `opened_by`, `opening_amount`, `closed_at`, `closed_by`, `expected_amount`, `counted_amount`, `difference`, `status` (`abierta` \| `cerrada`) |
+| `cash_sessions` | Aperturas y cierres de caja, una por PC | `terminal_id`, `opened_at`, `opened_by`, `opening_amount`, `closed_at`, `closed_by`, `expected_amount`, `counted_amount`, `difference`, `status` (`abierta` \| `cerrada`), `opening_difference` y `opening_reason` (efectivo inicial distinto de lo contado en el último cierre) |
 | `money_movements` | **Libro de dinero**: toda entrada y salida | `date`, `direction` (`in` \| `out`), `amount`, `method`, `category`, `ref_type`/`ref_id`, `session_id` (solo efectivo con caja abierta), `user_id` |
+| `deposit_checks` | Revisión de cada depósito al banco contra el estado de cuenta (DT-30) | `movement_id` (el depósito en efectivo), `status` (`verificado` \| `no_recibido`), `note`, `user_id`, `created_at` |
 | `audit_log` | Historial | `created_at`, `user_id`, `terminal_id` (PC desde la que se hizo), `action`, `entity`, `entity_id`, `details` (JSON) |
 
 ## Estados
@@ -75,13 +91,13 @@ erDiagram
 
 | Entran (`in`) | Salen (`out`) |
 |---|---|
-| `venta`, `abono_cliente`, `otro_ingreso`, `aporte_capital`, `deposito_caja`, `anulacion_compra`, `anulacion_gasto`, `anulacion_pago_proveedor`, `anulacion_retiro` | `compra`, `pago_proveedor`, `gasto`, `devolucion`, `retiro_caja`, `anulacion_venta`, `anulacion_ingreso`, `anulacion_aporte`, `anulacion_abono`, `anulacion_entrada` |
+| `venta`, `abono_cliente`, `otro_ingreso`, `aporte_capital`, `deposito_caja`, `anulacion_compra`, `anulacion_gasto`, `anulacion_pago_proveedor`, `anulacion_retiro` | `compra`, `pago_proveedor`, `gasto`, `devolucion`, `retiro_caja`, `anulacion_venta`, `anulacion_ingreso`, `anulacion_aporte`, `anulacion_abono`, `anulacion_entrada`, `deposito_no_recibido` (por transferencia: el depósito que no llegó al banco, DT-30) |
 
 La anulación de una entrada, un depósito o un retiro de caja es otro movimiento con `ref_type = 'anulacion'` y `ref_id` = el movimiento original (así se sabe que el original está anulado). La de un depósito (`anulacion_deposito`) son dos, como el depósito.
 
 `deposito_banco` son **dos** movimientos: sale en efectivo de la caja y entra por transferencia. El flujo de dinero no los cuenta como entrada ni salida (`TRANSFERS` en `finance.js`).
 
-**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`, `deposito_banco`, `conectar_pc`, `editar_pc`, `aporte_capital`, `anular_aporte`, `saldo_inicial_cliente`, `saldo_inicial_proveedor`, `importar_productos`, `conteo_inventario`, `anular_abono`, `anular_pago_proveedor`, `anular_movimiento_caja`, `crear_codigo_recuperacion`, `recuperar_contrasena`. El detalle es JSON con claves en español; un cambio se guarda como `{ "antes": …, "despues": … }`.
+**Historial** (`audit_log.action`): `inicio_sesion`, `cambio_contrasena`, `crear_usuario`, `editar_usuario`, `editar_configuracion`, `crear_producto`, `editar_producto`, `cambio_precio`, `ajuste_inventario`, `crear_proveedor`, `editar_proveedor`, `registrar_compra`, `pago_proveedor`, `anular_compra`, `crear_cliente`, `editar_cliente`, `registrar_venta`, `abono_cliente`, `devolucion`, `anular_venta`, `registrar_gasto`, `anular_gasto`, `registrar_ingreso`, `anular_ingreso`, `apertura_caja`, `cierre_caja`, `retiro_caja`, `entrada_caja`, `deposito_banco`, `conectar_pc`, `editar_pc`, `aporte_capital`, `anular_aporte`, `saldo_inicial_cliente`, `saldo_inicial_proveedor`, `importar_productos`, `conteo_inventario`, `anular_abono`, `anular_pago_proveedor`, `anular_movimiento_caja`, `crear_codigo_recuperacion`, `recuperar_contrasena`, `verificar_deposito`, `deposito_no_recibido`, `desmarcar_deposito`. El detalle es JSON con claves en español; un cambio se guarda como `{ "antes": …, "despues": … }`.
 
 ## Datos derivados (no se guardan)
 

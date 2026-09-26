@@ -40,11 +40,12 @@ Unas 2 horas. Manual de referencia: capítulos [1](../manual/01-primeros-pasos.m
 | 14 | **Cerrar la caja** contando RD$ 650 | Diferencia **−RD$ 50** (faltante). Escriba el motivo | [7.3](../manual/07-caja.md#73-cerrar-la-caja) |
 | 15 | **Inicio** y **Contabilidad** del día | Ventas netas de hoy RD$ 2,650 (2,000 + 1,650 − 1,000 devuelto). Encuentre también la ganancia y lo que se debe | [9](../manual/09-contabilidad-y-reportes.md) |
 | 16 | **Conteo de inventario**: cuente A (9) y B, y escriba 1 menos de B (1) → **Revisar y aplicar** | Falta 1 unidad de B. Queda en el historial | [4.9](../manual/04-inventario.md#49-conteo-de-inventario-administrador) |
-| 17 | **Etiquetas** de A (2 unidades) | Salen con el código y el precio. Escanee una en **Nueva venta**: encuentra la gorra | [4.8](../manual/04-inventario.md#48-etiquetas-de-código-de-barras) |
-| 18 | **Historial de movimientos** | Está todo lo que se hizo, con usuario y hora | [9](../manual/09-contabilidad-y-reportes.md) |
-| 19 | **Soporte:** Guardar diagnóstico | Se guarda un archivo `capsshop-diagnostico-….txt` | [14.5](../manual/14-soporte-y-recuperacion.md#145-pedir-ayuda-al-soporte) |
-| 20 | **Copias:** Crear copia de seguridad y ver la carpeta de respaldos automáticos | Hay un archivo `.db` | [11.3](../manual/11-configuracion-y-respaldos.md#113-copias-de-seguridad) |
-| 21 | **Recuperar la contraseña:** genere un código de práctica, salga y use **¿Olvidó la contraseña del administrador?** | Entra con la contraseña nueva | [10.4](../manual/10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña) |
+| 17 | **Depósitos por verificar** (Caja): marque el depósito del ejercicio 10 **En el banco** | El aviso del Inicio desaparece | [7.4](../manual/07-caja.md#74-depósitos-por-verificar-administrador) |
+| 18 | **Etiquetas** de A (2 unidades) | Salen con el código y el precio. Escanee una en **Nueva venta**: encuentra la gorra | [4.8](../manual/04-inventario.md#48-etiquetas-de-código-de-barras) |
+| 19 | **Historial de movimientos** | Está todo lo que se hizo, con usuario y hora | [9](../manual/09-contabilidad-y-reportes.md) |
+| 20 | **Soporte:** Guardar diagnóstico | Se guarda un archivo `capsshop-diagnostico-….txt` | [14.5](../manual/14-soporte-y-recuperacion.md#145-pedir-ayuda-al-soporte) |
+| 21 | **Copias:** Crear copia de seguridad y ver la carpeta de respaldos automáticos | Hay un archivo `.db` | [11.3](../manual/11-configuracion-y-respaldos.md#113-copias-de-seguridad) |
+| 22 | **Recuperar la contraseña:** genere un código de práctica, salga y use **¿Olvidó la contraseña del administrador?** | Entra con la contraseña nueva | [10.4](../manual/10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña) |
 
 Los números de esta tabla los comprueba la prueba automática `test/o6.test.js`.
 
@@ -62,7 +63,7 @@ Unos 45 minutos, con los mismos datos de práctica, después de la sesión del d
 | # | Ejercicio | Qué comprobar | Manual |
 |---|---|---|---|
 | 1 | Entrar y cambiar la contraseña | Llega a **Nueva venta** | [1.3](../manual/01-primeros-pasos.md#13-entrar-por-primera-vez) |
-| 2 | Abrir la caja con RD$ 500 | Caja abierta | [7.1](../manual/07-caja.md#71-abrir-la-caja) |
+| 2 | Abrir la caja con RD$ 500 | Pide el **motivo**, porque al cerrar se contaron RD$ 650. Escriba "El dueño se llevó RD$ 150" | [7.1](../manual/07-caja.md#71-abrir-la-caja) |
 | 3 | Venta con el **lector**, pago en efectivo con billete grande | El cambio está bien | [3.1](../manual/03-ventas.md#31-hacer-una-venta) |
 | 4 | Venta con **dos métodos** (parte efectivo, parte tarjeta) | Solo el efectivo entra en la caja | [3.1](../manual/03-ventas.md#31-hacer-una-venta) |
 | 5 | Venta con **descuento** dentro del máximo, y otra por encima | La segunda la rechaza | [3.1](../manual/03-ventas.md#31-hacer-una-venta) |

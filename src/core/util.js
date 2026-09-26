@@ -45,18 +45,29 @@ function int(value, field = 'Cantidad', { min = 0 } = {}) {
   return n;
 }
 
+// Un texto más largo que el máximo se rechaza con un mensaje: cortarlo en silencio perdía datos (auditoría 2.6).
 function text(value, field, { required = false, max = 500 } = {}) {
   const s = value === undefined || value === null ? '' : String(value).trim();
   if (required && !s) throw new AppError(`${field} es obligatorio.`);
-  return s.slice(0, max) || null;
+  if (s.length > max) throw new AppError(`${field} es demasiado largo: tiene ${s.length} caracteres y el máximo es ${max}.`);
+  return s || null;
 }
 
-function date(value, field = 'Fecha', { required = true } = {}) {
+// Fecha 'YYYY-MM-DD' que exista en el calendario (auditoría 2.5: se aceptaba 2026-02-31).
+// notFuture: no puede ser posterior a hoy (gastos, compras, pagos). min: no puede ser anterior a esa fecha.
+function date(value, field = 'Fecha', { required = true, notFuture = false, min } = {}) {
   if (!value) {
     if (required) throw new AppError(`${field} es obligatoria.`);
     return null;
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new AppError(`${field}: formato inválido.`);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const d = m && new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (!m || d.getFullYear() !== Number(m[1]) || d.getMonth() !== Number(m[2]) - 1 || d.getDate() !== Number(m[3])) {
+    throw new AppError(`${field}: la fecha ${value} no existe.`);
+  }
+  if (m[1] < '2000') throw new AppError(`${field}: el año ${m[1]} no es válido.`);
+  if (notFuture && value > today()) throw new AppError(`${field} no puede ser posterior a hoy.`);
+  if (min && value < min) throw new AppError(`${field} no puede ser anterior al ${min.split('-').reverse().join('/')}.`);
   return value;
 }
 

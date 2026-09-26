@@ -72,6 +72,7 @@ async function generate(file = DEFAULT_FILE, { log = console.log } = {}) {
       call('purchases.create', {
         supplier_id: supplier, payment_type: rand() < 0.3 ? 'credito' : 'contado', payment_method: 'transferencia',
         items: ids.map((id) => ({ product_id: id, qty: 60, unit_cost: between(250, 900) })),
+        confirm_costs: true, // costos al azar: a veces más del doble o menos de la mitad del promedio
       });
       for (const id of ids) stock.set(id, (stock.get(id) || 0) + 60);
     };
@@ -85,7 +86,7 @@ async function generate(file = DEFAULT_FILE, { log = console.log } = {}) {
       const at = (h, m) => { d.setHours(h, m, 0, 0); simulated = d.getTime(); };
       at(9, 0);
       login(); // cada día se entra de nuevo (la sesión vence a las 12 horas)
-      call('cash.open', { amount: 3000 });
+      call('cash.open', { amount: 3000, reason: 'Se completa el fondo de caja' }); // el motivo solo cuenta si hay diferencia
       for (let n = 0; n < SALES_PER_DAY; n++) {
         at(9 + Math.floor((n * 10) / SALES_PER_DAY), between(0, 59));
         const lines = [];
@@ -124,6 +125,10 @@ async function generate(file = DEFAULT_FILE, { log = console.log } = {}) {
       const low = products.filter((id) => (stock.get(id) || 0) < 15);
       if (low.length) restock(low.slice(0, 25));
       at(19, 0);
+      // Al cerrar se lleva al banco lo que pasa del fondo de caja: la caja siguiente abre con 3000,
+      // lo mismo que se contó (auditoría 2.1), y hay depósitos para revisar (auditoría 4.2).
+      const extra = Math.round((call('cash.status').open.expected - 3000) * 100) / 100;
+      if (extra > 0) call('cash.movement', { type: 'deposito_banco', amount: extra, description: 'Depósito del día' });
       call('cash.close', { counted: call('cash.status').open.expected });
       if (day % 180 === 0) log(`  día ${day} de ${DAYS} · ${sales} ventas`);
     }

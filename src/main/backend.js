@@ -13,12 +13,13 @@ const { getSetting } = require('../core/services/common');
 const net = require('../net/server');
 const { createClient } = require('../net/client');
 const log = require('./log');
+const encrypted = require('./encrypted');
 
 const PRINCIPAL = 1;
 const EXTERNAL_FOLDER = 'CAPS Shop respaldos';
 const EXTERNAL_KEEP = 30;
 const EXTERNAL_WARN_DAYS = 7;
-const DAILY_DB = /^capsshop-\d{4}-\d{2}-\d{2}\.db$/;
+const DAILY_DB = /^capsshop-\d{4}-\d{2}-\d{2}\.(db|cifrado)$/;
 
 // Copia a "to" los archivos de "from" que falten o hayan cambiado de tamaño. Devuelve cuántos copió.
 function syncFolder(from, to) {
@@ -202,6 +203,7 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
         days_since: days,
         // Aviso: nunca configurada, nunca copiada, o más de 7 días sin copia.
         overdue: !ext.dir || days === null || days >= EXTERNAL_WARN_DAYS,
+        encrypted: !!ext.encrypt,
       };
     },
     externalBackup({ force = false } = {}) {
@@ -221,7 +223,20 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       }
       try {
         fs.mkdirSync(target, { recursive: true });
-        db.backupTo(path.join(target, `capsshop-${today()}.db`));
+        if (ext.encrypt) {
+          // La copia sin cifrar se hace en esta PC y nunca toca la memoria.
+          const plain = path.join(dataDir, 'copia-externa.tmp');
+          try {
+            db.backupTo(plain);
+            encrypted.encryptFile(plain, path.join(target, `capsshop-${today()}${encrypted.EXT}`), ext.encrypt);
+          } finally {
+            fs.rmSync(plain, { force: true });
+          }
+          // Las copias sin contraseña que quedaban en la memoria exponen los datos: ya hay una cifrada.
+          for (const f of fs.readdirSync(target)) if (/^capsshop-\d{4}-\d{2}-\d{2}\.db$/.test(f)) fs.rmSync(path.join(target, f), { force: true });
+        } else {
+          db.backupTo(path.join(target, `capsshop-${today()}.db`));
+        }
         const photos = syncFolder(photosDir, path.join(target, 'fotos'));
         const files = fs.readdirSync(target).filter((f) => DAILY_DB.test(f)).sort();
         while (files.length > EXTERNAL_KEEP) fs.unlinkSync(path.join(target, files.shift()));
@@ -247,11 +262,26 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
           throw new AppError('No se puede escribir en esa carpeta. Elija otra (por ejemplo, la memoria USB o la carpeta de OneDrive).');
         }
       }
-      config.external_backup = dir ? { dir, last_at: null, last_error: null } : null;
+      config.external_backup = dir ? { dir, last_at: null, last_error: null, encrypt: (config.external_backup || {}).encrypt } : null;
       saveConfig(config);
       log.info('respaldo', dir ? `Copia externa configurada en ${dir}` : 'Copia externa desactivada');
       if (dir) self.externalBackup({ force: true });
       return self.externalStatus();
+    },
+    // Contraseña de la copia externa (auditoría 4.3). null la quita: las copias siguientes van sin cifrar.
+    setExternalPassword(password) {
+      requireAdmin();
+      const ext = config.external_backup || {};
+      if (!ext.dir) throw new AppError('Elija primero la carpeta de la copia externa.');
+      config.external_backup = { ...ext, encrypt: password === null ? undefined : encrypted.newSecret(password) };
+      saveConfig(config);
+      log.info('respaldo', password === null ? 'Copia externa sin contraseña' : 'Copia externa protegida con contraseña');
+      self.externalBackup({ force: true });
+      return self.externalStatus();
+    },
+    isEncrypted(file) {
+      requireAdmin();
+      return encrypted.isEncrypted(file);
     },
     backupNow() {
       requireAdmin();
@@ -277,13 +307,32 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       requireAdmin();
       db.backupTo(file);
     },
-    async validate(file) {
+    async validate(file, { password } = {}) {
       requireAdmin();
-      return validateDatabaseFile(file);
+      if (!encrypted.isEncrypted(file)) return validateDatabaseFile(file);
+      const plain = path.join(dataDir, 'validar.tmp');
+      try {
+        encrypted.decryptFile(file, plain, password);
+        return await validateDatabaseFile(plain);
+      } finally {
+        fs.rmSync(plain, { force: true });
+      }
     },
-    // Reemplaza la base por un respaldo. Todas las sesiones (de todas las PCs) se cierran.
-    async restore(file) {
+    // Reemplaza la base por un respaldo (cifrado o no). Todas las sesiones (de todas las PCs) se cierran.
+    async restore(file, { password } = {}) {
       requireAdmin();
+      if (encrypted.isEncrypted(file)) {
+        const plain = path.join(dataDir, 'restaurar.tmp');
+        try {
+          encrypted.decryptFile(file, plain, password);
+          await self.restore(plain);
+        } finally {
+          fs.rmSync(plain, { force: true });
+        }
+        const photos = path.join(path.dirname(file), 'fotos');
+        if (fs.existsSync(photos)) syncFolder(photos, photosDir);
+        return;
+      }
       fs.mkdirSync(backupsDir, { recursive: true });
       db.backupTo(path.join(backupsDir, `antes-de-restaurar-${Date.now()}.db`));
       log.info('respaldo', `Restaurando la base desde ${file}`);
@@ -395,7 +444,7 @@ function createRemote({ version, config, saveConfig }) {
       if (name === 'auth.changePassword') user = r;
       return r;
     },
-    photo: (name) => client.photo(name).catch(() => null),
+    photo: (name) => (token ? client.photo(name, token).catch(() => null) : null),
     diagnostics() {
       return [
         `Conectada a: ${config.server.name || ''} ${client.host}:${client.port} (server_id ${config.server.server_id})`,

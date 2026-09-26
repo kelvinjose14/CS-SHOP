@@ -28,7 +28,7 @@ App.register({
             <div class="inline"><select id="pos-customer"></select><button class="btn" id="pos-new-customer" title="Nuevo cliente">${icon('plus')}</button></div>
           </label>
           <div class="seg full" id="pos-pay-type"><button data-v="contado" class="active">Contado</button><button data-v="credito">Crédito</button></div>
-          <label class="field credit-only hidden"><span>Fecha de vencimiento</span><input type="date" id="pos-due"></label>
+          <label class="field credit-only hidden"><span>Fecha de vencimiento</span><input type="date" id="pos-due" min="${todayStr()}"></label>
           <div class="pos-totals">
             <div><span>Subtotal</span><b id="t-sub"></b></div>
             ${canDiscount ? html`<div class="disc"><span>Descuento</span>
@@ -47,7 +47,8 @@ App.register({
       </div>`);
     page.appendChild(root);
 
-    const drawCustomers = () => setHTML($('#pos-customer', root), options(customers.map((c) => [c.id, `${c.name}${c.balance > 0 ? ` (debe ${Fmt.money(c.balance)})` : ''}`]), sale.customer_id, { empty: 'Cliente general (contado)' }));
+    const debt = (c) => [c.balance > 0 ? `debe ${Fmt.money(c.balance)}` : '', c.overdue_balance > 0 ? `vencido ${Fmt.money(c.overdue_balance)}` : '', c.credit_limit > 0 ? `límite ${Fmt.money(c.credit_limit)}` : ''].filter(Boolean).join(' · ');
+    const drawCustomers = () => setHTML($('#pos-customer', root), options(customers.map((c) => [c.id, `${c.name}${debt(c) ? ` (${debt(c)})` : ''}`]), sale.customer_id, { empty: 'Cliente general (contado)' }));
     drawCustomers();
     const due = new Date();
     due.setDate(due.getDate() + (Number(settings.credit_days) || 30));
@@ -184,7 +185,8 @@ App.register({
       const btn = $('#pos-charge', root);
       btn.disabled = true;
       try {
-        const id = await api('sales.create', data);
+        // Crédito a quien tiene deuda vencida o pasa su límite: el administrador confirma (auditoría 2.4).
+        const id = await apiConfirm('sales.create', data, { code: 'CREDIT_CONFIRM', extra: { authorize_credit: true }, title: 'Autorizar crédito', okLabel: 'Autorizar venta' });
         const s = await api('sales.get', { id });
         App.refreshCashBadge();
         modal({
@@ -495,7 +497,8 @@ function customerForm(c, onSaved) {
         <label class="field"><span>Correo</span><input name="email" type="email" value="${c.email || ''}"></label>
         <label class="field"><span>Dirección</span><input name="address" value="${c.address || ''}"></label>
         <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${c.notes || ''}</textarea></label>
-        ${c.id ? html`<label class="check"><input type="checkbox" name="active" ${c.active ? 'checked' : ''}> Activo</label>` : ''}
+        ${App.isAdmin() ? html`<label class="field"><span>Límite de crédito (0 = sin límite)</span><input name="credit_limit" type="number" min="0" step="0.01" value="${c.credit_limit || 0}"></label>` : ''}
+        ${c.id && App.isAdmin() ? html`<label class="check"><input type="checkbox" name="active" ${c.active ? 'checked' : ''}> Activo</label>` : ''}
       </div>`,
     actions: [
       { label: 'Cancelar' },
@@ -516,12 +519,14 @@ App.register({
   async render(page) {
     let search = '';
     const tb = toolbar(page, {
-      left: html`<div class="search">${icon('search')}<input id="c-search" placeholder="Buscar cliente por nombre, teléfono o cédula…"></div>`,
+      left: html`<div class="search">${icon('search')}<input id="c-search" placeholder="Buscar cliente por nombre, teléfono o cédula…"></div>
+        ${App.isAdmin() ? html`<label class="check"><input type="checkbox" id="c-inactive"> Ver desactivados</label>` : ''}`,
       right: html`<button class="btn" id="c-export">${icon('download')} Exportar</button><button class="btn primary" id="c-new">${icon('plus')} Nuevo cliente</button>`,
     });
     const box = el(html`<div class="card"></div>`);
     page.appendChild(box);
     let rows = [];
+    let includeInactive = false;
     const cols = [
       { key: 'name', label: 'Cliente', render: (r) => html`<b>${r.name}</b>`, csv: (r) => r.name },
       { key: 'phone', label: 'Teléfono' },
@@ -530,13 +535,15 @@ App.register({
       { key: 'total_bought', label: 'Total comprado', money: true, total: true },
       { key: 'balance', label: 'Balance pendiente', money: true, total: true, render: (r) => html`<b class="${r.balance > 0 ? 'text-danger' : ''}">${Fmt.money(r.balance)}</b>` },
       { key: 'next_due', label: 'Próx. vencimiento', date: true },
+      { key: 'credit_limit', label: 'Límite de crédito', money: true, render: (r) => (r.credit_limit > 0 ? Fmt.money(r.credit_limit) : html`<span class="muted">Sin límite</span>`) },
     ];
     const load = async () => {
-      rows = await api('customers.list', { search });
-      setHTML(box, table({ columns: cols, rows, clickable: true, empty: 'No hay clientes registrados.' }));
+      rows = await api('customers.list', { search, includeInactive });
+      setHTML(box, table({ columns: cols, rows, clickable: true, empty: 'No hay clientes registrados.', rowClass: (r) => (r.active ? '' : 'inactive') }));
       onRowClick(box, rows, (r) => customerDetail(r.id, load));
     };
     $('#c-search', tb).oninput = debounce((e) => { search = e.target.value; load(); });
+    if ($('#c-inactive', tb)) $('#c-inactive', tb).onchange = (e) => { includeInactive = e.target.checked; load(); };
     $('#c-new', tb).onclick = () => customerForm(null, load);
     $('#c-export', tb).onclick = () => exportCsv('clientes', cols, rows);
     await load();
@@ -578,6 +585,9 @@ async function customerDetail(id, onChange) {
         <div><span>Vendido a crédito</span><b>${Fmt.money(c.credit_sold)}</b></div>
         <div><span>Pagado (crédito)</span><b>${Fmt.money(c.credit_paid)}</b></div>
         <div><span>Balance pendiente</span><b class="${c.balance > 0 ? 'text-danger' : ''}">${Fmt.money(c.balance)}</b></div>
+        <div><span>Vencido</span><b class="${c.overdue_balance > 0 ? 'text-danger' : ''}">${Fmt.money(c.overdue_balance)}</b></div>
+        <div><span>Límite de crédito</span><b>${c.credit_limit > 0 ? Fmt.money(c.credit_limit) : 'Sin límite'}</b></div>
+        <div><span>Estado</span><b>${c.active ? 'Activo' : badge('anulada', 'Desactivado')}</b></div>
       </div>
       <h4 class="section-title">Compras del cliente</h4>
       ${table({

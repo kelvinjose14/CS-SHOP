@@ -8,10 +8,10 @@ Revisión del objetivo O3 (25/09/2026). Cada punto indica cómo está protegido,
 |---|---|---|
 | Permisos por perfil | En el núcleo, para **todas** las operaciones | `test/permissions.test.js` |
 | Costos ocultos al vendedor | Ninguna respuesta al vendedor trae costos, ganancias ni márgenes (se revisan todas) | `test/auditoria.test.js` |
-| Contraseñas | scrypt con sal; cambio obligatorio de la inicial, exigido también por la red; límite de intentos | `test/core.test.js`, `permissions`, `backup`, `network` |
+| Contraseñas | scrypt con sal; mínimo 8 caracteres; cambio obligatorio de la inicial, exigido también por la red; límite de intentos | `test/core.test.js`, `permissions`, `backup`, `network` |
 | Red entre computadoras | **Cifrada y autenticada** con la clave de conexión; la clave no viaja | `test/network.test.js` |
-| Interfaz | Aislada de Node; HTML escapado; CSP | Revisión de código |
-| Archivos | Nombres de fotos validados; respaldos validados antes de restaurar | `network`, `migration`, `backup` |
+| Interfaz | Aislada de Node; HTML escapado; CSP; sin navegación fuera de la app | `test/ui/controles.test.js` |
+| Archivos | Nombres de fotos validados y fotos solo con sesión; respaldos validados antes de restaurar; copia externa con contraseña opcional | `network`, `migration`, `backup` |
 | Registro de errores | Sin contraseñas, tokens ni clave | `test/ui/setup.test.js` |
 
 ## Hallazgos corregidos en esta revisión
@@ -50,7 +50,7 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 
 ## Contraseñas y sesiones
 
-- **Guardado:** scrypt con sal aleatoria por usuario, comparación en tiempo constante y mínimo 6 caracteres.
+- **Guardado:** scrypt con sal aleatoria por usuario y comparación en tiempo constante. Mínimo **8 caracteres** al poner o cambiar una contraseña (desde la 1.3.0; antes, 6).
 - **Código de recuperación del administrador:** 16 caracteres al azar (unos 79 bits), generado solo si el administrador escribe su contraseña. Se guarda su huella scrypt en `settings._recovery`, que nunca sale del núcleo. Sirve una vez, solo en la PC principal (no hay ruta de red para usarlo), con el mismo límite de intentos que la entrada. Al usarlo se cierran las sesiones de ese usuario (`test/o5.test.js`).
 - **Sesiones:** token aleatorio de 192 bits. Vence tras 12 horas sin uso y se pierde al reiniciar la principal o al restaurar una copia.
 
@@ -61,6 +61,21 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 - **Texto dinámico:** todo pasa por `html`/`esc`. También lo que llega por la red, como los nombres de otras PCs o de la principal.
 - **Recibos, etiquetas y código de recuperación:** se imprimen en una ventana sin JavaScript.
 - **Importar productos:** el archivo se lee en el proceso principal (sin bibliotecas externas, máximo 20 MB) y solo pasan filas de texto al núcleo, que valida cada una como si se escribiera a mano.
+- **Navegación bloqueada** (1.3.0): ninguna ventana del programa, tampoco las de impresión, puede ir a otra página, abrir otra ventana ni insertar un `webview` (`lockNavigation` en `main.js`). Un intento queda en el registro.
+- **CSV sin fórmulas** (1.3.0): a los textos que empiezan con `=`, `+`, `-` o `@` se les antepone `'`, para que Excel no los ejecute. Los números negativos no se tocan.
+
+## Fotos por la red
+
+Desde la 1.3.0, una PC conectada pide las fotos **con su sesión**: sin iniciar sesión, o con una sesión cerrada, la principal responde `AUTH`. Antes bastaba la clave de conexión (`test/network.test.js`).
+
+## Copia externa con contraseña
+
+Opcional (DT-35). Diseño en `src/main/encrypted.js`:
+- **Llave:** `scrypt(contraseña, sal)` con los mismos parámetros que la red. La sal es aleatoria y va en cada archivo, así que en otra PC basta la contraseña.
+- **Archivo** (`capsshop-AAAA-MM-DD.cifrado`): `CAPSCIF1` + sal + iv + datos con **AES-256-GCM** + etiqueta. Un byte cambiado o una contraseña equivocada se detectan: "La contraseña de la copia no es correcta, o el archivo está dañado".
+- **Sin rastros en la memoria:** la copia sin cifrar se hace en la carpeta de datos de la PC, se cifra hacia la memoria y se borra. Las copias sin contraseña que había en la memoria se borran después de la primera cifrada.
+- **La llave queda en `config.json` de la PC principal**, para copiar cada día sin pedir la contraseña. Quien tenga esa PC ya tiene la base sin cifrar, así que no pierde nada; lo que protege es la memoria perdida.
+- **Prueba:** `test/backup.test.js` revisa que el archivo no contenga el encabezado de SQLite, nombres ni teléfonos, y que se restaure solo con la contraseña correcta.
 
 ## Riesgos que quedan
 
@@ -70,6 +85,6 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 | Una PC conectada sin sesión puede volver a conectarse a otra "principal" (pantalla de entrada) | Solo aparece si hay error de conexión y no permite convertirla en principal. Una principal falsa no conoce la clave, así que no puede descifrar | — |
 | Quien consiga el código de recuperación puede poner una contraseña nueva al administrador | Sirve una vez, solo en la PC principal, con límite de intentos; el administrador lo guarda fuera de la tienda. Queda en el historial | — |
 | El instalador no está firmado | Aviso de Windows al instalar. Si alguien entra a la cuenta de GitHub, podría publicar una actualización falsa | Certificado (DT-18), verificación en dos pasos en GitHub y proteger `main` |
-| El vendedor puede registrar un depósito al banco que nadie compara con el banco | El dueño revisa los depósitos contra el estado de cuenta | Reporte de depósitos por verificar ([auditoría 4.2](auditoria.md#seguridad)) |
-| La ventana no bloquea la navegación fuera de la app; un nombre que empieza con `=` se ejecuta como fórmula al abrir el CSV | No hay enlaces externos; los nombres los escriben usuarios de la tienda | [Auditoría 4.5 y 4.6](auditoria.md#seguridad) |
-| La base y las copias (también la externa) no van cifradas | La carpeta de datos es del usuario de Windows | Cifrar la copia externa; BitLocker ([auditoría 4.3](auditoria.md#seguridad)) |
+| Un depósito al banco registrado que no llegó al banco | **Depósitos por verificar** (DT-30): el administrador compara cada uno con el estado de cuenta; el Inicio avisa mientras haya pendientes | Revisarlos cada semana o cada mes |
+| La base de la PC principal y sus copias diarias no van cifradas | La carpeta de datos es del usuario de Windows. La copia externa puede ir con contraseña (DT-35) | BitLocker y una cuenta de Windows con contraseña en la PC principal |
+| Si se olvida la contraseña de la copia externa, esas copias no se abren | Aviso al ponerla; las copias diarias de la PC principal no llevan contraseña | Anotarla junto al código de recuperación, fuera de la tienda |

@@ -4,10 +4,11 @@ Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP �
 
 ## Estado
 
-**Versión publicada: 1.2.0**, para el piloto en la tienda ([cambios](CHANGELOG.md)):
+**Versión 1.3.0**, para el piloto en la tienda ([cambios](CHANGELOG.md)):
 - **Varias computadoras en red:** una PC principal guarda los datos y las demás se conectan a ella, cada una con su caja ([manual](docs/manual/13-varias-computadoras.md)).
 - **Funciones:** están todas las del pedido original (102 de 103 requisitos cumplen) y las 9 nuevas: saldos iniciales, depósito al banco, aportes del dueño, importar desde Excel, etiquetas, recibo directo a la impresora y recuperación de la contraseña ([Requisitos](docs/producto/requisitos.md)).
-- **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).
+- **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, opcionalmente con contraseña, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).
+- **Controles de la [auditoría de producción](docs/tecnico/auditoria.md):** depósitos al banco por verificar, motivo al abrir la caja con otro monto, límite de crédito, validaciones de fechas y costos, y reglas en la propia base de datos.
 - **Todavía no está en producción:** falta el piloto en la tienda con Windows 10/11 y datos reales, y la firma del cliente (O6). Al aceptarse, sale la 2.0.0. El instalador todavía no está firmado (hace falta comprar un certificado). El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
 
 ## Instalar

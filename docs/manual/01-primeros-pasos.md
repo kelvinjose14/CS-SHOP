@@ -36,7 +36,7 @@ El sistema viene con dos usuarios:
 | `vendedor` | `vendedor123` | Vendedor |
 
 1. Escriba el usuario y la contraseña y pulse **Entrar**.
-2. La primera vez, el sistema pide cambiar la contraseña: escriba la **Contraseña actual**, la **Nueva contraseña (mínimo 6)** y repítala. Pulse **Guardar y continuar**.
+2. La primera vez, el sistema pide cambiar la contraseña: escriba la **Contraseña actual**, la **Nueva contraseña (mínimo 8)** y repítala. Pulse **Guardar y continuar**.
 3. Haga lo mismo con el usuario `vendedor` y entregue la nueva contraseña a la persona que venderá.
 
 Para cambiar la contraseña más adelante, use el ícono de persona al pie del menú izquierdo. Para salir, use el ícono de salida al lado.

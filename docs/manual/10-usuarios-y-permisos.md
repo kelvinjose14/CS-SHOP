@@ -38,7 +38,7 @@ Menú **Sistema** → **Usuarios**.
 
 ![Usuarios](img/usuarios.jpg)
 
-- **Nuevo usuario:** **Nombre**, **Usuario (para entrar)**, **Rol** y **Contraseña inicial**, de al menos 6 caracteres.
+- **Nuevo usuario:** **Nombre**, **Usuario (para entrar)**, **Rol** y **Contraseña inicial**, de al menos 8 caracteres.
 - **Editar:** pulse el usuario.
   - Se puede cambiar el nombre, el usuario y el rol, y activar o desactivar.
   - **Nueva contraseña** restablece la contraseña. Déjela vacía para no cambiarla.
@@ -80,7 +80,7 @@ El código **sirve una sola vez**: después genere otro. Si genera uno nuevo, el
 | Mensaje | Qué hacer |
 |---|---|
 | **Usuario o contraseña incorrectos.** | Revise mayúsculas y el usuario |
-| **La contraseña debe tener al menos 6 caracteres.** | Use una más larga |
+| **La contraseña debe tener al menos 8 caracteres.** | Use una más larga. Las contraseñas que ya existían siguen sirviendo; la regla aplica al ponerlas o cambiarlas |
 | **La contraseña actual no es correcta.** | Al cambiarla, escriba bien la actual |
 | **Ya existe un usuario con ese nombre de usuario.** | Elija otro |
 | **Su usuario fue desactivado.** | Hable con el administrador |

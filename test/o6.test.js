@@ -169,4 +169,14 @@ test('los ejercicios de la capacitación dan los números del documento (docs/pi
   const r = call('products.count', { note: 'Práctica', counts: [{ product_id: A, counted: 9, expected: 9 }, { product_id: B, counted: 1, expected: 2 }] });
   assert.equal(r.missing_units, 1);
   assert.equal(stock(B), 1);
+  // 17. Depósitos por verificar: el del ejercicio 10 está en el banco
+  const [dep] = call('deposits.list', { status: 'pendiente' });
+  assert.equal(dep.amount, 1000);
+  assert.equal(dash().deposits_pending.count, 1);
+  call('deposits.check', { movement_id: dep.id, status: 'verificado' });
+  assert.equal(dash().deposits_pending.count, 0);
+  // Sesión del vendedor, 2: abrir con RD$ 500 pide el motivo (al cerrar se contaron RD$ 650)
+  assert.throws(() => call('cash.open', { amount: 500 }), (e) => e.code === 'OPENING_REASON');
+  call('cash.open', { amount: 500, reason: 'El dueño se llevó RD$ 150' });
+  assert.equal(call('cash.status').open.opening_difference, -150);
 });

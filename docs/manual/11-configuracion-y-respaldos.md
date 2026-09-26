@@ -14,13 +14,15 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 | **Nombre del negocio**, **Eslogan**, **Teléfono**, **Dirección** | CAPS._.SHOP / Tienda de Gorras | Salen en el recibo y en los reportes en PDF |
 | **Símbolo de moneda** | RD$ | Cómo se muestran los montos |
 | **Mensaje al pie del recibo** | ¡Gracias por su compra! | Última línea del recibo |
+| **Columnas del CSV para Excel** | Según la región de Windows de cada PC | Cómo separa las columnas el CSV que se exporta. Así Excel lo abre en columnas: con Windows de República Dominicana usa la coma; con la región de España u otras, el punto y coma y los decimales con coma. Si Excel muestra todo en una columna, elija aquí la otra opción |
 | **Días de crédito por defecto** | 30 | Fecha de vencimiento propuesta en ventas y compras a crédito |
 | **Descuento máximo del vendedor (%)** | 10 | Tope de descuento para el vendedor. Se cuenta sobre el subtotal antes de descuentos |
 | **Exigir caja abierta para movimientos en efectivo** | Activado | Sin caja abierta no se puede cobrar, pagar ni abonar en efectivo. Se recomienda dejarlo activado |
 | **Permitir vender sin existencia (inventario negativo)** | Desactivado | Si se activa, se puede vender aunque el sistema diga 0. No se recomienda |
 | **El vendedor puede registrar abonos de clientes** | Activado | Permite que el vendedor reciba abonos |
 | **El vendedor puede aplicar descuentos** | Activado | Si se desactiva, el vendedor no puede dar descuentos |
-| **Categorías de gastos** | Alquiler, Transporte, Publicidad, Nómina, Servicios, Internet, Delivery, Otros | Una por línea. Cambiarlas no modifica los gastos ya registrados |
+| **Vender a crédito a quien tiene deuda vencida solo con autorización del administrador** | Activado | Una venta a crédito a un cliente con deuda vencida se detiene: el vendedor no puede seguir y el administrador la autoriza ([6.2](06-clientes-y-cobros.md#62-vender-a-crédito)). El límite de crédito de cada cliente se pone en **Clientes** |
+| **Categorías de gastos** | Alquiler, Transporte, Publicidad, Nómina, Servicios, Internet, Delivery, Otros | Una por línea. Solo se pueden registrar gastos de estas categorías. Cambiarlas no modifica los gastos ya registrados |
 | **Categorías de otros ingresos** | Otros ingresos, Servicios | Una por línea. Los aportes del dueño van aparte ([8.3.1](08-gastos-e-ingresos.md#831-aportes-del-dueño)) |
 
 Cada cambio de configuración queda en el **Historial de movimientos**.
@@ -60,17 +62,27 @@ Las copias se hacen **solo en la PC principal**. En una computadora conectada, l
 - **Copiar ahora** hace la copia en el momento. **Quitar** deja de copiar.
 - El **Inicio** avisa al administrador si no hay copia externa o si pasaron **7 días** sin copia.
 
+**Proteger la copia externa con contraseña** (recomendado si usa una memoria USB)
+- Sin contraseña, quien encuentre la memoria puede leer los clientes, las ventas y los costos. La pantalla lo indica: **Sin contraseña**.
+- **Proteger con contraseña…** → escriba la contraseña dos veces (mínimo 8 caracteres) → **Guardar y copiar**.
+  - Desde ese momento, la copia del día es `capsshop-AAAA-MM-DD.cifrado`: sin la contraseña no se puede abrir.
+  - Las copias **sin** contraseña que había en esa carpeta **se borran** al hacer la primera protegida.
+  - Las fotos se siguen copiando igual (no llevan datos del negocio).
+- > ⚠️ **Si olvida esta contraseña, las copias de la memoria no se podrán abrir.** Anótela y guárdela fuera de la tienda, junto al [código de recuperación](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña). Las copias automáticas diarias de la PC principal no llevan contraseña.
+- **Cambiar contraseña…** usa la nueva desde la próxima copia; las anteriores se abren con la contraseña con que se hicieron. **Quitar contraseña** vuelve a las copias sin cifrar.
+
 **Manuales**
 - **Crear copia de seguridad…** guarda un archivo `capsshop-respaldo-AAAA-MM-DD.db` donde usted elija. Esta copia no lleva las fotos; la copia externa sí.
 
 ## 11.4 Restaurar una copia
 
-1. **Restaurar desde copia…** → elija el archivo `.db`.
-2. El sistema comprueba que sea una copia válida de CAPS Shop.
-3. Confirme el aviso: **se reemplazarán todos los datos actuales** por los de la copia.
-4. Antes de reemplazar, el sistema guarda los datos actuales en `respaldos\antes-de-restaurar-….db`, por si hay que volver atrás.
-5. Al terminar, vuelva a iniciar sesión. Las contraseñas son las que había en la copia. Las computadoras conectadas también deben entrar de nuevo.
-6. Si la copia viene de la **copia fuera de esta computadora**, las fotos que falten se recuperan solas desde la carpeta `fotos` que está al lado del archivo.
+1. **Restaurar desde copia…** → elija el archivo `.db`, o el `.cifrado` de una copia externa protegida.
+2. Si es `.cifrado`, escriba la **contraseña de la copia**. Si no es la correcta, sale **"La contraseña de la copia no es correcta, o el archivo está dañado"** y no se toca nada.
+3. El sistema comprueba que sea una copia válida de CAPS Shop.
+4. Confirme el aviso: **se reemplazarán todos los datos actuales** por los de la copia.
+5. Antes de reemplazar, el sistema guarda los datos actuales en `respaldos\antes-de-restaurar-….db`, por si hay que volver atrás.
+6. Al terminar, vuelva a iniciar sesión. Las contraseñas son las que había en la copia. Las computadoras conectadas también deben entrar de nuevo.
+7. Si la copia viene de la **copia fuera de esta computadora**, las fotos que falten se recuperan solas desde la carpeta `fotos` que está al lado del archivo.
 
 Para recuperar todo en otra computadora, vea [Soporte y recuperación](14-soporte-y-recuperacion.md#142-la-pc-principal-se-dañó-volver-a-trabajar-en-otra-computadora).
 

@@ -27,8 +27,9 @@ Menú **Principal** → **Nueva venta**.
 3. **Tipo de venta:** **Al detalle** o **Al por mayor**. Al cambiarlo, todos los precios pasan a la lista correspondiente.
 4. **Cliente:** déjelo en **Cliente general (contado)** o elija uno. Con el botón **+** registra un cliente nuevo sin salir de la venta.
 5. **Contado** o **Crédito**:
-   - Crédito exige un cliente y muestra la **Fecha de vencimiento**, que se propone según los días de crédito configurados.
+   - Crédito exige un cliente y muestra la **Fecha de vencimiento**, que se propone según los días de crédito configurados (no puede ser anterior a hoy).
    - En crédito, el pago es un **Abono inicial (opcional)**.
+   - Si el cliente tiene deuda **vencida** o la venta le haría pasar su **límite de crédito**, la venta se detiene al cobrar: el vendedor no puede seguir y el administrador puede **Autorizar venta** ([Clientes, 6.2](06-clientes-y-cobros.md#62-vender-a-crédito)).
 6. **Descuento:** elija **RD$** o **%** y escriba el valor.
 7. **Pago:**
    - Elija el método (**Efectivo**, **Tarjeta**, **Transferencia** u **Otro**) y escriba el **monto recibido**.
@@ -112,6 +113,8 @@ En el detalle de una venta **a crédito**, **Pagos** → **Anular** en un abono 
 | **Existencia insuficiente de "…" (disponible: N).** | Se quiere vender más de lo que hay | Revisar la cantidad; si el inventario está mal, el administrador lo ajusta ([Inventario](04-inventario.md)) |
 | **"…" está agotado.** | El producto tiene existencia 0 | Igual que el anterior |
 | **Las ventas a crédito requieren un cliente.** | Crédito con "Cliente general" | Elegir o crear el cliente |
+| **… tiene … vencido …** / **… su límite de crédito es …** | Control de crédito del cliente | Cobrar de contado, pedir un abono inicial mayor o que el administrador autorice |
+| **… está desactivado: no se le puede vender.** | El cliente se dio de baja | Venderle como cliente general, o que el administrador lo reactive |
 | **El pago recibido (…) es menor que el total (…).** | En contado, falta dinero | Corregir el monto o agregar otro método |
 | **Sólo se puede dar cambio sobre pagos en efectivo.** | Se pagó de más con tarjeta o transferencia | Escribir el monto exacto en ese método |
 | **El descuento máximo permitido es N%.** | El vendedor superó su límite | Bajar el descuento o pedir al administrador |

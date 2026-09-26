@@ -30,6 +30,7 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 |---|---|
 | **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | La caja de **esta computadora** está cerrada: **Caja** → **Abrir caja**. También puede usar otro método de pago |
 | **Ya hay una caja abierta en esta computadora.** | Ciérrela antes de abrir otra |
+| **El efectivo inicial (…) no es lo que se contó al cerrar la última caja…** | Escriba el motivo de la diferencia, o abra con lo contado al cerrar ([Caja, 7.1](07-caja.md#71-abrir-la-caja)) |
 | **No hay suficiente efectivo en caja (esperado: …).** | El retiro es mayor que lo que debería haber |
 | La caja no cuadra | Revise **Movimientos de efectivo**: ¿alguna venta se cobró en efectivo pero se pagó con tarjeta? ¿Falta registrar un gasto o un retiro? Anote la diferencia y el motivo al cerrar |
 
@@ -48,6 +49,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **Sólo el administrador puede cambiar el precio de un producto en la venta.** | Use el precio de lista |
 | **"…" no tiene precio por mayor.** / **…al detalle.** | Póngale precio en **Inventario** (o el administrador lo escribe en la venta) |
 | **La venta tiene devoluciones; no se puede anular.** | Haga una devolución por lo que falta |
+| **… tiene … vencido. Solo el administrador puede autorizar…** / **…su límite de crédito es…** | Ver [Clientes, 6.2](06-clientes-y-cobros.md#62-vender-a-crédito) |
+| **… está desactivado: no se le puede vender.** | El administrador lo reactiva en **Clientes** → **Ver desactivados** |
 
 ## Cobros y pagos
 
@@ -66,10 +69,15 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **Seleccione un proveedor.** | Elija el proveedor de la compra |
 | **Agregue al menos un producto a la compra.** | Agregue productos |
 | **La existencia no cambia con este ajuste.** | El conteo coincide: no hace falta ajustar |
+| **Revisar costos** al registrar una compra | Un costo es 0 o muy distinto del actual. Si es correcto, confirme; si no, corríjalo ([Compras, 5.2](05-compras-y-proveedores.md#52-registrar-una-compra)) |
 
 ## Mensajes de campos
 
-Mensajes del tipo **"Monto debe ser mayor que cero."**, **"Nombre es obligatorio."**, **"Cantidad debe ser un número entero mayor que cero."** o **"Fecha: formato inválido."** indican que un campo del formulario está vacío o mal escrito. Corríjalo y vuelva a intentar.
+Mensajes del tipo **"Monto debe ser mayor que cero."**, **"Nombre es obligatorio."**, **"Cantidad debe ser un número entero mayor que cero."**, **"Fecha: la fecha … no existe."** o **"… no puede ser posterior a hoy."** indican que un campo del formulario está vacío o mal escrito. Corríjalo y vuelva a intentar.
+
+**"… es demasiado largo: tiene N caracteres y el máximo es M."**: acorte el texto. El sistema ya no lo corta solo, para no perder parte de lo escrito.
+
+**"Error inesperado: La base de datos rechazó el cambio: …"**: la base protegió los datos de un monto o una cantidad imposible, y no se guardó nada. Es un error del programa: guarde el diagnóstico y avise al soporte ([Soporte, 14.5](14-soporte-y-recuperacion.md#145-pedir-ayuda-al-soporte)).
 
 ## Varias computadoras
 

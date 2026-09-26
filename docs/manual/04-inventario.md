@@ -69,6 +69,7 @@ El detalle muestra:
 
 - **Editar:** cambia datos y precios. Cada cambio de costo o precio queda en **Historial de movimientos** (menú **Análisis**) con el valor anterior y el nuevo. La existencia no se edita aquí: se cambia con compras, ventas o ajustes.
 - **Dar de baja:** en **Editar**, desmarque **Producto activo**. El producto deja de salir en ventas y búsquedas, pero conserva su historial. No se borran productos.
+  - Si todavía tiene existencia, el sistema lo avisa: esas unidades **siguen contando en el valor del inventario** (en el Inicio, "… de productos desactivados"), porque la mercancía sigue en la tienda. Si ya no están, haga antes un [ajuste de existencia](#44-ajustar-la-existencia-administrador) con el motivo.
 
 ## 4.4 Ajustar la existencia (administrador)
 

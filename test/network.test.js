@@ -117,17 +117,21 @@ test('un reintento con el mismo request_id no repite la venta', async (t) => {
   assert.equal((await A.call('products.get', { id: productId })).stock, 4);
 });
 
-test('las fotos se suben y se descargan por la red', async (t) => {
+test('las fotos se suben y se descargan por la red, solo con sesión', async (t) => {
   const { pc, connect } = await start(t);
   const A = await pc('Caja 1', 'admin', 'admin123');
   const id = await A.call('products.save', { name: 'Gorra con foto', price_retail: 100, photo_data: PNG });
   const { photo } = await A.call('products.get', { id });
   assert.match(photo, /^[\w-]+\.png$/);
-  const img = await connect().photo(photo);
+  const img = await connect().photo(photo, A.token);
   assert.equal(img.type, 'image/png');
   assert.ok(img.data.length > 20);
-  assert.equal(await connect().photo('../capsshop.db'), null);
-  await assert.rejects(connect({ key: 'MALAS-CLAVE' }).photo(photo), (e) => e.code === 'KEY');
+  assert.equal(await connect().photo('../capsshop.db', A.token), null);
+  await assert.rejects(connect({ key: 'MALAS-CLAVE' }).photo(photo, A.token), (e) => e.code === 'KEY');
+  // Sin sesión (o con una sesión cerrada) no se entregan fotos (auditoría 4.7).
+  await assert.rejects(connect().photo(photo), (e) => e.code === 'AUTH');
+  await A.c.logout(A.token);
+  await assert.rejects(connect().photo(photo, A.token), (e) => e.code === 'AUTH');
 });
 
 test('una petición mal formada no tumba la PC principal', async (t) => {

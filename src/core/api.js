@@ -77,6 +77,9 @@ const METHODS = {
   'cash.voidMovement': [ADMIN, finance.cashVoid],
   'cash.history': [ADMIN, finance.cashHistory],
   'cash.session': [ADMIN, finance.cashSession],
+  'deposits.list': [ADMIN, finance.deposits],
+  'deposits.check': [ADMIN, finance.checkDeposit],
+  'deposits.uncheck': [ADMIN, finance.uncheckDeposit],
 
   'reports.dashboard': [ALL, reports.dashboard],
   'reports.profit': [ADMIN, reports.profit],
