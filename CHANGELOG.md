@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.2.0] - 2026-09-26
+
+Para el piloto en la tienda (O6). Una PC con la 1.1.0 la ofrece al administrador en **Configuración → Actualizaciones**; con la 1.0.0, instálela encima.
+
 ### Agregado
 - **Conteo de inventario** (Inventario → Conteo): se cuentan muchas gorras con el lector o a mano, con hoja de conteo imprimible, y se aplican todas las diferencias con un motivo. Lo vendido mientras se contaba no se ajusta; el conteo sin terminar se guarda en la PC.
 - **Kit del piloto** en `docs/piloto/`: plan, capacitación con ejercicios comprobados, bitácora y lista de aceptación generada de los requisitos.
@@ -97,5 +101,6 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.2.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.0.0

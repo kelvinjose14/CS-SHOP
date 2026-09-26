@@ -19,7 +19,7 @@
 
 ## Antes de ir a la tienda
 
-- [ ] Versión publicada para el piloto (1.1.0 o una posterior) en [Releases](https://github.com/kelvinjose14/CS-SHOP/releases/latest), con el instalador y `latest.yml`.
+- [ ] Versión publicada para el piloto (1.2.0 o una posterior, con el **Conteo**) en [Releases](https://github.com/kelvinjose14/CS-SHOP/releases/latest), con el instalador y `latest.yml`.
 - [ ] Una memoria USB para la copia fuera de la PC. Si prefiere la nube: la carpeta de OneDrive o Google Drive ya instalada en la PC principal.
 - [ ] Lista de productos del dueño en Excel, con al menos **Nombre** y **Precio detalle** ([plantilla](../manual/04-inventario.md#47-importar-productos-desde-excel-administrador)). Si no existe, se arma en la tienda con la **hoja de conteo**.
 - [ ] Lista de proveedores y clientes, con lo que se les debe o deben (**saldos iniciales**).
