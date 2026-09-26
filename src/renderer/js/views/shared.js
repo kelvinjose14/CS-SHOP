@@ -77,3 +77,26 @@ function accountBadge(r) {
   if (r.overdue) return html`${badge(r.status)} ${badge('vencido')}`;
   return badge(r.status);
 }
+
+// Saldo inicial de un cliente o proveedor: lo que ya se debía al empezar a usar el sistema (RF-NUE-01).
+function openingDialog({ title, who, withInvoice = false, onSubmit }) {
+  const due = new Date();
+  due.setDate(due.getDate() + (Number(App.settings.credit_days) || 30));
+  modal({
+    title,
+    width: 480,
+    body: html`
+      <p class="muted">${who}. Se cobra o se paga con abonos, como cualquier otra deuda, pero <b>no cuenta como venta ni compra</b> del período.</p>
+      <div class="grid-2">
+        <label class="field"><span>Monto *</span><input name="amount" type="number" min="0.01" step="0.01"></label>
+        <label class="field"><span>Fecha de la deuda</span><input type="date" name="date" value="${todayStr()}"></label>
+        <label class="field"><span>Vence</span><input type="date" name="due_date" value="${`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`}"></label>
+        ${withInvoice ? html`<label class="field"><span>Factura</span><input name="invoice_ref" placeholder="Opcional"></label>` : ''}
+        <label class="field span-2"><span>Nota</span><input name="note" placeholder="Ej. Saldo del cuaderno al 30/09"></label>
+      </div>`,
+    actions: [
+      { label: 'Cancelar' },
+      { label: 'Guardar saldo', primary: true, onClick: async ({ body }) => { await onSubmit(formData(body)); toast('Saldo inicial registrado.'); } },
+    ],
+  });
+}

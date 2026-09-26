@@ -6,7 +6,7 @@ const PURCHASE_COLUMNS = [
   { key: 'date', label: 'Fecha', date: true },
   { key: 'supplier_name', label: 'Proveedor' },
   { key: 'invoice_ref', label: 'Factura' },
-  { key: 'payment_type', label: 'Tipo', render: (r) => (r.payment_type === 'credito' ? 'Crédito' : 'Contado'), csv: (r) => r.payment_type },
+  { key: 'payment_type', label: 'Tipo', render: (r) => (r.opening ? html`<span class="chip">Saldo inicial</span>` : r.payment_type === 'credito' ? 'Crédito' : 'Contado'), csv: (r) => (r.opening ? 'saldo inicial' : r.payment_type) },
   { key: 'units', label: 'Unidades', num: true, total: true },
   { key: 'total', label: 'Total', money: true, total: (rows) => rows.filter((r) => r.status !== 'anulada').reduce((s, r) => s + r.total, 0) },
   { key: 'paid', label: 'Pagado', money: true, total: (rows) => rows.filter((r) => r.status !== 'anulada').reduce((s, r) => s + r.paid, 0) },
@@ -326,7 +326,17 @@ App.register({
 
 async function supplierDetail(id, onChange) {
   const s = await api('suppliers.get', { id });
-  const actions = [{ label: 'Cerrar' }, { label: 'Editar', onClick: () => supplierForm(s, onChange) }];
+  const actions = [
+    { label: 'Cerrar' },
+    {
+      label: 'Saldo inicial',
+      onClick: () => openingDialog({
+        title: `Saldo inicial con ${s.name}`, who: 'Lo que ya se le debía a este proveedor antes de usar el sistema', withInvoice: true,
+        onSubmit: async (f) => { await api('suppliers.opening', { supplier_id: id, ...f }); onChange && onChange(); },
+      }),
+    },
+    { label: 'Editar', onClick: () => supplierForm(s, onChange) },
+  ];
   if (s.balance > 0) {
     actions.push({
       label: 'Registrar pago', primary: true,
@@ -378,7 +388,7 @@ App.register({
     page.appendChild(box);
     const cols = [
       { key: 'supplier_name', label: 'Proveedor', render: (r) => html`<b>${r.supplier_name}</b>`, csv: (r) => r.supplier_name },
-      { key: 'id', label: 'Compra', render: (r) => Fmt.purchaseNo(r.id), csv: (r) => Fmt.purchaseNo(r.id) },
+      { key: 'id', label: 'Compra', render: (r) => html`${Fmt.purchaseNo(r.id)}${r.opening ? html` <span class="chip">Saldo inicial</span>` : ''}`, csv: (r) => Fmt.purchaseNo(r.id) },
       { key: 'invoice_ref', label: 'Factura' },
       { key: 'date', label: 'Fecha', date: true },
       { key: 'total', label: 'Total de la compra', money: true, total: true },

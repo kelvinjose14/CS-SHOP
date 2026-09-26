@@ -336,7 +336,7 @@ function receivables(ctx, { customer_id, only_open = true } = {}) {
   if (only_open) where.push('s.balance > 0');
   if (customer_id) { where.push('s.customer_id = ?'); params.push(customer_id); }
   return ctx.db.all(
-    `SELECT s.id, s.date, s.due_date, s.total - s.returned_total AS total, s.paid, s.balance, s.status, s.customer_id,
+    `SELECT s.id, s.date, s.due_date, s.total - s.returned_total AS total, s.paid, s.balance, s.status, s.customer_id, s.opening,
             c.name AS customer_name, c.phone AS customer_phone,
             CASE WHEN s.balance > 0 AND s.due_date < ? THEN 1 ELSE 0 END AS overdue
        FROM sales s JOIN customers c ON c.id = s.customer_id

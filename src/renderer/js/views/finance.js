@@ -1,6 +1,8 @@
 'use strict';
 /* Gastos, otros ingresos y caja. */
 
+const financeTabs = (active) => html`<div class="seg"><button data-go="expenses" class="${active === 'gasto' ? 'active' : ''}">Gastos</button><button data-go="incomes" class="${active === 'ingreso' ? 'active' : ''}">Otros ingresos</button><button data-go="capital" class="${active === 'aporte' ? 'active' : ''}">Aportes del dueño</button></div>`;
+
 function entryScreen({ kind }) {
   const isExpense = kind === 'gasto';
   const apiBase = isExpense ? 'expenses' : 'incomes';
@@ -10,7 +12,7 @@ function entryScreen({ kind }) {
     let category = '';
     const cats = JSON.parse(App.settings[catKey] || '[]');
     const tb = toolbar(page, {
-      left: html`<div class="seg"><button data-go="expenses" class="${isExpense ? 'active' : ''}">Gastos</button><button data-go="incomes" class="${isExpense ? '' : 'active'}">Otros ingresos</button></div>
+      left: html`${financeTabs(kind)}
         <select id="e-cat">${options(cats, '', { empty: 'Todas las categorías' })}</select>`,
       right: html`<button class="btn" id="e-export">${icon('download')} Exportar</button><button class="btn primary" id="e-new">${icon('plus')} ${isExpense ? 'Registrar gasto' : 'Registrar ingreso'}</button>`,
     });
@@ -64,7 +66,7 @@ function entryScreen({ kind }) {
         <div class="grid-2">
           <label class="field"><span>Categoría *</span><select name="category">${options(cats, cats[0])}</select></label>
           <label class="field"><span>Fecha</span><input type="date" name="date" value="${todayStr()}"></label>
-          <label class="field span-2"><span>Descripción</span><input name="description" placeholder="${isExpense ? 'Ej. Pago de luz de agosto' : 'Ej. Aporte de capital'}"></label>
+          <label class="field span-2"><span>Descripción</span><input name="description" placeholder="${isExpense ? 'Ej. Pago de luz de agosto' : 'Ej. Venta de cajas vacías'}"></label>
           <label class="field"><span>Monto *</span><input name="amount" type="number" min="0.01" step="0.01"></label>
           <label class="field"><span>Método de pago</span><select name="method">${methodOptions()}</select></label>
         </div>`,
@@ -87,6 +89,65 @@ function entryScreen({ kind }) {
 
 App.register({ id: 'expenses', title: 'Gastos', icon: 'wallet', group: 'Finanzas', roles: ['admin'], render: entryScreen({ kind: 'gasto' }) });
 App.register({ id: 'incomes', title: 'Otros ingresos', icon: 'inbox', group: 'Finanzas', roles: ['admin'], hidden: true, navAs: 'expenses', render: entryScreen({ kind: 'ingreso' }) });
+
+// Aportes de capital del dueño (DT-21): entran al flujo de dinero, pero no son ganancia.
+App.register({
+  id: 'capital', title: 'Aportes del dueño', icon: 'inbox', group: 'Finanzas', roles: ['admin'], hidden: true, navAs: 'expenses',
+  async render(page) {
+    let range = {};
+    const tb = toolbar(page, {
+      left: financeTabs('aporte'),
+      right: html`<button class="btn" id="c-export">${icon('download')} Exportar</button><button class="btn primary" id="c-new">${icon('plus')} Registrar aporte</button>`,
+    });
+    const pp = el(html`<div></div>`);
+    tb.after(pp);
+    page.appendChild(el(html`<div class="info-box">Dinero que el dueño pone en el negocio (por ejemplo, para comprar mercancía). Aparece en el <b>Flujo de dinero</b>, pero <b>no suma a la ganancia</b>: no lo produjo la tienda.</div>`));
+    const box = el(html`<div class="card"></div>`);
+    page.appendChild(box);
+    let rows = [];
+    const cols = [
+      { key: 'date', label: 'Fecha', date: true },
+      { key: 'description', label: 'Descripción' },
+      { key: 'method', label: 'Método', render: (r) => METHOD_LABELS[r.method], csv: (r) => r.method },
+      { key: 'amount', label: 'Monto', money: true, total: true },
+      { key: 'user_name', label: 'Registrado por' },
+      { label: '', render: () => html`<button class="icon-btn danger" data-void title="Anular">${icon('trash')}</button>`, csv: false },
+    ];
+    const load = async () => {
+      rows = await api('capital.list', range);
+      setHTML(box, table({ columns: cols, rows, empty: 'No hay aportes en el período.' }));
+      $$('tbody tr[data-idx]', box).forEach((tr) => {
+        const r = rows[Number(tr.dataset.idx)];
+        $('[data-void]', tr).onclick = async () => {
+          const reason = await promptDialog({ title: 'Anular aporte', label: `Motivo · ${Fmt.money(r.amount)}` });
+          if (!reason) return;
+          await api('capital.void', { id: r.id, reason });
+          toast('Aporte anulado.');
+          App.refreshCashBadge();
+          load();
+        };
+      });
+    };
+    $$('[data-go]', tb).forEach((b) => (b.onclick = () => App.go(b.dataset.go)));
+    $('#c-export', tb).onclick = () => exportCsv('aportes-del-dueno', cols, rows);
+    $('#c-new', tb).onclick = () => modal({
+      title: 'Registrar aporte del dueño',
+      width: 480,
+      body: html`
+        <div class="grid-2">
+          <label class="field"><span>Fecha</span><input type="date" name="date" value="${todayStr()}"></label>
+          <label class="field"><span>Monto *</span><input name="amount" type="number" min="0.01" step="0.01"></label>
+          <label class="field"><span>Método</span><select name="method">${methodOptions('transferencia')}</select></label>
+          <label class="field span-2"><span>Descripción</span><input name="description" placeholder="Ej. Capital para la compra de septiembre"></label>
+        </div>`,
+      actions: [
+        { label: 'Cancelar' },
+        { label: 'Guardar', primary: true, onClick: async ({ body }) => { await api('capital.create', formData(body)); toast('Aporte registrado.'); App.refreshCashBadge(); load(); } },
+      ],
+    });
+    periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'anio' });
+  },
+});
 
 App.register({
   id: 'cash', title: 'Caja', icon: 'cash', group: 'Finanzas',
@@ -118,7 +179,8 @@ App.register({
           <div class="toolbar"><div class="tl"><span class="muted">${st.terminal ? html`${icon('pc')} <b>${st.terminal.name}</b> · ` : ''}Abierta el ${Fmt.datetime(s.opened_at)}</span></div>
             <div class="tr">
               <button class="btn" id="cash-in">${icon('plus')} Entrada de efectivo</button>
-              <button class="btn" id="cash-out">${icon('outbox')} Retiro</button>
+              <button class="btn" id="cash-bank">${icon('outbox')} Depósito al banco</button>
+              ${admin ? html`<button class="btn" id="cash-out">${icon('outbox')} Retiro</button>` : ''}
               <button class="btn primary" id="cash-close">Cerrar caja</button>
             </div>
           </div>
@@ -129,6 +191,7 @@ App.register({
               <div class="cs-row plus"><span>+ Abonos de clientes</span><b>${Fmt.money(s.customer_payments)}</b></div>
               <div class="cs-row plus"><span>+ Otros ingresos</span><b>${Fmt.money(s.other_income)}</b></div>
               <div class="cs-row minus"><span>− Gastos y pagos en efectivo</span><b>${Fmt.money(s.expenses_paid)}</b></div>
+              <div class="cs-row minus"><span>− Depósitos al banco</span><b>${Fmt.money(s.bank_deposits)}</b></div>
               <div class="cs-row minus"><span>− Retiros</span><b>${Fmt.money(s.withdrawals)}</b></div>
               ${s.other_out ? html`<div class="cs-row minus"><span>− Devoluciones y anulaciones</span><b>${Fmt.money(s.other_out)}</b></div>` : ''}
               <div class="cs-row total"><span>Efectivo esperado en caja</span><b>${Fmt.money(s.expected)}</b></div>
@@ -149,19 +212,26 @@ App.register({
             </div>
           </div>
         </div>`));
+      const MOVES = {
+        entrada: { title: 'Entrada de efectivo', hint: 'Ej. Cambio / sencillo' },
+        deposito_banco: { title: 'Depósito al banco', hint: 'Ej. Banco Popular, boleta 123456', note: 'El efectivo sale de la caja y pasa al banco. No es un gasto: el dinero sigue siendo del negocio.' },
+        retiro: { title: 'Retiro de efectivo', hint: 'Ej. Retiro del dueño', note: 'Dinero que sale del negocio. Si va al banco, use "Depósito al banco".' },
+      };
       const move = (type) => modal({
-        title: type === 'retiro' ? 'Retiro de efectivo' : 'Entrada de efectivo',
+        title: MOVES[type].title,
         width: 440,
         body: html`
+          ${MOVES[type].note ? html`<p class="muted small">${MOVES[type].note}</p>` : ''}
           <label class="field"><span>Monto</span><input name="amount" type="number" min="0.01" step="0.01"></label>
-          <label class="field"><span>Descripción *</span><input name="description" placeholder="${type === 'retiro' ? 'Ej. Depósito al banco, pago al dueño' : 'Ej. Cambio / sencillo'}"></label>`,
+          <label class="field"><span>Descripción *</span><input name="description" placeholder="${MOVES[type].hint}"></label>`,
         actions: [
           { label: 'Cancelar' },
           { label: 'Registrar', primary: true, onClick: async ({ body }) => { await api('cash.movement', { type, ...formData(body) }); toast('Movimiento registrado.'); App.reload(); } },
         ],
       });
       $('#cash-in', page).onclick = () => move('entrada');
-      $('#cash-out', page).onclick = () => move('retiro');
+      $('#cash-bank', page).onclick = () => move('deposito_banco');
+      if (admin) $('#cash-out', page).onclick = () => move('retiro');
       $('#cash-close', page).onclick = () => {
         const body = el(html`
           <div>

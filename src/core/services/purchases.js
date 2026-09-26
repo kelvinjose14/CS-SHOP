@@ -244,7 +244,7 @@ function payables(ctx, { supplier_id, only_open = true } = {}) {
   if (supplier_id) { where.push('p.supplier_id = ?'); params.push(supplier_id); }
   const t = today();
   return ctx.db.all(
-    `SELECT p.id, p.date, p.due_date, p.invoice_ref, p.total, p.paid, p.balance, p.status, p.supplier_id, s.name AS supplier_name, s.phone AS supplier_phone,
+    `SELECT p.id, p.date, p.due_date, p.invoice_ref, p.total, p.paid, p.balance, p.status, p.supplier_id, p.opening, s.name AS supplier_name, s.phone AS supplier_phone,
             CASE WHEN p.balance > 0 AND p.due_date < ? THEN 1 ELSE 0 END AS overdue
        FROM purchases p JOIN suppliers s ON s.id = p.supplier_id
       WHERE ${where.join(' AND ')}

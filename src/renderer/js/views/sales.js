@@ -542,6 +542,15 @@ async function customerDetail(id, onChange) {
   const c = await api('customers.get', { id });
   const canPay = App.isAdmin() || App.settings.seller_can_receive_payments === '1';
   const actions = [{ label: 'Cerrar' }, { label: 'Editar', onClick: () => customerForm(c, onChange) }];
+  if (App.isAdmin()) {
+    actions.splice(1, 0, {
+      label: 'Saldo inicial',
+      onClick: () => openingDialog({
+        title: `Saldo inicial de ${c.name}`, who: 'Lo que este cliente ya debía antes de usar el sistema',
+        onSubmit: async (f) => { await api('customers.opening', { customer_id: id, ...f }); onChange && onChange(); },
+      }),
+    });
+  }
   if (c.balance > 0 && canPay) {
     actions.push({
       label: 'Registrar abono', primary: true,
@@ -570,7 +579,7 @@ async function customerDetail(id, onChange) {
         columns: [
           { key: 'id', label: 'No.', render: (r) => Fmt.saleNo(r.id) },
           { key: 'date', label: 'Fecha', date: true },
-          { key: 'payment_type', label: 'Pago', render: (r) => (r.payment_type === 'credito' ? 'Crédito' : 'Contado') },
+          { key: 'payment_type', label: 'Pago', render: (r) => (r.opening ? html`<span class="chip">Saldo inicial</span>` : r.payment_type === 'credito' ? 'Crédito' : 'Contado') },
           { key: 'total', label: 'Total', money: true },
           { key: 'paid', label: 'Pagado', money: true },
           { key: 'balance', label: 'Balance', money: true, total: true },
@@ -620,7 +629,7 @@ App.register({
     ];
     const invCols = [
       { key: 'customer_name', label: 'Cliente', render: (r) => html`<b>${r.customer_name}</b>`, csv: (r) => r.customer_name },
-      { key: 'id', label: 'Venta', render: (r) => Fmt.saleNo(r.id), csv: (r) => Fmt.saleNo(r.id) },
+      { key: 'id', label: 'Venta', render: (r) => html`${Fmt.saleNo(r.id)}${r.opening ? html` <span class="chip">Saldo inicial</span>` : ''}`, csv: (r) => Fmt.saleNo(r.id) },
       { key: 'date', label: 'Fecha', date: true },
       { key: 'total', label: 'Total', money: true, total: true },
       { key: 'paid', label: 'Pagado', money: true, total: true },
