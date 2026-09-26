@@ -14,13 +14,13 @@
 
 ## 1.2 Instalar
 
-1. Descargue `CAPS-Shop-Setup-1.0.0.exe` desde la página de versiones del repositorio: <https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.0.0>.
+1. Descargue el instalador `CAPS-Shop-Setup-X.Y.Z.exe` de la versión más reciente: <https://github.com/kelvinjose14/CS-SHOP/releases/latest>. Después, el programa avisa solo cuando hay una versión nueva ([Soporte, 14.4](14-soporte-y-recuperacion.md#144-instalar-una-versión-nueva)).
 2. Abra el archivo.
 3. Si Windows muestra **"Windows protegió su PC"**, pulse **Más información** y luego **Ejecutar de todas formas**. El aviso sale porque el instalador aún no tiene firma digital (pendiente en [Objetivos](../producto/objetivos.md), O4).
 4. Elija la carpeta de instalación y termine. Se crea el acceso directo **CAPS Shop** en el escritorio y en el menú Inicio.
 5. Abra CAPS Shop. La primera vez sale **Configurar esta computadora**: elija **Esta es la PC principal**, escriba un nombre para la computadora (por ejemplo "Caja" u "Oficina") y pulse **Configurar como PC principal**. El programa se reinicia ([detalle](13-varias-computadoras.md#132-preparar-la-pc-principal)).
 
-   Si ya tenía la versión 1.0.0 instalada, esta pantalla no sale: la computadora queda como principal con todos sus datos.
+   Si ya tenía la versión 1.0.0 instalada, instale la nueva encima: esta pantalla no sale y la computadora queda como principal con todos sus datos.
 
 Los datos se guardan en `%APPDATA%\CAPS Shop\data`. Desinstalar el programa **no** borra los datos.
 

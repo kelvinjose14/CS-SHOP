@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.0.0**, más lo terminado en los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación) y O5 (brechas funcionales), aún sin publicar. Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.1.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación) y O5 (brechas funcionales). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -204,7 +204,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 
 | ID | Requisito | Criterio de aceptación | Estado |
 |---|---|---|---|
-| RF-ENT-01 | Instalador (Setup) descargable para instalar en otra computadora | `CAPS-Shop-Setup-1.0.0.exe` instala y abre el sistema en Windows | **Parcial**: se genera y publica en GitHub, pero no se ha probado en una PC con Windows real |
+| RF-ENT-01 | Instalador (Setup) descargable para instalar en otra computadora | `CAPS-Shop-Setup-X.Y.Z.exe` instala y abre el sistema en Windows | **Parcial**: se publica en GitHub y el CI lo instala, usa y desinstala en Windows Server; falta una PC de la tienda con Windows 10/11 (O6) |
 | RF-ENT-02 | El dueño responde rápido las 10 preguntas del resultado esperado | Tarjeta "Respuestas rápidas" en Inicio | Cumple |
 
 ## 2. Requisitos no funcionales
@@ -223,7 +223,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 56 pruebas de lógica, 10 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 59 pruebas de lógica, 10 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
