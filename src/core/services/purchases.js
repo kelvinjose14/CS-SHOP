@@ -1,6 +1,6 @@
 'use strict';
 const { AppError, now, today, addDays, round2, money, int, text, date, method, accountStatus } = require('../util');
-const { audit, ledger, changeStock, getSetting } = require('./common');
+const { audit, ledger, changeStock, getSetting, fmtMoney } = require('./common');
 
 // ---------- Proveedores ----------
 
@@ -107,8 +107,8 @@ function create(ctx, data) {
   for (const it of items) {
     const p = ctx.db.get('SELECT name, cost FROM products WHERE id = ?', [it.product_id]);
     if (!p) throw new AppError('Producto no encontrado en la compra.');
-    if (it.unit_cost === 0) suspicious.push(`"${p.name}" a costo 0 (el actual es ${p.cost.toFixed(2)})`);
-    else if (p.cost > 0 && (it.unit_cost < p.cost / 2 || it.unit_cost > p.cost * 2)) suspicious.push(`"${p.name}" a ${it.unit_cost.toFixed(2)} (el actual es ${p.cost.toFixed(2)})`);
+    if (it.unit_cost === 0) suspicious.push(`"${p.name}" a costo 0 (el actual es ${fmtMoney(ctx.db, p.cost)})`);
+    else if (p.cost > 0 && (it.unit_cost < p.cost / 2 || it.unit_cost > p.cost * 2)) suspicious.push(`"${p.name}" a ${fmtMoney(ctx.db, it.unit_cost)} (el actual es ${fmtMoney(ctx.db, p.cost)})`);
   }
   if (suspicious.length && !data.confirm_costs) throw new AppError(`Revise ${suspicious.length === 1 ? 'este costo' : 'estos costos'}: ${suspicious.join('; ')}. Cambiará el costo promedio. ¿Es correcto?`, 'COST_CONFIRM');
 
@@ -215,7 +215,7 @@ function pay(ctx, { purchase_id, supplier_id, amount, method: m, date: d, note }
     }
     const owed = round2(targets.reduce((s, p) => s + p.balance, 0));
     if (!targets.length || owed <= 0) throw new AppError('No hay balance pendiente para pagar.');
-    if (amount > owed + 0.004) throw new AppError(`El pago excede el balance pendiente (${owed.toFixed(2)}).`);
+    if (amount > owed + 0.004) throw new AppError(`El pago excede el balance pendiente (${fmtMoney(ctx.db, owed)}).`);
     let remaining = amount;
     const ids = [];
     for (const p of targets) {

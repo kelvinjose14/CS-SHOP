@@ -4,7 +4,7 @@ Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP �
 
 ## Estado
 
-**Versión 1.3.0**, para el piloto en la tienda ([cambios](CHANGELOG.md)):
+**Versión 1.3.1**, para el piloto en la tienda ([cambios](CHANGELOG.md)):
 - **Varias computadoras en red:** una PC principal guarda los datos y las demás se conectan a ella, cada una con su caja ([manual](docs/manual/13-varias-computadoras.md)).
 - **Funciones:** están todas las del pedido original (102 de 103 requisitos cumplen) y las 9 nuevas: saldos iniciales, depósito al banco, aportes del dueño, importar desde Excel, etiquetas, recibo directo a la impresora y recuperación de la contraseña ([Requisitos](docs/producto/requisitos.md)).
 - **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, opcionalmente con contraseña, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).

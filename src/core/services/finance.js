@@ -1,7 +1,7 @@
 'use strict';
 // Gastos, otros ingresos y control de caja.
 const { AppError, now, today, round2, money, text, date, method } = require('../util');
-const { audit, ledger, openCashSession, getSetting, isAdmin } = require('./common');
+const { audit, ledger, openCashSession, getSetting, isAdmin, fmtMoney } = require('./common');
 
 // ---------- Gastos / Otros ingresos ----------
 
@@ -190,7 +190,7 @@ function cashOpen(ctx, { amount, note, reason }) {
     const difference = last ? round2(opening - last.counted_amount) : null;
     const why = text(reason, 'Motivo');
     if (difference && !why) {
-      throw new AppError(`El efectivo inicial (${opening.toFixed(2)}) no es lo que se contó al cerrar la última caja de esta computadora (${last.counted_amount.toFixed(2)}). Escriba el motivo de la diferencia.`, 'OPENING_REASON');
+      throw new AppError(`El efectivo inicial (${fmtMoney(ctx.db, opening)}) no es lo que se contó al cerrar la última caja de esta computadora (${fmtMoney(ctx.db, last.counted_amount)}). Escriba el motivo de la diferencia.`, 'OPENING_REASON');
     }
     const id = ctx.db.insert('cash_sessions', {
       opened_at: now(), opened_by: ctx.user.id, opening_amount: opening, note: text(note, 'Nota'), status: 'abierta', terminal_id: terminal,
@@ -296,7 +296,7 @@ function cashMovement(ctx, { type, amount, description }) {
     if (!s) throw new AppError('No hay caja abierta.');
     if (move.direction === 'out') {
       const { expected } = sessionSummary(ctx.db, s);
-      if (amt > expected + 0.004) throw new AppError(`No hay suficiente efectivo en caja (esperado: ${expected.toFixed(2)}).`);
+      if (amt > expected + 0.004) throw new AppError(`No hay suficiente efectivo en caja (esperado: ${fmtMoney(ctx.db, expected)}).`);
     }
     const id = ledger(ctx, { direction: move.direction, amount: amt, method: 'efectivo', category: move.category, refType: 'caja', refId: s.id, description: desc });
     // El depósito entra al banco: el dinero del negocio no cambia, solo pasa de efectivo a banco.

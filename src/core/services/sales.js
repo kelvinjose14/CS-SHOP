@@ -1,6 +1,6 @@
 'use strict';
 const { AppError, now, today, addDays, round2, money, int, text, date, method, accountStatus } = require('../util');
-const { audit, ledger, changeStock, getSetting, isAdmin } = require('./common');
+const { audit, ledger, changeStock, getSetting, isAdmin, fmtMoney } = require('./common');
 
 // ---------- Clientes ----------
 
@@ -61,7 +61,7 @@ function customerSave(ctx, data) {
       if (active !== old.active) {
         if (!admin) throw new AppError('Solo el administrador puede desactivar o reactivar clientes.', 'FORBIDDEN');
         const balance = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada'", [data.id]));
-        if (!active && balance > 0) throw new AppError(`${old.name} debe ${balance.toFixed(2)}: no se puede desactivar hasta que salde su cuenta.`);
+        if (!active && balance > 0) throw new AppError(`${old.name} debe ${fmtMoney(ctx.db, balance)}: no se puede desactivar hasta que salde su cuenta.`);
         fields.active = active;
       }
       ctx.db.update('customers', data.id, fields);
@@ -154,7 +154,7 @@ function create(ctx, data) {
   let change = 0;
   let paid;
   if (paymentType === 'contado') {
-    if (received + 0.004 < total) throw new AppError(`El pago recibido (${received.toFixed(2)}) es menor que el total (${total.toFixed(2)}).`);
+    if (received + 0.004 < total) throw new AppError(`El pago recibido (${fmtMoney(ctx.db, received)}) es menor que el total (${fmtMoney(ctx.db, total)}).`);
     change = round2(received - total);
     if (change > cashReceived + 0.004) throw new AppError('Sólo se puede dar cambio sobre pagos en efectivo.');
     paid = total;
@@ -221,9 +221,9 @@ function creditCheck(ctx, customer, amount, authorize) {
   const owed = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada'", [customer.id]));
   const overdue = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada' AND balance > 0 AND due_date < ?", [customer.id, t]));
   const problems = [];
-  if (overdue > 0 && getSetting(ctx.db, 'block_overdue_credit') === '1') problems.push(`tiene ${overdue.toFixed(2)} vencido`);
+  if (overdue > 0 && getSetting(ctx.db, 'block_overdue_credit') === '1') problems.push(`tiene ${fmtMoney(ctx.db, overdue)} vencido`);
   if (customer.credit_limit > 0 && round2(owed + amount) > customer.credit_limit + 0.004) {
-    problems.push(`con esta venta debería ${round2(owed + amount).toFixed(2)} y su límite de crédito es ${customer.credit_limit.toFixed(2)}`);
+    problems.push(`con esta venta debería ${fmtMoney(ctx.db, round2(owed + amount))} y su límite de crédito es ${fmtMoney(ctx.db, customer.credit_limit)}`);
   }
   if (!problems.length) return null;
   const why = `${customer.name} ${problems.join(' y ')}.`;
@@ -299,7 +299,7 @@ function pay(ctx, { sale_id, customer_id, amount, method: m, note }) {
       : ctx.db.all("SELECT * FROM sales WHERE customer_id = ? AND balance > 0 AND status <> 'anulada' ORDER BY COALESCE(due_date, date), id", [customer_id]);
     const owed = round2(targets.reduce((s, x) => s + x.balance, 0));
     if (!targets.length || owed <= 0) throw new AppError('No hay balance pendiente para cobrar.');
-    if (amount > owed + 0.004) throw new AppError(`El abono excede el balance pendiente (${owed.toFixed(2)}).`);
+    if (amount > owed + 0.004) throw new AppError(`El abono excede el balance pendiente (${fmtMoney(ctx.db, owed)}).`);
     let remaining = amount;
     const ids = [];
     for (const s of targets) {
