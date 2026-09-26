@@ -333,7 +333,7 @@ App.register({
     $('#r-back', tb).onclick = () => App.go('reports');
     $('#r-csv', tb).onclick = () => exportCsv(rep.id, current.columns, current.rows);
     $('#r-pdf', tb).onclick = () => exportPdf(`reporte-${rep.id}`, { landscape: current.columns.length > 7 });
-    $('#r-print', tb).onclick = async () => { document.body.classList.add('printing'); try { await window.capsApi.printPage(); } finally { document.body.classList.remove('printing'); } };
+    $('#r-print', tb).onclick = async () => { expandTables(); document.body.classList.add('printing'); try { await window.capsApi.printPage(); } finally { document.body.classList.remove('printing'); } };
     if (rep.noPeriod) await load();
     else periodPicker(pp, load, { initial: 'mes' });
   },
@@ -350,6 +350,7 @@ const AUDIT_LABELS = {
   deposito_banco: 'Depósito al banco', aporte_capital: 'Aporte del dueño', anular_aporte: 'Aporte anulado',
   saldo_inicial_cliente: 'Saldo inicial de cliente', saldo_inicial_proveedor: 'Saldo inicial con proveedor', importar_productos: 'Importación de productos',
   crear_codigo_recuperacion: 'Código de recuperación creado', recuperar_contrasena: 'Contraseña recuperada con el código',
+  conteo_inventario: 'Conteo de inventario', anular_abono: 'Abono anulado', anular_pago_proveedor: 'Pago a proveedor anulado', anular_movimiento_caja: 'Movimiento de caja anulado',
 };
 
 // Nombres en español para claves de registros anteriores o técnicas (RF-NUE-08).

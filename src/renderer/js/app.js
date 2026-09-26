@@ -235,6 +235,7 @@ const App = {
     const route = this.routes.find((r) => r.id === id);
     if (!route || !this.can(route)) return;
     this.current = { id, params };
+    clearBigTables();
     $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === (route.navAs || id)));
     $('#page-title').textContent = route.title;
     setHTML($('#topbar-right'), '');

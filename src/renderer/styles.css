@@ -385,3 +385,10 @@ body.login-page .login { overflow-y: auto; }
 /* Conteo de inventario */
 @keyframes flash { from { background: var(--ok-soft); } to { background: transparent; } }
 .table tr.flash td { animation: flash 1.2s ease-out; }
+
+/* Precio faltante en la venta */
+input.invalid { border-color: var(--danger); background: var(--danger-soft); }
+
+/* Tablas grandes: aviso de filas ocultas (no sale al imprimir: se despliegan antes) */
+.table tr.table-more td { background: var(--info-soft); color: var(--ink-2); font-size: 12.5px; text-align: center; }
+body.printing .table tr.table-more { display: none; }

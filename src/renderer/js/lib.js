@@ -218,7 +218,28 @@ const methodOptions = (selected = 'efectivo') => options(Object.entries(METHOD_L
 /**
  * columns: [{ key, label, render(row), align: 'right'|'center', money: true, total: true|fn, cls }]
  */
-function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable = false, totalsLabel = 'Totales' }) {
+// Tablas grandes (auditoría 3.2): en pantalla se muestran las primeras TABLE_LIMIT filas, con un aviso
+// y "Mostrar todas". Los totales y el CSV usan siempre todas las filas, y antes de imprimir o guardar
+// en PDF se despliegan completas (expandTables).
+const TABLE_LIMIT = 1000;
+const bigTables = new Map();
+let tableSeq = 0;
+function clearBigTables() { bigTables.clear(); }
+function expandTables(root = document) {
+  $$('table[data-big]', root).forEach((t) => {
+    const big = bigTables.get(t.dataset.big);
+    if (!big) return;
+    $('tbody', t).innerHTML = big.rows.map(big.row).join('');
+    bigTables.delete(t.dataset.big);
+    t.removeAttribute('data-big');
+  });
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-show-all]');
+  if (b) expandTables(b.closest('.table-wrap'));
+});
+
+function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable = false, totalsLabel = 'Totales', limit = TABLE_LIMIT }) {
   const cell = (c, r) => {
     if (c.render) return toHtml(c.render(r));
     const v = r[c.key];
@@ -238,20 +259,41 @@ function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable
       return `<td class="${align(c)}">${esc(c.money ? Fmt.money(v) : Fmt.num(v))}</td>`;
     }).join('') + '</tr></tfoot>';
   }
+  const row = (r, i) => `<tr data-idx="${i}" class="${rowClass ? esc(rowClass(r) || '') : ''}">${columns.map((c) => `<td class="${align(c)} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`;
+  const big = rows.length > limit;
+  const id = big ? `t${++tableSeq}` : '';
+  if (big) bigTables.set(id, { rows, row });
+  const more = big ? `<tr class="table-more"><td colspan="${columns.length}">Se muestran ${esc(Fmt.num(limit))} de ${esc(Fmt.num(rows.length))} filas. Los totales, el CSV y el PDF incluyen todas. <button class="btn small" type="button" data-show-all>Mostrar todas</button></td></tr>` : '';
+  const body = rows.length ? rows.slice(0, big ? limit : rows.length).map(row).join('') + more : `<tr><td colspan="${columns.length}" class="empty">${esc(empty)}</td></tr>`;
   return raw(`
-    <div class="table-wrap"><table class="table ${clickable ? 'clickable' : ''}">
+    <div class="table-wrap"><table class="table ${clickable ? 'clickable' : ''}"${big ? ` data-big="${id}"` : ''}>
       <thead><tr>${columns.map((c) => `<th class="${align(c)} ${c.cls || ''}">${esc(c.label)}</th>`).join('')}</tr></thead>
-      <tbody>${rows.length ? rows.map((r, i) => `<tr data-idx="${i}" class="${rowClass ? esc(rowClass(r) || '') : ''}">${columns.map((c) => `<td class="${align(c)} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${columns.length}" class="empty">${esc(empty)}</td></tr>`}</tbody>
+      <tbody>${body}</tbody>
       ${foot}
     </table></div>`);
 }
+
+// Clic en una fila y en un botón de una fila. Se escuchan en el contenedor (no fila por fila), así
+// también funcionan en las filas que se agregan con "Mostrar todas". Volver a llamarlas reemplaza el anterior.
 function onRowClick(root, rows, fn) {
-  $$('tbody tr[data-idx]', root).forEach((tr) => {
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('button, a, input, select')) return;
-      fn(rows[Number(tr.dataset.idx)], e);
-    });
-  });
+  if (root._rowClick) root.removeEventListener('click', root._rowClick);
+  root._rowClick = (e) => {
+    const tr = e.target.closest('tbody tr[data-idx]');
+    if (!tr || !root.contains(tr) || e.target.closest('button, a, input, select')) return;
+    fn(rows[Number(tr.dataset.idx)], e);
+  };
+  root.addEventListener('click', root._rowClick);
+}
+function onRowButton(root, selector, rows, fn) {
+  root._rowButtons = root._rowButtons || {};
+  if (root._rowButtons[selector]) root.removeEventListener('click', root._rowButtons[selector]);
+  root._rowButtons[selector] = (e) => {
+    const b = e.target.closest(selector);
+    const tr = b && b.closest('tbody tr[data-idx]');
+    if (!tr || !root.contains(tr)) return;
+    fn(rows[Number(tr.dataset.idx)], b, e);
+  };
+  root.addEventListener('click', root._rowButtons[selector]);
 }
 
 /* ---------- Exportar ---------- */
@@ -269,6 +311,7 @@ async function exportCsv(name, columns, rows) {
   if (path) toast('Archivo exportado.');
 }
 async function exportPdf(name, { landscape = false } = {}) {
+  expandTables();
   document.body.classList.add('printing');
   try {
     const p = await window.capsApi.savePdf({ defaultName: `${name}-${todayStr()}.pdf`, landscape });

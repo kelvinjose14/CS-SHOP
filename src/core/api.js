@@ -44,6 +44,7 @@ const METHODS = {
   'purchases.get': [ADMIN, purchases.get],
   'purchases.pay': [ADMIN, purchases.pay],
   'purchases.void': [ADMIN, purchases.voidPurchase],
+  'purchases.voidPayment': [ADMIN, purchases.voidPayment],
   'payables.list': [ADMIN, purchases.payables],
 
   'customers.list': [ALL, sales.customerList],
@@ -56,6 +57,7 @@ const METHODS = {
   'sales.pay': [ALL, sales.pay],
   'sales.return': [ADMIN, sales.createReturn],
   'sales.void': [ADMIN, sales.voidSale],
+  'sales.voidPayment': [ADMIN, sales.voidPayment],
   'receivables.list': [ALL, sales.receivables],
 
   'expenses.list': [ADMIN, finance.expenses.list],
@@ -72,6 +74,7 @@ const METHODS = {
   'cash.open': [ALL, finance.cashOpen],
   'cash.movement': [ALL, finance.cashMovement],
   'cash.close': [ALL, finance.cashClose],
+  'cash.voidMovement': [ADMIN, finance.cashVoid],
   'cash.history': [ADMIN, finance.cashHistory],
   'cash.session': [ADMIN, finance.cashSession],
 

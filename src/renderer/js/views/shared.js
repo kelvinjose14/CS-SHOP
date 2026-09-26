@@ -100,3 +100,23 @@ function openingDialog({ title, who, withInvoice = false, onSubmit }) {
     ],
   });
 }
+
+// Botón "Anular" de un pago registrado por error (abono de cliente o pago a proveedor). Solo el
+// administrador, y solo en ventas o compras a crédito: lo de contado se corrige anulando la venta o compra.
+const voidPayColumn = (canVoid) => ({
+  label: '', csv: false,
+  render: (r) => (r.voided ? badge('anulada', 'Anulado') : App.isAdmin() && canVoid(r) ? html`<button class="btn small danger" data-void-pay>Anular</button>` : ''),
+});
+function bindVoidPayments(root, rows, { method, what, cashNote, onDone }) {
+  onRowButton(root, '[data-void-pay]', rows, async (r) => {
+    const reason = await promptDialog({
+      title: `Anular ${what(r)}`,
+      label: `Motivo · ${Fmt.money(r.amount)} en ${METHOD_LABELS[r.method].toLowerCase()}. La deuda vuelve a quedar como antes${r.method === 'efectivo' ? `; ${cashNote}` : ''}.`,
+    });
+    if (!reason) return;
+    await api(method, { payment_id: r.id, reason });
+    toast('Pago anulado.');
+    App.refreshCashBadge();
+    onDone && onDone();
+  });
+}

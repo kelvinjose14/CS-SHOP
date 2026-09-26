@@ -28,8 +28,11 @@ function customerGet(ctx, { id }) {
   const c = customerList(ctx, { includeInactive: true }).find((x) => x.id === id);
   if (!c) throw new AppError('Cliente no encontrado.');
   c.sales = ctx.db.all('SELECT * FROM sales WHERE customer_id = ? ORDER BY date DESC, id DESC', [id]);
+  if (!isAdmin(ctx)) c.sales = c.sales.map(({ cost_total, ...s }) => s); // el vendedor no ve costos (RF-USR-04)
   c.payments = ctx.db.all(
-    `SELECT sp.*, u.name AS user_name FROM sale_payments sp LEFT JOIN users u ON u.id = sp.user_id WHERE sp.customer_id = ? ORDER BY sp.date DESC, sp.id DESC`,
+    `SELECT sp.*, u.name AS user_name, s.payment_type AS sale_payment_type, s.status AS sale_status
+       FROM sale_payments sp JOIN sales s ON s.id = sp.sale_id LEFT JOIN users u ON u.id = sp.user_id
+      WHERE sp.customer_id = ? ORDER BY sp.date DESC, sp.id DESC`,
     [id]
   );
   return c;
@@ -93,6 +96,12 @@ function create(ctx, data) {
     const listPrice = saleType === 'mayor' ? p.price_wholesale : p.price_retail;
     let unitPrice = it.unit_price === undefined || it.unit_price === null || it.unit_price === '' ? listPrice : money(it.unit_price, 'Precio');
     if (!admin && round2(unitPrice) !== round2(listPrice)) throw new AppError('Sólo el administrador puede cambiar el precio de un producto en la venta.');
+    // Un producto sin precio (por ejemplo, sin precio por mayor) no se vende en 0 por error.
+    // Para regalar algo, el administrador usa el descuento.
+    if (!(unitPrice > 0)) {
+      const which = saleType === 'mayor' ? 'por mayor' : 'al detalle';
+      throw new AppError(`"${p.name}" no tiene precio ${which}. ${admin ? 'Escriba el precio en la venta o póngaselo en Inventario.' : 'Pídale al administrador que le ponga precio en Inventario.'}`, 'NO_PRICE');
+    }
     const qty = int(it.qty, `Cantidad de "${p.name}"`, { min: 1 });
     const lineDiscount = money(it.line_discount || 0, 'Descuento de línea');
     const gross = round2(qty * unitPrice);
@@ -202,7 +211,7 @@ function list(ctx, { from, to, customer_id, sale_type, payment_type, status, use
             (SELECT GROUP_CONCAT(DISTINCT method) FROM sale_payments WHERE sale_id = s.id AND voided = 0) AS methods
        FROM sales s LEFT JOIN customers c ON c.id = s.customer_id LEFT JOIN users u ON u.id = s.user_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY s.id DESC LIMIT 5000`,
+      ORDER BY s.id DESC`,
     params
   );
   return isAdmin(ctx) ? rows : rows.map(({ cost_total, ...r }) => r);
@@ -263,6 +272,30 @@ function pay(ctx, { sale_id, customer_id, amount, method: m, note }) {
     }
     audit(ctx, 'abono_cliente', 'cliente', targets[0].customer_id, { monto: amount, metodo: payMethod, ventas: targets.map((t) => t.id) });
     return ids;
+  });
+}
+
+// Anula un cobro registrado por error en una venta a crédito (O6, auditoría 3.4): la deuda vuelve a
+// quedar como estaba y el dinero sale con un movimiento contrario, en la caja de quien anula.
+// El cobro de una venta de contado no se anula aparte: se anula la venta.
+function voidPayment(ctx, { payment_id, reason }) {
+  const why = text(reason, 'Motivo', { required: true });
+  return ctx.db.tx(() => {
+    const pay = ctx.db.get('SELECT * FROM sale_payments WHERE id = ?', [payment_id]);
+    if (!pay) throw new AppError('Pago no encontrado.');
+    if (pay.voided) throw new AppError('Ese pago ya está anulado.');
+    const sale = ctx.db.get('SELECT * FROM sales WHERE id = ?', [pay.sale_id]);
+    if (sale.status === 'anulada') throw new AppError('La venta está anulada.');
+    if (sale.payment_type !== 'credito') throw new AppError('Es el cobro de una venta de contado: para corregirlo, anule la venta.');
+    const paid = round2(sale.paid - pay.amount);
+    if (paid < -0.004) throw new AppError('Ese dinero ya se le devolvió al cliente en una devolución: no se puede anular el pago.');
+    const due = round2(sale.total - sale.returned_total);
+    ctx.db.update('sale_payments', pay.id, { voided: 1 });
+    ctx.db.update('sales', sale.id, { paid, balance: round2(due - paid), status: accountStatus(due, paid) });
+    const c = sale.customer_id ? ctx.db.get('SELECT name FROM customers WHERE id = ?', [sale.customer_id]) : null;
+    ledger(ctx, { direction: 'out', amount: pay.amount, method: pay.method, category: 'anulacion_abono', refType: 'abono', refId: pay.id, description: `Anulación de abono${c ? ' de ' + c.name : ''} (venta #${sale.id}): ${why}` });
+    audit(ctx, 'anular_abono', 'cliente', sale.customer_id, { venta: sale.id, monto: pay.amount, metodo: pay.method, motivo: why });
+    return true;
   });
 }
 
@@ -346,4 +379,4 @@ function receivables(ctx, { customer_id, only_open = true } = {}) {
   );
 }
 
-module.exports = { customerList, customerGet, customerSave, customerOpening, create, list, get, pay, createReturn, voidSale, receivables };
+module.exports = { customerList, customerGet, customerSave, customerOpening, create, list, get, pay, voidPayment, createReturn, voidSale, receivables };

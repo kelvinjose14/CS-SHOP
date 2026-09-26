@@ -34,17 +34,13 @@ function entryScreen({ kind }) {
     const load = async () => {
       rows = await api(`${apiBase}.list`, { ...range, category });
       setHTML($('#e-list', wrap), table({ columns: cols, rows, empty: isExpense ? 'No hay gastos en el período.' : 'No hay ingresos en el período.' }));
-      $$('#e-list tbody tr[data-idx]', wrap).forEach((tr) => {
-        const r = rows[Number(tr.dataset.idx)];
-        const b = $('[data-void]', tr);
-        if (b) b.onclick = async () => {
-          const reason = await promptDialog({ title: `Anular ${isExpense ? 'gasto' : 'ingreso'}`, label: `Motivo · ${r.category} ${Fmt.money(r.amount)}` });
-          if (!reason) return;
-          await api(`${apiBase}.void`, { id: r.id, reason });
-          toast('Registro anulado.');
-          App.refreshCashBadge();
-          load();
-        };
+      onRowButton($('#e-list', wrap), '[data-void]', rows, async (r) => {
+        const reason = await promptDialog({ title: `Anular ${isExpense ? 'gasto' : 'ingreso'}`, label: `Motivo · ${r.category} ${Fmt.money(r.amount)}` });
+        if (!reason) return;
+        await api(`${apiBase}.void`, { id: r.id, reason });
+        toast('Registro anulado.');
+        App.refreshCashBadge();
+        load();
       });
       const byCat = {};
       rows.forEach((r) => (byCat[r.category] = (byCat[r.category] || 0) + r.amount));
@@ -116,16 +112,13 @@ App.register({
     const load = async () => {
       rows = await api('capital.list', range);
       setHTML(box, table({ columns: cols, rows, empty: 'No hay aportes en el período.' }));
-      $$('tbody tr[data-idx]', box).forEach((tr) => {
-        const r = rows[Number(tr.dataset.idx)];
-        $('[data-void]', tr).onclick = async () => {
-          const reason = await promptDialog({ title: 'Anular aporte', label: `Motivo · ${Fmt.money(r.amount)}` });
-          if (!reason) return;
-          await api('capital.void', { id: r.id, reason });
-          toast('Aporte anulado.');
-          App.refreshCashBadge();
-          load();
-        };
+      onRowButton(box, '[data-void]', rows, async (r) => {
+        const reason = await promptDialog({ title: 'Anular aporte', label: `Motivo · ${Fmt.money(r.amount)}` });
+        if (!reason) return;
+        await api('capital.void', { id: r.id, reason });
+        toast('Aporte anulado.');
+        App.refreshCashBadge();
+        load();
       });
     };
     $$('[data-go]', tb).forEach((b) => (b.onclick = () => App.go(b.dataset.go)));
@@ -205,6 +198,7 @@ App.register({
                   { key: 'description', label: 'Detalle' },
                   { key: 'amount', label: 'Monto', align: 'right', render: (r) => html`<b class="${r.direction === 'in' ? 'text-ok' : 'text-danger'}">${r.direction === 'in' ? '+' : '−'}${Fmt.money(r.amount)}</b>` },
                   { key: 'user_name', label: 'Usuario' },
+                  { label: '', render: (r) => (r.voided ? badge('anulada', 'Anulado') : admin && r.voidable ? html`<button class="btn small danger" data-void-mov>Anular</button>` : '') },
                 ],
                 rows: s.movements,
                 empty: 'Sin movimientos de efectivo todavía.',
@@ -228,6 +222,14 @@ App.register({
           { label: 'Cancelar' },
           { label: 'Registrar', primary: true, onClick: async ({ body }) => { await api('cash.movement', { type, ...formData(body) }); toast('Movimiento registrado.'); App.reload(); } },
         ],
+      });
+      // Entrada, depósito o retiro registrado por error: el administrador lo anula con un motivo.
+      onRowButton(page, '[data-void-mov]', s.movements, async (r) => {
+        const reason = await promptDialog({ title: `Anular: ${r.label}`, label: `Motivo · ${Fmt.money(r.amount)}${r.description ? ` (${r.description})` : ''}` });
+        if (!reason) return;
+        await api('cash.voidMovement', { movement_id: r.id, reason });
+        toast('Movimiento anulado.');
+        App.reload();
       });
       $('#cash-in', page).onclick = () => move('entrada');
       $('#cash-bank', page).onclick = () => move('deposito_banco');
@@ -314,6 +316,7 @@ App.register({
                 { key: 'description', label: 'Detalle' },
                 { key: 'amount', label: 'Monto', align: 'right', render: (m) => html`<b class="${m.direction === 'in' ? 'text-ok' : 'text-danger'}">${m.direction === 'in' ? '+' : '−'}${Fmt.money(m.amount)}</b>` },
                 { key: 'user_name', label: 'Usuario' },
+                { key: 'voided', label: '', render: (m) => (m.voided ? badge('anulada', 'Anulado') : '') },
               ],
               rows: d.movements,
             })}`,

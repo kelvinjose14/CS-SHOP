@@ -112,7 +112,7 @@ App.register({
               <td><b>${l.p.name}</b><div class="muted small">${[l.p.brand, l.p.color, l.p.size, l.p.sku].filter(Boolean).join(' · ')}</div></td>
               <td class="text-right ${l.qty > l.p.stock ? 'text-danger' : ''}">${l.p.stock}</td>
               <td><div class="qty"><button data-q="-1">−</button><input data-k="qty" type="number" min="1" step="1" value="${l.qty}"><button data-q="1">+</button></div></td>
-              <td>${admin ? html`<input class="num" data-k="unit_price" type="number" min="0" step="0.01" value="${l.unit_price}">` : Fmt.money(l.unit_price)}</td>
+              <td>${admin ? html`<input class="num ${l.unit_price > 0 ? '' : 'invalid'}" data-k="unit_price" type="number" min="0" step="0.01" value="${l.unit_price}">` : l.unit_price > 0 ? Fmt.money(l.unit_price) : html`<b class="text-danger">Sin precio</b>`}</td>
               <td class="text-right sub"><b>${Fmt.money(l.qty * l.unit_price)}</b></td>
               <td><button class="icon-btn danger" data-del title="Quitar">${icon('trash')}</button></td>
             </tr>`)}</tbody>
@@ -135,6 +135,7 @@ App.register({
       const ex = sale.lines.find((l) => l.p.id === p.id);
       if (ex) ex.qty += 1;
       else sale.lines.push({ p, qty: 1, unit_price: listPrice(p) });
+      if (!(listPrice(p) > 0)) toast(`"${p.name}" no tiene precio ${sale.sale_type === 'mayor' ? 'por mayor' : 'al detalle'}.${admin ? ' Escriba el precio.' : ''}`, 'error');
       drawLines();
     }, { priceKey: (p) => Fmt.money(listPrice(p)) });
 
@@ -363,7 +364,7 @@ async function saleDetail(id, onChange) {
       });
     }
   }
-  modal({
+  const m = modal({
     title: `Venta ${Fmt.saleNo(s.id)}`,
     width: 900,
     body: html`
@@ -407,7 +408,7 @@ async function saleDetail(id, onChange) {
           { key: 'method', label: 'Método', render: (r) => METHOD_LABELS[r.method] },
           { key: 'amount', label: 'Monto', money: true },
           { key: 'user_name', label: 'Usuario' },
-          { key: 'voided', label: '', render: (r) => (r.voided ? badge('anulada') : '') },
+          voidPayColumn(() => s.payment_type === 'credito' && s.status !== 'anulada'),
         ],
         rows: s.payments, empty: 'Sin pagos.',
       })}
@@ -425,6 +426,10 @@ async function saleDetail(id, onChange) {
         rows: s.returns,
       })}` : ''}`,
     actions,
+  });
+  bindVoidPayments(m.body, s.payments, {
+    method: 'sales.voidPayment', what: () => `pago de ${Fmt.saleNo(s.id)}`, cashNote: 'el efectivo sale de la caja de esta PC',
+    onDone: () => { m.close(); onChange && onChange(); saleDetail(id, onChange); },
   });
 }
 
@@ -560,7 +565,7 @@ async function customerDetail(id, onChange) {
       }),
     });
   }
-  modal({
+  const m = modal({
     title: c.name,
     width: 920,
     body: html`
@@ -597,11 +602,15 @@ async function customerDetail(id, onChange) {
           { key: 'method', label: 'Método', render: (r) => METHOD_LABELS[r.method] },
           { key: 'amount', label: 'Monto', money: true, total: true },
           { key: 'user_name', label: 'Usuario' },
-          { key: 'voided', label: '', render: (r) => (r.voided ? badge('anulada') : '') },
+          voidPayColumn((r) => r.sale_payment_type === 'credito' && r.sale_status !== 'anulada'),
         ],
         rows: c.payments, empty: 'Sin pagos.',
       })}`,
     actions,
+  });
+  bindVoidPayments(m.body, c.payments, {
+    method: 'sales.voidPayment', what: (r) => `abono de ${c.name} (${Fmt.saleNo(r.sale_id)})`, cashNote: 'el efectivo sale de la caja de esta PC',
+    onDone: () => { m.close(); onChange && onChange(); customerDetail(id, onChange); },
   });
 }
 
@@ -653,22 +662,17 @@ App.register({
       const cols = view === 'cliente' ? custCols : invCols;
       setHTML(box, table({ columns: cols, rows, clickable: true, empty: '¡Nadie le debe dinero!', rowClass: (r) => (r.overdue ? 'row-danger' : '') }));
       onRowClick(box, rows, (r) => (view === 'cliente' ? customerDetail(r.id, load) : saleDetail(r.id, load)));
-      $$('tbody tr[data-idx]', box).forEach((tr) => {
-        const b = $('[data-pay]', tr);
-        if (!b) return;
-        const r = rows[Number(tr.dataset.idx)];
-        b.onclick = () => paymentDialog({
-          title: view === 'cliente' ? `Abono de ${r.name}` : `Abono a ${Fmt.saleNo(r.id)}`,
-          maxAmount: r.balance,
-          info: view === 'cliente' ? 'Se aplicará a las facturas más antiguas.' : html`Cliente: <b>${r.customer_name}</b>`,
-          onSubmit: async (f) => {
-            await api('sales.pay', view === 'cliente' ? { customer_id: r.id, ...f } : { sale_id: r.id, ...f });
-            toast('Abono registrado.');
-            App.refreshCashBadge();
-            load();
-          },
-        });
-      });
+      onRowButton(box, '[data-pay]', rows, (r) => paymentDialog({
+        title: view === 'cliente' ? `Abono de ${r.name}` : `Abono a ${Fmt.saleNo(r.id)}`,
+        maxAmount: r.balance,
+        info: view === 'cliente' ? 'Se aplicará a las facturas más antiguas.' : html`Cliente: <b>${r.customer_name}</b>`,
+        onSubmit: async (f) => {
+          await api('sales.pay', view === 'cliente' ? { customer_id: r.id, ...f } : { sale_id: r.id, ...f });
+          toast('Abono registrado.');
+          App.refreshCashBadge();
+          load();
+        },
+      }));
       $('#ar-export', tb).onclick = () => exportCsv('cuentas-por-cobrar', cols, rows);
     };
     $$('#ar-view [data-v]', tb).forEach((b) => (b.onclick = () => {
