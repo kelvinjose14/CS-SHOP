@@ -4,9 +4,15 @@ name: Instalador Windows
 #  - Linux: pruebas de lógica, de interfaz y de rendimiento (3 años de datos).
 #  - Windows: las mismas pruebas, el instalador, y el programa instalado de verdad
 #    (instalar, usar, reinstalar encima y desinstalar sin perder los datos).
-# Al crear una etiqueta vX.Y.Z, el instalador se publica en Releases.
+# Se publica en Releases al crear una etiqueta vX.Y.Z, o desde Actions → Run workflow sobre main
+# con "Publicar" marcado: entonces el CI crea la etiqueta con la versión de package.json.
 on:
   workflow_dispatch:
+    inputs:
+      publicar:
+        description: 'Publicar en Releases la versión de package.json (solo desde main)'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
   pull_request:
@@ -53,11 +59,25 @@ jobs:
 
       - run: npm ci
 
-      # Con una etiqueta, primero se comprueba que coincida con package.json y que el CHANGELOG
-      # tenga las notas de esa versión; si no, no se construye nada.
-      - name: Notas de la versión
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: node scripts/notas-version.js "${{ github.ref_name }}" notas-version.md
+      # Al publicar, primero se comprueba que la versión coincida con package.json, que no esté
+      # publicada y que el CHANGELOG tenga sus notas; si no, no se construye nada.
+      - name: Versión a publicar
+        id: ver
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publicar
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            [[ "$GITHUB_REF" == refs/heads/main ]] || { echo "::error::Solo se publica desde main."; exit 1; }
+            tag="v$(node -p "require('./package.json').version")"
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+              echo "::error::La versión $tag ya está publicada. Suba la versión en package.json."
+              exit 1
+            fi
+          fi
+          node scripts/notas-version.js "$tag" notas-version.md
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Pruebas
         run: npm test
@@ -110,10 +130,12 @@ jobs:
           Write-Host 'Instalación probada.'
 
       - name: Publicar en Releases
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.ver.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          name: CAPS Shop ${{ github.ref_name }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: CAPS Shop ${{ steps.ver.outputs.tag }}
           body_path: notas-version.md
           # latest.yml y el .blockmap son los que usan las PCs instaladas para saber que hay versión nueva.
           files: |
