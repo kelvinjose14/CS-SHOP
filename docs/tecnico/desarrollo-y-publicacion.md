@@ -161,7 +161,7 @@ Se usa versionado semántico:
    - que se instale sobre la versión anterior sin perder datos. Los datos viven en `%APPDATA%`, fuera de la carpeta del programa.
    - **con varias PCs:** que todas tengan la misma versión. La principal rechaza a las de otra versión.
 
-> **Rama por defecto:** hoy la rama por defecto del repositorio es `claude/lucid-tesla-gqar2k`, y por eso GitHub propone esa rama como destino. La versión 1.0.0 quedó así, con código idéntico a `main`. **El dueño debe cambiarla a `main`** en GitHub → Settings → General → Default branch. Hasta entonces, elija `main` a mano en **Target**.
+> **Rama por defecto:** desde el 26/09/2026 es `main`, así que GitHub la propone como destino en **Target**. Antes era la rama de trabajo (`claude/lucid-tesla-gqar2k`), y por eso la etiqueta `v1.0.0` quedó en esa rama, con código idéntico a `main`.
 
 ## Actualizaciones
 
