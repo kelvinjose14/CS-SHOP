@@ -46,6 +46,7 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **El descuento máximo permitido es N%.** | Baje el descuento o pida al administrador que haga la venta |
 | **No tiene permiso para aplicar descuentos.** | El administrador desactivó los descuentos del vendedor |
 | **Sólo el administrador puede cambiar el precio de un producto en la venta.** | Use el precio de lista |
+| **"…" no tiene precio por mayor.** / **…al detalle.** | Póngale precio en **Inventario** (o el administrador lo escribe en la venta) |
 | **La venta tiene devoluciones; no se puede anular.** | Haga una devolución por lo que falta |
 
 ## Cobros y pagos
@@ -55,6 +56,7 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **No hay balance pendiente para cobrar.** / **…para pagar.** | Ya está saldado |
 | **El abono excede el balance pendiente (…).** / **El pago excede…** | Corrija el monto |
 | **No tiene permiso para registrar pagos de clientes.** | El administrador desactivó esa opción para el vendedor |
+| Se registró un abono, un pago a proveedor o un movimiento de caja equivocado | El administrador lo **anula** con un motivo y se registra el correcto ([Clientes, 6.4](06-clientes-y-cobros.md#anular-un-abono-registrado-por-error-administrador), [Caja, 7.2](07-caja.md#72-durante-el-día)) |
 
 ## Inventario y compras
 

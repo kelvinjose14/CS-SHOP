@@ -1,6 +1,6 @@
 # Lista de aceptación
 
-Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **127 requisitos**. Generada el 26/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
+Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **128 requisitos**. Generada el 26/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
 
 **Cómo se llena:**
 1. Imprímala (desde GitHub: botón **Raw** y luego imprimir, o abra el archivo en el navegador).
@@ -223,10 +223,11 @@ Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y 
 | RF-NUE-08 | Historial legible en todos los casos | Ningún detalle muestra claves en inglés, tampoco en los registros anteriores. Dónde: Historial de movimientos | ☐ | ☐ | |
 | RF-NUE-09 | Incluir las fotos en la copia de seguridad | La copia fuera de la PC lleva las fotos y restaurar las recupera. Dónde: Configuración → Copias de seguridad | ☐ | ☐ | |
 | RF-NUE-10 | Conteo de inventario de muchos productos a la vez (DT-25) | Hoja de conteo imprimible; se cuenta escribiendo o con el lector; se revisan las diferencias y se aplican todas con un motivo; lo vendido mientras se contaba no se ajusta. Dónde: Inventario → Conteo | ☐ | ☐ | |
+| RF-NUE-11 | Anular un abono, un pago a proveedor o un movimiento de caja registrado por error (auditoría 3.4, DT-28) | El administrador lo anula con motivo; la deuda vuelve a como estaba y el dinero con un movimiento contrario, en la caja del original. Queda en el historial. Dónde: Detalle de cliente, proveedor y venta; Caja | ☐ | ☐ | |
 
 ## Acta de aceptación
 
-Requisitos verificados: ______ de 127. Con observaciones pendientes: ______.
+Requisitos verificados: ______ de 128. Con observaciones pendientes: ______.
 
 Con esta firma, el cliente declara que usó CAPS Shop en la tienda con datos reales durante el piloto, que los requisitos marcados **Sí** funcionan como se describe, y acepta el sistema para uso en producción. Las observaciones pendientes quedan anotadas arriba y en la bitácora, con su compromiso de corrección.
 

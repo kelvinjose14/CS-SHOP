@@ -54,6 +54,7 @@ Versión documentada: **1.2.0** (26/09/2026, para el piloto en la tienda). Los c
 - [Desarrollo y publicación](tecnico/desarrollo-y-publicacion.md)
 - [Red: varias computadoras](tecnico/red.md)
 - [Seguridad](tecnico/seguridad.md)
+- [Auditoría de producción](tecnico/auditoria.md): hallazgos del 26/09/2026 y su estado
 - [Rendimiento](tecnico/rendimiento.md)
 
 ## Convenciones de esta documentación
