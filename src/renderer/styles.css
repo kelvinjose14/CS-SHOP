@@ -370,3 +370,14 @@ body.login-page .login { overflow-y: auto; }
 .net-key { font-family: ui-monospace, Consolas, monospace; letter-spacing: 1px; font-size: 18px; }
 #net-card h4, .settings .card h4 { margin: 16px 0 8px; }
 .cash-pill.update-pill { background: var(--brand-soft); color: var(--brand); margin-right: 8px; }
+
+/* Código de recuperación */
+.recovery-code { font-size: 22px; font-weight: 700; letter-spacing: 2px; text-align: center; padding: 14px; border: 2px dashed var(--line); border-radius: 8px; margin: 10px 0; user-select: all; }
+.mono { font-family: 'Consolas', 'Courier New', monospace; }
+
+/* Etiquetas e importación */
+.lb-list { max-height: 320px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.lb-list .r, .imp-list .r { text-align: right; }
+.qty-input { width: 80px; height: 30px; text-align: right; }
+.imp-list { max-height: 340px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+.imp-list tr.err td { background: var(--danger-soft); }

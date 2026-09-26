@@ -10,7 +10,8 @@ Menú **Inventario** → **Proveedores**.
 
 - **Nuevo proveedor:** **Nombre** (obligatorio), **Teléfono**, **Correo**, **Dirección** y **Notas**.
 - La lista muestra de cada proveedor la **Última compra**, el **Total comprado**, lo **Pagado** y el **Balance pendiente**.
-- Al pulsar un proveedor se ve su **Historial de compras** y su **Historial de pagos**, con los botones **Editar** y **Registrar pago**.
+- Al pulsar un proveedor se ve su **Historial de compras** y su **Historial de pagos**, con los botones **Saldo inicial**, **Editar** y **Registrar pago**.
+- **Saldo inicial:** lo que usted ya le debía al proveedor antes de usar el sistema. Pide monto, fecha, vencimiento, factura y nota. Aparece en **Cuentas por pagar** marcado como **Saldo inicial** y se paga como cualquier compra a crédito, pero **no cuenta como compra** ni mueve inventario.
 
 ## 5.2 Registrar una compra
 

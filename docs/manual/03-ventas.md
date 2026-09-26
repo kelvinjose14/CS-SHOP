@@ -50,7 +50,7 @@ Menú **Principal** → **Nueva venta**.
 ### El recibo
 Incluye nombre, eslogan, dirección y teléfono del negocio, número de venta, fecha, tipo de venta, cliente, vendedor, productos, subtotal, descuento, total, pagos, cambio, saldo pendiente y fecha de vencimiento. Al pie lleva el mensaje configurado y la frase **"Documento sin valor fiscal"**; el sistema no emite comprobantes fiscales.
 
-Al imprimir se abre la ventana de impresión de Windows para elegir la impresora. Para una impresora de tickets de 80 mm, elíjala ahí. La impresión directa sin ventana está pendiente ([Objetivos](../producto/objetivos.md), O5).
+Si esta computadora tiene elegida su **impresora de recibos** ([Configuración, 11.8](11-configuracion-y-respaldos.md#118-impresora-de-recibos-de-esta-pc)), el recibo sale directo, sin ventana, en papel de 80 o 58 mm. Con **Imprimir el recibo al cobrar** activado, sale solo al registrar la venta. Si no hay impresora elegida, se abre la ventana de impresión de Windows para elegirla.
 
 ## 3.2 Consultar ventas
 

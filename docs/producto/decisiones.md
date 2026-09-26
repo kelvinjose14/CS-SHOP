@@ -8,10 +8,6 @@ Registro corto de lo que se decidió y de lo que falta decidir.
 
 | ID | Pregunta | Opciones | Recomendación | Bloquea |
 |---|---|---|---|---|
-| DP-05 | Los aportes de capital del dueño, ¿cuentan como otros ingresos? | Sí (suman a la ganancia neta, como hoy) / No, se registran aparte como capital | Registrarlos aparte, para que la ganancia refleje solo la operación | O5 |
-| DP-06 | ¿Qué impresora de tickets se usará? | Marca, modelo y ancho (58 u 80 mm) | Definir el modelo real antes de programar la impresión directa | O5 (RF-NUE-03) |
-| DP-07 | ¿El vendedor puede hacer retiros de caja? | Sí (como hoy) / Solo el administrador | Solo depósitos al banco, con descripción obligatoria | O5 (RF-NUE-02) |
-| DP-08 | ¿Se aprueban los requisitos nuevos RF-NUE-01 a 09? | Aprobar todos / algunos / ninguno | Aprobar todos: son necesarios para operar | O5 |
 | DP-09 | ¿El dueño quiere ver datos desde fuera de la tienda o desde el celular? | Sí / No / Más adelante | Más adelante, sobre el modelo de DT-13 | Futuro |
 
 ## Tomadas
@@ -22,7 +18,7 @@ Registro corto de lo que se decidió y de lo que falta decidir.
 | DT-02 | 25/09/2026 | Base de datos SQLite local en memoria (sql.js), guardada en un archivo | Sin dependencias nativas, fácil de instalar. **Reemplazada por DT-16** |
 | DT-03 | 25/09/2026 | Costo de mercancía por **costo promedio ponderado** | La ganancia real no depende del orden de compra |
 | DT-04 | 25/09/2026 | Las compras de mercancía no son gasto; pasan a costo al venderse | Así la ganancia de cada mes es la real |
-| DT-05 | 25/09/2026 | Ganancia neta = ganancia bruta − gastos + otros ingresos | Refleja todo el dinero que gana el negocio (ver DP-05) |
+| DT-05 | 25/09/2026 | Ganancia neta = ganancia bruta − gastos + otros ingresos | Refleja todo el dinero que gana el negocio. Los aportes del dueño no son otros ingresos (DT-21) |
 | DT-06 | 25/09/2026 | Sin facturación fiscal ni NCF | Pedido del cliente |
 | DT-07 | 25/09/2026 | Los permisos se comprueban en el núcleo, no solo en la pantalla | Seguridad: el vendedor no puede saltárselos |
 | DT-08 | 25/09/2026 | Nada se borra: productos y clientes se desactivan; ventas, compras y gastos se anulan con motivo | Trazabilidad completa |
@@ -38,3 +34,7 @@ Registro corto de lo que se decidió y de lo que falta decidir.
 | DT-18 | 25/09/2026 | **Certificado de firma de código: todavía no** (antigua DP-04). El CI queda listo: firma solo si se cargan los secretos `WIN_CSC_LINK` y `WIN_CSC_KEY_PASSWORD` | Decisión del dueño. Mientras tanto, Windows muestra "Windows protegió su PC" al instalar |
 | DT-19 | 25/09/2026 | **Actualizaciones con aviso**: el programa busca versiones nuevas en GitHub Releases, pero descargar e instalar lo decide el administrador en cada PC | Elegido por el dueño: nunca se interrumpe una venta con una instalación |
 | DT-20 | 25/09/2026 | **Copia fuera de la PC en una memoria USB o en la carpeta de OneDrive o Google Drive**, diaria y con las fotos, desde la PC principal | Elegido por el dueño; sin servicios nuevos ni costo |
+| DT-21 | 26/09/2026 | **Los aportes de capital del dueño se registran aparte** (Gastos → Aportes del dueño): entran al flujo de dinero, pero **no suman a la ganancia** (antigua DP-05). Reemplaza la nota de DT-05 | Recomendación aplicada con el permiso del dueño; **revisable**. La ganancia refleja solo lo que produce la tienda |
+| DT-22 | 26/09/2026 | **El vendedor no hace retiros de caja**: solo registra **depósitos al banco**, con descripción obligatoria. El retiro (dinero que sale del negocio) es del administrador. El depósito no es salida del negocio: el efectivo pasa al banco (antigua DP-07) | Recomendación aplicada con el permiso del dueño; **revisable** |
+| DT-23 | 26/09/2026 | **Impresión directa del recibo configurable en cada PC**: se elige la impresora de Windows y el ancho (58 u 80 mm), sin fijar marca ni modelo (antigua DP-06) | Todavía no se conoce la impresora real; así sirve cualquiera. Se verifica en el piloto (O6) |
+| DT-24 | 26/09/2026 | **Se aprueban los requisitos nuevos RF-NUE-01 a 09** (antigua DP-08) | Recomendación aplicada con el permiso del dueño: son necesarios para operar. **Revisable** |

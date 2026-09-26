@@ -9,6 +9,8 @@ const { AppError, today } = require('../core/util');
 const net = require('../net/server');
 const { createClient, discover } = require('../net/client');
 const config = require('./config');
+const printer = require('./printer');
+const importer = require('../core/importer');
 const { createLocal, createRemote } = require('./backend');
 const log = require('./log');
 const { createUpdates } = require('./updates');
@@ -123,6 +125,7 @@ function registerIpc() {
     ...(backend ? backend.info() : { user: null }),
   })));
   ipcMain.handle('auth:login', wrap((p) => needBackend().login(p.username, p.password)));
+  ipcMain.handle('auth:recover', wrap((p) => needBackend().recover(p || {})));
   ipcMain.handle('auth:logout', wrap(() => needBackend().logout()));
   ipcMain.handle('api:call', wrap((name, params) => needBackend().call(name, params)));
   ipcMain.handle('net:ping', wrap(() => needBackend().ping()));
@@ -199,6 +202,23 @@ function registerIpc() {
     return r.filePath;
   }));
 
+  // Importar productos (RF-NUE-05): el archivo se lee en esta PC y las filas van al núcleo.
+  ipcMain.handle('file:readProducts', wrap(async () => {
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Excel o CSV', extensions: ['xlsx', 'csv', 'txt'] }] });
+    if (r.canceled || !r.filePaths.length) return null;
+    const file = r.filePaths[0];
+    if (fs.statSync(file).size > 20 * 1024 * 1024) throw userError('El archivo es demasiado grande (más de 20 MB).');
+    return { file: path.basename(file), ...importer.readProducts(fs.readFileSync(file), file) };
+  }));
+
+  ipcMain.handle('file:productTemplate', wrap(async () => {
+    const r = await dialog.showSaveDialog(win, { defaultPath: 'plantilla-productos.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
+    if (r.canceled || !r.filePath) return null;
+    fs.writeFileSync(r.filePath, '\uFEFF' + importer.TEMPLATE, 'utf8');
+    shell.openPath(r.filePath);
+    return r.filePath;
+  }));
+
   ipcMain.handle('file:savePdf', wrap(async ({ defaultName, landscape }) => {
     const r = await dialog.showSaveDialog(win, { defaultPath: defaultName, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
     if (r.canceled || !r.filePath) return null;
@@ -212,18 +232,25 @@ function registerIpc() {
     win.webContents.print({ printBackground: true }, (success) => resolve(success));
   })));
 
-  // Imprime un recibo en una ventana oculta (impresora de tickets u otra).
-  ipcMain.handle('print:html', wrap(({ html }) => new Promise((resolve, reject) => {
+  // Imprime en una ventana oculta. Un recibo va directo a la impresora de tickets de esta PC si hay
+  // una elegida (RF-NUE-03); lo demás (etiquetas, código de recuperación) abre el cuadro de impresión.
+  ipcMain.handle('print:html', wrap(({ html, receipt }) => new Promise((resolve, reject) => {
+    const settings = printer.load(dataDir());
     const pw = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
     pw.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
     pw.webContents.once('did-finish-load', () => {
-      pw.webContents.print({ printBackground: true }, (success, reason) => {
+      pw.webContents.print(printer.printOptions(settings, { receipt: !!receipt }), (success, reason) => {
         pw.destroy();
-        if (success || reason === 'cancelled') resolve(success);
-        else reject(userError(`No se pudo imprimir: ${reason}`));
+        if (success || reason === 'cancelled') return resolve(success);
+        log.warn('impresión', `No se pudo imprimir en "${settings.name || 'la impresora elegida'}": ${reason}`);
+        reject(userError(receipt && settings.name ? `No se pudo imprimir en "${settings.name}": ${reason}. Revise que esté encendida y con papel, o elija otra en Configuración → Impresora de recibos.` : `No se pudo imprimir: ${reason}`));
       });
     });
   })));
+
+  ipcMain.handle('print:printers', wrap(async () => (await win.webContents.getPrintersAsync()).map((p) => ({ name: p.name, label: p.displayName || p.name, isDefault: !!p.isDefault }))));
+  ipcMain.handle('print:get', wrap(() => printer.load(dataDir())));
+  ipcMain.handle('print:set', wrap((p) => printer.save(dataDir(), p)));
 
   // ---------- Respaldos (solo en la PC principal) ----------
   ipcMain.handle('backup:create', wrap(async () => {

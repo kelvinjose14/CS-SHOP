@@ -171,6 +171,8 @@ App.register({
           ${statCard('Me deben los clientes', Fmt.money(r.receivables), { iconName: 'users' })}
           ${statCard('Debo a proveedores', Fmt.money(r.payables), { iconName: 'factory' })}
           ${statCard('Efectivo que debería haber en caja', Fmt.money(r.cash_expected), { iconName: 'cash', tone: 'brand' })}
+          ${r.bank_deposits ? statCard('Efectivo depositado al banco', Fmt.money(r.bank_deposits), { iconName: 'swap', sub: 'Cambió de lugar: no es entrada ni salida' }) : ''}
+          ${r.capital ? statCard('Aportes del dueño', Fmt.money(r.capital), { iconName: 'inbox', sub: 'Incluidos en lo que entró; no son ganancia' }) : ''}
         </div>
         <div class="dash-grid">
           <div class="card"><h3 class="text-ok">Entradas</h3>${flowList(r.inflows)}</div>
@@ -345,17 +347,36 @@ const AUDIT_LABELS = {
   registrar_venta: 'Venta', abono_cliente: 'Abono de cliente', devolucion: 'Devolución', anular_venta: 'Venta anulada',
   registrar_gasto: 'Gasto', anular_gasto: 'Gasto anulado', registrar_ingreso: 'Otro ingreso', anular_ingreso: 'Ingreso anulado',
   apertura_caja: 'Apertura de caja', cierre_caja: 'Cierre de caja', retiro_caja: 'Retiro de caja', entrada_caja: 'Entrada a caja', conectar_pc: 'Computadora conectada', editar_pc: 'Computadora editada',
+  deposito_banco: 'Depósito al banco', aporte_capital: 'Aporte del dueño', anular_aporte: 'Aporte anulado',
+  saldo_inicial_cliente: 'Saldo inicial de cliente', saldo_inicial_proveedor: 'Saldo inicial con proveedor', importar_productos: 'Importación de productos',
+  crear_codigo_recuperacion: 'Código de recuperación creado', recuperar_contrasena: 'Contraseña recuperada con el código',
 };
+
+// Nombres en español para claves de registros anteriores o técnicas (RF-NUE-08).
+const AUDIT_KEYS = {
+  category: 'categoría', description: 'descripción', date: 'fecha', amount: 'monto', method: 'método', name: 'nombre', username: 'usuario',
+  role: 'perfil', active: 'activo', password_reset: 'contraseña restablecida', cost: 'costo', price_retail: 'precio detalle', price_wholesale: 'precio por mayor',
+  metodo: 'método', descripcion: 'descripción', contrasena_restablecida: 'contraseña restablecida', credito_aplicado: 'crédito aplicado',
+  reingreso_inventario: 'reingreso a inventario', efectivo_inicial: 'efectivo inicial', con_error: 'con error', categoria: 'categoría',
+  ...Object.fromEntries(Object.entries({
+    business_name: 'Nombre del negocio', business_tagline: 'Eslogan', business_phone: 'Teléfono', business_address: 'Dirección', currency: 'Moneda',
+    credit_days: 'Días de crédito', require_open_cash: 'Exigir caja abierta', allow_negative_stock: 'Permitir existencia negativa',
+    seller_can_receive_payments: 'Vendedor cobra abonos', seller_can_discount: 'Vendedor aplica descuentos', seller_max_discount_pct: 'Descuento máximo del vendedor (%)',
+    receipt_footer: 'Pie del recibo', expense_categories: 'Categorías de gastos', income_categories: 'Categorías de otros ingresos',
+  })),
+};
+const AUDIT_VALUES = { admin: 'Administrador', vendedor: 'Vendedor', efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', otro: 'Otro', true: 'sí', false: 'no', contado: 'Contado', credito: 'Crédito', detalle: 'Al detalle', mayor: 'Por mayor' };
 
 function auditDetails(d) {
   if (!d) return '';
   try {
     const o = JSON.parse(d);
+    const key = (k) => AUDIT_KEYS[k] || k.replace(/_/g, ' ');
+    const val = (v) => (v && typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${key(k)} ${val(x)}`).join(', ') : AUDIT_VALUES[String(v)] ?? v);
     return Object.entries(o).filter(([, v]) => v !== null && v !== '' && v !== undefined).map(([k, v]) => {
-      if (v && typeof v === 'object' && 'antes' in v) return `${k.replace(/_/g, ' ')}: ${v.antes} → ${v.despues}`;
-      if (Array.isArray(v)) return `${k}: ${v.join(', ')}`;
-      if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
-      return `${k.replace(/_/g, ' ')}: ${v}`;
+      if (v && typeof v === 'object' && 'antes' in v) return `${key(k)}: ${val(v.antes)} → ${val(v.despues)}`;
+      if (Array.isArray(v)) return `${key(k)}: ${v.join(', ')}`;
+      return `${key(k)}: ${val(v)}`;
     }).join(' · ');
   } catch {
     return d;

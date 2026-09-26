@@ -11,13 +11,14 @@ src/
     db.js        Envoltura de node:sqlite: consultas, transacciones (WAL) y copias
     schema.js    Esquema y migraciones (PRAGMA user_version)
     util.js      Fechas, redondeo, validaciones, errores (AppError), estados de cuenta y períodos
+    importer.js  Lee listas de productos de Excel (.xlsx) o CSV, sin bibliotecas
     services/
       common.js    Configuración, historial (audit), libro de dinero (ledger), cambios de existencia
-      users.js     Usuarios, contraseñas, inicio de sesión y configuración
-      products.js  Productos, ajustes, movimientos y resumen de inventario
-      purchases.js Proveedores, compras, pagos, anulación y cuentas por pagar
-      sales.js     Clientes, ventas, abonos, devoluciones, anulación y cuentas por cobrar
-      finance.js   Gastos, otros ingresos y caja
+      users.js     Usuarios, contraseñas, inicio de sesión, código de recuperación y configuración
+      products.js  Productos, importación, ajustes, movimientos y resumen de inventario
+      purchases.js Proveedores, saldos iniciales, compras, pagos, anulación y cuentas por pagar
+      sales.js     Clientes, saldos iniciales, ventas, abonos, devoluciones, anulación y cuentas por cobrar
+      finance.js   Gastos, otros ingresos, aportes del dueño y caja (depósito al banco y retiro)
       reports.js   Ganancias, flujo de dinero, dashboard, más vendidos e historial
       terminals.js Computadoras de la tienda (registrar, renombrar, desactivar)
   net/         Red local, sin Electron
@@ -30,14 +31,16 @@ src/
     config.js    config.json de esta PC (modo, clave, principal)
     log.js       Registro de errores en <datos>/registros (14 días) para el diagnóstico
     updates.js   Actualizaciones desde GitHub Releases, con aviso (el administrador instala)
+    printer.js   Impresora de recibos de esta PC (impresora.json): impresión directa, 58 u 80 mm
     preload.js   Puente seguro: expone window.capsApi a la interfaz
   renderer/    Interfaz (HTML, CSS y JavaScript sin framework ni compilación)
     index.html   Carga los scripts en orden
     styles.css   Estilos (negro y rojo de la marca)
     js/lib.js    Utilidades: html seguro, formatos, tablas, modales, gráficos, exportar
+    js/barcode.js Código de barras Code 128 en SVG para las etiquetas
     js/app.js    Inicio de sesión, menú y navegación (objeto App)
     js/views/*.js  Una pantalla o grupo de pantallas por archivo; cada una se registra con App.register
-test/              Pruebas (node --test): núcleo, migración, respaldos, permisos, computadoras y red
+test/              Pruebas (node --test): núcleo, migración, respaldos, permisos, computadoras, red, importación y etiquetas
 test/ui/           Pruebas de interfaz con la app real (Playwright)
 test/perf/         Rendimiento con 3 años de datos simulados
 test/fixtures/     Base de muestra de la versión 1.0.0 y sus fotos

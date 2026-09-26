@@ -21,7 +21,8 @@ Busque el mensaje que ve en pantalla. Los mensajes de error salen abajo a la der
 | **Sin conexión con la PC principal (…)**, **Clave de conexión incorrecta…** o **La PC principal tiene la versión…** | Ver [Varias computadoras, errores comunes](13-varias-computadoras.md#138-errores-comunes) |
 | El sistema pide cambiar la contraseña | Es normal la primera vez o después de que el administrador la restableció. Hasta cambiarla no se puede usar el sistema |
 | **Demasiados intentos fallidos. Espere un minuto e intente de nuevo.** | Se escribió mal la contraseña 5 veces en un minuto. Espere un minuto |
-| El administrador olvidó su contraseña | Si hay otro usuario administrador, ese puede restablecerla. Si no, hoy no hay recuperación desde el programa ([Usuarios, 10.4](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña)) |
+| El administrador olvidó su contraseña | Otro administrador puede restablecerla. Si no hay otro, use el **código de recuperación** en la PC principal ([Usuarios, 10.4](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña)) |
+| **El usuario o el código de recuperación no son correctos.** | Revise el código. Si ya se usó o se generó otro después, no sirve |
 
 ## Caja
 

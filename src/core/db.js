@@ -81,6 +81,22 @@ class Database {
     }
   }
 
+  // Punto de guardado dentro de una transacción: si fn falla, se deshace solo lo que hizo fn
+  // (por ejemplo, una fila con error en una importación) y el resto de la transacción sigue.
+  savepoint(fn) {
+    if (this.depth === 0) throw new Error('savepoint() solo dentro de tx()');
+    this.sql.exec('SAVEPOINT sp');
+    try {
+      const result = fn();
+      this.sql.exec('RELEASE sp');
+      return result;
+    } catch (err) {
+      this.sql.exec('ROLLBACK TO sp');
+      this.sql.exec('RELEASE sp');
+      throw err;
+    }
+  }
+
   // Copia consistente de la base en un archivo nuevo (respaldos).
   backupTo(target) {
     const tmp = target + '.tmp';

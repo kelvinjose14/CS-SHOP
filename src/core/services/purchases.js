@@ -11,10 +11,10 @@ function supplierList(ctx, { search = '', includeInactive = false } = {}) {
   if (search) { where.push('(s.name LIKE ? OR s.phone LIKE ? OR s.email LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
   return ctx.db.all(
     `SELECT s.*,
-            COALESCE((SELECT SUM(total) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada'), 0) AS total_purchased,
+            COALESCE((SELECT SUM(total) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada' AND opening = 0), 0) AS total_purchased,
             COALESCE((SELECT SUM(paid) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada'), 0) AS total_paid,
             COALESCE((SELECT SUM(balance) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada'), 0) AS balance,
-            (SELECT MAX(date) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada') AS last_purchase
+            (SELECT MAX(date) FROM purchases WHERE supplier_id = s.id AND status <> 'anulada' AND opening = 0) AS last_purchase
        FROM suppliers s ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY s.name`,
     params
@@ -50,6 +50,24 @@ function supplierSave(ctx, data) {
     }
     const id = ctx.db.insert('suppliers', { ...fields, created_at: now() });
     audit(ctx, 'crear_proveedor', 'proveedor', id, { nombre: fields.name });
+    return id;
+  });
+}
+
+// Lo que ya se le debía al proveedor al empezar a usar el sistema: una compra a crédito sin
+// artículos que se paga como las demás, pero no cuenta como compra del período.
+function supplierOpening(ctx, { supplier_id, amount, date: d, due_date, invoice_ref, note }) {
+  const supplier = ctx.db.get('SELECT * FROM suppliers WHERE id = ?', [supplier_id]);
+  if (!supplier) throw new AppError('Proveedor no encontrado.');
+  const total = money(amount, 'Saldo inicial', { allowZero: false });
+  const odate = date(d || today());
+  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento');
+  return ctx.db.tx(() => {
+    const id = ctx.db.insert('purchases', {
+      supplier_id: supplier.id, date: odate, due_date: due, invoice_ref: text(invoice_ref, 'Factura', { max: 60 }), payment_type: 'credito', payment_method: null,
+      total, paid: 0, balance: total, status: 'pendiente', note: text(note, 'Nota', { max: 500 }) || 'Saldo inicial', user_id: ctx.user.id, created_at: now(), opening: 1,
+    });
+    audit(ctx, 'saldo_inicial_proveedor', 'proveedor', supplier.id, { proveedor: supplier.name, monto: total, compra: id });
     return id;
   });
 }
@@ -133,6 +151,7 @@ function list(ctx, { from, to, supplier_id, status, payment_type } = {}) {
   if (supplier_id) { where.push('p.supplier_id = ?'); params.push(supplier_id); }
   if (status) { where.push('p.status = ?'); params.push(status); }
   if (payment_type) { where.push('p.payment_type = ?'); params.push(payment_type); }
+  if (!supplier_id) where.push('p.opening = 0');
   return ctx.db.all(
     `SELECT p.*, s.name AS supplier_name, u.name AS user_name,
             (SELECT COALESCE(SUM(qty),0) FROM purchase_items WHERE purchase_id = p.id) AS units
@@ -225,7 +244,7 @@ function payables(ctx, { supplier_id, only_open = true } = {}) {
   if (supplier_id) { where.push('p.supplier_id = ?'); params.push(supplier_id); }
   const t = today();
   return ctx.db.all(
-    `SELECT p.id, p.date, p.due_date, p.invoice_ref, p.total, p.paid, p.balance, p.status, p.supplier_id, s.name AS supplier_name, s.phone AS supplier_phone,
+    `SELECT p.id, p.date, p.due_date, p.invoice_ref, p.total, p.paid, p.balance, p.status, p.supplier_id, p.opening, s.name AS supplier_name, s.phone AS supplier_phone,
             CASE WHEN p.balance > 0 AND p.due_date < ? THEN 1 ELSE 0 END AS overdue
        FROM purchases p JOIN suppliers s ON s.id = p.supplier_id
       WHERE ${where.join(' AND ')}
@@ -234,4 +253,4 @@ function payables(ctx, { supplier_id, only_open = true } = {}) {
   );
 }
 
-module.exports = { supplierList, supplierGet, supplierSave, create, list, get, pay, voidPurchase, payables };
+module.exports = { supplierList, supplierGet, supplierSave, supplierOpening, create, list, get, pay, voidPurchase, payables };

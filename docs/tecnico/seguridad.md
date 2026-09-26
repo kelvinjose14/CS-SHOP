@@ -50,6 +50,7 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 ## Contraseñas y sesiones
 
 - **Guardado:** scrypt con sal aleatoria por usuario, comparación en tiempo constante y mínimo 6 caracteres.
+- **Código de recuperación del administrador:** 16 caracteres al azar (unos 79 bits), generado solo si el administrador escribe su contraseña. Se guarda su huella scrypt en `settings._recovery`, que nunca sale del núcleo. Sirve una vez, solo en la PC principal (no hay ruta de red para usarlo), con el mismo límite de intentos que la entrada. Al usarlo se cierran las sesiones de ese usuario (`test/o5.test.js`).
 - **Sesiones:** token aleatorio de 192 bits. Vence tras 12 horas sin uso y se pierde al reiniciar la principal o al restaurar una copia.
 
 ## Interfaz de Electron
@@ -57,7 +58,8 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 - **Aislamiento:** `contextIsolation`, `sandbox` y sin `nodeIntegration`. La interfaz solo ve `window.capsApi` (`preload.js`).
 - **CSP:** `script-src 'self'`, sin scripts en línea. Imágenes solo de la app, de `caps-foto:` y de `data:`.
 - **Texto dinámico:** todo pasa por `html`/`esc`. También lo que llega por la red, como los nombres de otras PCs o de la principal.
-- **Recibos:** se imprimen en una ventana sin JavaScript.
+- **Recibos, etiquetas y código de recuperación:** se imprimen en una ventana sin JavaScript.
+- **Importar productos:** el archivo se lee en el proceso principal (sin bibliotecas externas, máximo 20 MB) y solo pasan filas de texto al núcleo, que valida cada una como si se escribiera a mano.
 
 ## Riesgos que quedan
 
@@ -65,6 +67,6 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 |---|---|---|
 | Quien use la PC principal como administrador ve la clave de conexión | Es parte de su rol; puede cambiarla en Configuración → Red | — |
 | Una PC conectada sin sesión puede volver a conectarse a otra "principal" (pantalla de entrada) | Solo aparece si hay error de conexión y no permite convertirla en principal. Una principal falsa no conoce la clave, así que no puede descifrar | — |
-| No hay recuperación de la contraseña del administrador | Crear un segundo administrador | RF-NUE, O5 |
+| Quien consiga el código de recuperación puede poner una contraseña nueva al administrador | Sirve una vez, solo en la PC principal, con límite de intentos; el administrador lo guarda fuera de la tienda. Queda en el historial | — |
 | El instalador no está firmado | Aviso de Windows al instalar | O4 |
 | Los respaldos quedan en el mismo disco, sin cifrar | La carpeta de datos es del usuario de Windows | O4 |

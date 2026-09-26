@@ -13,7 +13,7 @@
 | Qué | Dónde se configura | Por qué |
 |---|---|---|
 | **Copia fuera de la computadora**, diaria y con las fotos | Configuración → Copias de seguridad → **Copia fuera de esta computadora** | Si el disco de la PC principal se daña, es lo único que salva los datos |
-| Otro usuario administrador, con contraseña guardada en un lugar seguro | Usuarios | Todavía no hay forma de recuperar la contraseña del administrador |
+| **Código de recuperación** del administrador, impreso y guardado fuera de la tienda | Usuarios → Código de recuperación | Si se olvida la contraseña del administrador, es la única forma de entrar sin otro administrador ([10.4](10-usuarios-y-permisos.md#104-si-se-olvida-una-contraseña)) |
 | La clave de conexión anotada | Configuración → Red | Hace falta para conectar las demás computadoras |
 
 El **Inicio** avisa si no hay copia fuera de la computadora o si pasaron **7 días** sin copia. Si la copia va a una memoria USB, déjela conectada o conéctela al menos una vez por semana: la copia se hace sola en menos de una hora.
@@ -76,4 +76,4 @@ El diagnóstico no lleva contraseñas, la clave de conexión ni datos de cliente
 | Una PC conectada dice que la versión es distinta | [14.4](#144-instalar-una-versión-nueva), paso 3 |
 | La principal no aparece al pulsar **Buscar** | [Varias computadoras, 13.8](13-varias-computadoras.md#138-errores-comunes): firewall de Windows (**Redes privadas**) o dirección |
 | **La fecha y hora de esta computadora no coinciden…** | Corrija la fecha y hora de Windows |
-| Se olvidó la contraseña del único administrador | Hoy no hay recuperación desde el programa. Guarde siempre un segundo administrador (14.1) |
+| Se olvidó la contraseña del único administrador | En la PC principal, pantalla de entrada → **¿Olvidó la contraseña del administrador?** con el código de recuperación (14.1) |

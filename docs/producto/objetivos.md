@@ -10,11 +10,11 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 ## Estado actual (versión 1.0.0 y lo hecho después, sin publicar)
 
 **Lo que está listo:**
-- Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 100 de 103 cumplen).
+- Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 45 de lógica, migración, respaldos, permisos, red y actualizaciones;
-  - 8 de interfaz con la app real;
+  - 56 de lógica, migración, respaldos, permisos, red, actualizaciones, importación y etiquetas;
+  - 10 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -31,7 +31,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 | 3 | Instalador sin firma digital: el CI está listo, falta comprar el certificado (DT-18) | Windows muestra una advertencia al instalar | O4 (decisión del dueño) |
 | 4 | ~~Sin actualización automática~~ y ~~respaldos solo en el mismo disco~~ **Resueltos en O4** | — | — |
 | 5 | ~~Sin registro de errores~~, ~~rendimiento sin medir~~ e ~~interfaz sin pruebas~~ **Resueltos en O3** | — | — |
-| 6 | Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.) | Operación diaria incompleta | O5 |
+| 6 | ~~Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.)~~ **Resueltas en O5**; falta probar la impresora de tickets real | — | O6 |
 | 7 | No se ha usado con datos reales | No hay aceptación del cliente | O6 |
 
 **Detalle técnico pendiente:** la etiqueta `v1.0.0` apunta al último commit de la rama de trabajo en lugar del commit de unión en `main`. El código es idéntico. La causa es que la **rama por defecto** del repositorio es la rama de trabajo. El dueño debe cambiarla a `main` en GitHub → Settings → General → Default branch. En adelante, las versiones se crean con destino `main` ([Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión)).
@@ -159,7 +159,7 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 
 ### O4. Instalación y operación
 
-**Estado:** terminado, en revisión (pull request), salvo la firma. Decisiones: DT-18, DT-19 y DT-20.
+**Estado:** hecho (PR #5, 26/09/2026), salvo la firma. Decisiones: DT-18, DT-19 y DT-20.
 
 **Resultado:**
 
@@ -196,25 +196,28 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 
 ### O5. Brechas funcionales
 
-**Estado:** pendiente. Requiere que el cliente apruebe los requisitos nuevos (DP-08).
+**Estado:** terminado, en revisión (pull request). Decisiones: DT-21, DT-22, DT-23 y DT-24 (se aplicaron las recomendaciones, con permiso del dueño; son revisables).
 
 **Meta:** cerrar lo que falta para la operación diaria real.
 
-| ID | Entregable | Tamaño |
-|---|---|---|
-| RF-NUE-01 | Carga de saldos iniciales de clientes y proveedores | Mediano |
-| RF-NUE-02 | Separar "depósito al banco" de "retiro" en caja, y corregir el flujo de dinero | Pequeño |
-| RF-NUE-03 | Recibo directo a la impresora de tickets de 80 mm, sin ventana (DP-06) | Mediano |
-| RF-NUE-04 | Etiquetas de código de barras para imprimir | Mediano |
-| RF-NUE-05 | Importar productos desde Excel/CSV | Mediano |
-| RF-NUE-06 | Recuperar la contraseña del administrador | Pequeño |
-| RF-NUE-07 | Exigir el precio al detalle al crear un producto | Pequeño |
-| RF-NUE-08 | Historial legible en gastos e ingresos (sin claves en inglés) | Pequeño |
-| RF-NUE-09 | Fotos dentro de la copia de seguridad (se hace con O4) | Pequeño |
+| ID | Entregable | Dónde | Estado |
+|---|---|---|---|
+| RF-NUE-01 | Saldos iniciales de clientes y proveedores | Migración 4 (`opening`); `customers.opening`, `suppliers.opening` | Hecho |
+| RF-NUE-02 | Depósito al banco separado del retiro, y flujo de dinero corregido | `finance.cashMovement`; `reports.cashflow` (DT-22) | Hecho |
+| RF-NUE-03 | Recibo directo a la impresora de tickets, 58 u 80 mm | `src/main/printer.js`, `impresora.json` de cada PC (DT-23) | Hecho; falta la impresora real (O6) |
+| RF-NUE-04 | Etiquetas de código de barras | `src/renderer/js/barcode.js` (Code 128) | Hecho |
+| RF-NUE-05 | Importar productos desde Excel o CSV | `src/core/importer.js`, `products.import` | Hecho |
+| RF-NUE-06 | Recuperar la contraseña del administrador | `users.recoveryCreate` / `recover` | Hecho |
+| RF-NUE-07 | Precio al detalle obligatorio | `products.save` | Hecho |
+| RF-NUE-08 | Historial legible | Claves en español en el núcleo y traducción de los registros anteriores | Hecho |
+| RF-NUE-09 | Fotos dentro de la copia de seguridad | Hecho en O4 | Hecho |
+| DT-21 | Aportes del dueño aparte, sin sumar a la ganancia | Gastos → Aportes del dueño | Hecho |
+
+Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 
 **Terminado cuando:** cada requisito aprobado está en estado Cumple, con su prueba automática y la página del manual actualizada.
 
-**Depende de:** O2, para no rehacer trabajo, y DP-08.
+**Depende de:** O2, para no rehacer trabajo.
 
 ---
 

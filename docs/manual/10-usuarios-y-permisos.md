@@ -20,9 +20,12 @@
 | Clientes (registrar y editar) | ✔ | ✔ |
 | Cuentas por cobrar (ver) | ✔ | ✔ |
 | Registrar abonos de clientes | ✔ si está permitido | ✔ |
-| Caja: abrir, entradas, retiros y cerrar | ✔ | ✔ |
+| Caja: abrir, entradas, depósitos al banco y cerrar | ✔ | ✔ |
+| Caja: retiros | ✘ | ✔ |
 | Historial de cierres de caja | ✘ | ✔ |
-| Gastos y otros ingresos | ✘ | ✔ |
+| Gastos, otros ingresos y aportes del dueño | ✘ | ✔ |
+| Saldos iniciales, importar productos | ✘ | ✔ |
+| Imprimir etiquetas | ✔ | ✔ |
 | Contabilidad, flujo de dinero y reportes | ✘ | ✔ |
 | Historial de movimientos | ✘ | ✔ |
 | Usuarios y configuración | ✘ | ✔ |
@@ -51,7 +54,26 @@ Cualquier usuario: ícono de persona al pie del menú izquierdo → **Contraseñ
 ## 10.4 Si se olvida una contraseña
 
 - **Vendedor:** el administrador le pone una nueva en **Usuarios**.
-- **Administrador:** hoy no hay forma de recuperarla desde el programa si no existe otro administrador. **Se recomienda crear un segundo usuario administrador de respaldo** y guardar su contraseña en un lugar seguro. La recuperación está anotada en [Objetivos](../producto/objetivos.md#o5-brechas-funcionales).
+- **Administrador:** otro administrador puede ponerle una nueva en **Usuarios**. Si no hay otro, use el **código de recuperación**.
+
+### Código de recuperación
+
+![Código de recuperación](img/codigo-recuperacion.jpg)
+
+**Genérelo el primer día** y guárdelo fuera de la tienda.
+1. **Usuarios** → **Código de recuperación** → **Generar código…**, y escriba su contraseña.
+2. Anote o **imprima** el código (por ejemplo `RJUU-QNZ7-95FP-FRV7`). **No se vuelve a mostrar.**
+3. Guárdelo en un lugar seguro, fuera de la tienda, y no lo comparta.
+
+Para usarlo:
+
+![Recuperar contraseña](img/recuperar-contrasena.jpg)
+
+1. En la **PC principal**, pantalla de entrada → **¿Olvidó la contraseña del administrador?**
+2. Escriba el usuario administrador, el código (con o sin guiones) y la contraseña nueva dos veces.
+3. Entre con la contraseña nueva.
+
+El código **sirve una sola vez**: después genere otro. Si genera uno nuevo, el anterior deja de servir. Todo queda en el **Historial de movimientos**.
 
 ## 10.5 Errores comunes
 

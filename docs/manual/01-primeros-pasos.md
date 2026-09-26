@@ -66,19 +66,22 @@ Siga este orden. Cada paso usa lo que se cargó en el anterior.
 | Paso | Dónde | Qué registrar | Página del manual |
 |---|---|---|---|
 | 1 | **Proveedores** → **Nuevo proveedor** | A quién le compra la mercancía | [Compras y proveedores](05-compras-y-proveedores.md) |
-| 2 | **Inventario** → **Nuevo producto** | Cada gorra: una ficha por combinación de modelo, color y talla | [Inventario](04-inventario.md) |
-| 3 | Existencias que ya tiene | Escriba la **Existencia inicial** al crear cada producto; o, si quiere que quede como compra, déjela en 0 y registre una **Compra** | [Inventario](04-inventario.md) |
+| 2 | **Inventario** → **Nuevo producto**, o **Importar** desde Excel si son muchos | Cada gorra: una ficha por combinación de modelo, color y talla | [Inventario](04-inventario.md), [4.7](04-inventario.md#47-importar-productos-desde-excel-administrador) |
+| 3 | Existencias que ya tiene | Escriba la **Existencia inicial** al crear cada producto (o la columna **Existencia** al importar); o, si quiere que quede como compra, déjela en 0 y registre una **Compra** | [Inventario](04-inventario.md) |
 | 4 | **Clientes** → **Nuevo cliente** | Clientes frecuentes y los que compran a crédito | [Clientes y cobros](06-clientes-y-cobros.md) |
-| 5 | Deudas que ya existían antes del sistema | Aún no hay forma de cargarlas: vea la nota abajo | — |
-
-> **Saldos anteriores al sistema:** la versión 1.0.0 no permite cargar lo que un cliente ya le debía, ni lo que usted ya le debía a un proveedor. Una compra o una venta siempre mueve inventario, así que no sirven para esto. Lleve esos saldos aparte por ahora. La carga de saldos iniciales está anotada en [Objetivos](../producto/objetivos.md), O5.
+| 5 | Deudas que ya existían antes del sistema | En cada cliente y proveedor → **Saldo inicial**. No cuenta como venta ni compra | [Clientes, 6.1](06-clientes-y-cobros.md#saldo-inicial-administrador), [Proveedores, 5.1](05-compras-y-proveedores.md#51-proveedores) |
+| 6 | **Usuarios** → **Código de recuperación** | Guárdelo fuera de la tienda | [Usuarios, 10.4](10-usuarios-y-permisos.md#código-de-recuperación) |
+| 7 | **Configuración** → **Impresora de recibos de esta PC** | La impresora de tickets y el ancho del papel, en cada computadora | [Configuración, 11.8](11-configuracion-y-respaldos.md#118-impresora-de-recibos-de-esta-pc) |
 
 ## 1.6 Lista del primer día
 
 - [ ] Contraseñas de `admin` y `vendedor` cambiadas.
 - [ ] Configuración guardada (nombre del negocio, teléfono, dirección).
-- [ ] Proveedores registrados.
+- [ ] Proveedores registrados, con su **saldo inicial** si se les debía algo.
 - [ ] Todas las gorras registradas con precio al detalle, precio por mayor y stock mínimo.
 - [ ] Existencias cargadas: en **Inventario**, las unidades en existencia coinciden con un conteo físico.
+- [ ] Clientes con deuda registrados, con su **saldo inicial**.
+- [ ] **Código de recuperación** del administrador impreso y guardado fuera de la tienda.
+- [ ] Recibo de prueba impreso en cada computadora con impresora (**Configuración** → **Imprimir prueba**).
 - [ ] Primera copia de seguridad guardada en una memoria USB (**Configuración** → **Crear copia de seguridad…**).
 - [ ] Caja abierta con el efectivo real del día ([Caja](07-caja.md)).

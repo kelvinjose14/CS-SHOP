@@ -14,6 +14,7 @@ const MOVEMENT_LABELS = {
   anulacion_compra: 'Anulación de compra',
 };
 
+const missing = (field) => { throw new AppError(`${field} es obligatorio.`); };
 const orZero = (v) => (v === undefined || v === null || v === '' ? 0 : v);
 const cost4 = (v) => {
   money(orZero(v), 'Costo'); // valida
@@ -84,7 +85,8 @@ function save(ctx, data) {
     barcode: text(data.barcode, 'Código de barras', { max: 60 }),
     // El costo promedio guarda 4 decimales para no acumular errores de redondeo.
     cost: cost4(data.cost),
-    price_retail: money(orZero(data.price_retail), 'Precio al detalle'),
+    // Un producto sin precio al detalle se vendería en 0 (RF-NUE-07).
+    price_retail: orZero(data.price_retail) === 0 && data.price_retail !== 0 ? missing('Precio al detalle') : money(data.price_retail, 'Precio al detalle', { allowZero: false }),
     price_wholesale: money(orZero(data.price_wholesale), 'Precio al por mayor'),
     min_stock: int(orZero(data.min_stock), 'Stock mínimo'),
     notes: text(data.notes, 'Notas', { max: 1000 }),
@@ -117,6 +119,60 @@ function save(ctx, data) {
     if (initial > 0) changeStock(ctx, id, initial, 'inicial', { refType: 'producto', refId: id, note: 'Existencia inicial', unitCost: fields.cost });
     return id;
   });
+}
+
+// Importación desde Excel o CSV (RF-NUE-05). Cada fila crea un producto o, si ya existe uno con ese
+// SKU (o ese código de barras), actualiza sus datos y precios; la existencia de un producto que ya
+// estaba no se toca (eso se hace con un ajuste, que deja motivo). Una fila con error no detiene las
+// demás. Con dryRun se valida todo y no se guarda nada (vista previa).
+const IMPORT_FIELDS = ['name', 'brand', 'model', 'color', 'size', 'sku', 'barcode', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes'];
+const DRY_RUN = Symbol('vista previa');
+
+function importRows(ctx, { rows, dryRun = false }) {
+  if (!Array.isArray(rows) || !rows.length) throw new AppError('El archivo no tiene productos.');
+  if (rows.length > 5000) throw new AppError('El archivo tiene más de 5000 filas. Divídalo en partes.');
+  const results = [];
+  const touched = new Map(); // producto → fila que ya lo creó o actualizó
+  const has = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  try {
+    ctx.db.tx(() => {
+      rows.forEach((r, i) => {
+        const line = Number(r._line) || i + 2;
+        const label = [r.name, r.color, r.size].filter(has).join(' · ') || r.sku || '';
+        try {
+          const res = ctx.db.savepoint(() => {
+            const sku = has(r.sku) ? String(r.sku).trim() : null;
+            const barcode = has(r.barcode) ? String(r.barcode).trim() : null;
+            const old = (sku && ctx.db.get('SELECT * FROM products WHERE sku = ?', [sku])) || (!sku && barcode && ctx.db.get('SELECT * FROM products WHERE barcode = ?', [barcode])) || null;
+            if (old && touched.has(old.id)) throw new AppError(`El ${sku ? 'SKU' : 'código de barras'} se repite: ya está en la fila ${touched.get(old.id)}.`);
+            if (old) {
+              touched.set(old.id, line);
+              const data = { id: old.id };
+              for (const k of IMPORT_FIELDS) data[k] = has(r[k]) ? r[k] : old[k];
+              save(ctx, data);
+              return { action: 'actualizar', sku: old.sku, note: has(r.initial_stock) && Number(r.initial_stock) !== old.stock ? 'La existencia no cambia al actualizar: use Ajustar existencia.' : null };
+            }
+            const data = {};
+            for (const k of [...IMPORT_FIELDS, 'initial_stock']) if (has(r[k])) data[k] = r[k];
+            const id = save(ctx, data);
+            touched.set(id, line);
+            return { action: 'crear', sku: ctx.db.value('SELECT sku FROM products WHERE id = ?', [id]) };
+          });
+          results.push({ line, name: label, ...res });
+        } catch (err) {
+          if (!err.userFacing) throw err;
+          results.push({ line, name: label, action: 'error', message: err.message });
+        }
+      });
+      const count = (a) => results.filter((x) => x.action === a).length;
+      if (dryRun) throw DRY_RUN;
+      audit(ctx, 'importar_productos', 'producto', null, { creados: count('crear'), actualizados: count('actualizar'), con_error: count('error') });
+    });
+  } catch (err) {
+    if (err !== DRY_RUN) throw err;
+  }
+  const count = (a) => results.filter((x) => x.action === a).length;
+  return { dryRun: !!dryRun, created: count('crear'), updated: count('actualizar'), errors: count('error'), results };
 }
 
 // Ajustes manuales: entrada (+), salida (-) o conteo físico (fija la existencia).
@@ -181,4 +237,4 @@ function summary(ctx) {
   return out;
 }
 
-module.exports = { list, get, findByCode, save, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };
+module.exports = { list, get, findByCode, save, importRows, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };

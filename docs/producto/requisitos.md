@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.0.0**, más lo terminado en los objetivos O2 (varias computadoras en red), O3 (calidad para producción) y O4 (instalación y operación), aún sin publicar. Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.0.0**, más lo terminado en los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación) y O5 (brechas funcionales), aún sin publicar. Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -16,12 +16,12 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 
 | Área | Requisitos | Cumple | Parcial | Falta |
 |---|---:|---:|---:|---:|
-| Funcionales (pedido original) | 103 | 100 | 3 | 0 |
-| No funcionales | 14 | 11 | 2 | 1 |
-| Nuevos detectados (propuestos) | 9 | — | — | 9 |
+| Funcionales (pedido original) | 103 | 102 | 1 | 0 |
+| No funcionales | 14 | 12 | 1 | 1 |
+| Nuevos detectados (aprobados, DT-24) | 9 | 9 | 0 | 0 |
 
 
-> Lo funcional pedido está prácticamente completo. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
+> Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
 
 ## 1. Requisitos funcionales
 
@@ -111,7 +111,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 | RF-CAJ-02 | Ventas en efectivo | Línea en el resumen | Cumple | Caja |
 | RF-CAJ-03 | Otros ingresos | Línea en el resumen | Cumple | Caja |
 | RF-CAJ-04 | Gastos pagados en efectivo | Línea en el resumen | Cumple | Caja |
-| RF-CAJ-05 | Retiros | Botón Retiro y línea en el resumen | Cumple | Caja |
+| RF-CAJ-05 | Retiros | Botón Retiro (solo el administrador) y línea en el resumen. El efectivo que va al banco se registra aparte como **Depósito al banco** (DT-22) | Cumple | Caja |
 | RF-CAJ-06 | Efectivo esperado | Calculado ([regla 8](reglas-de-negocio.md#8-caja)) | Cumple | Caja |
 | RF-CAJ-07 | Efectivo real | Se indica al cerrar | Cumple | Cerrar caja |
 | RF-CAJ-08 | Diferencia de caja | Real − esperado, con faltante o sobrante | Cumple | Cerrar caja, Historial de cierres |
@@ -126,7 +126,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 | RF-CON-02 | Costo de los productos vendidos | Línea del estado de resultados | Cumple | Contabilidad |
 | RF-CON-03 | Gastos operativos | Por categoría | Cumple | Contabilidad |
 | RF-CON-04 | Ganancia bruta = ventas − costo | Coincide con la [regla 2](reglas-de-negocio.md#2-ganancia) | Cumple | Contabilidad |
-| RF-CON-05 | Ganancia neta = bruta − gastos | Hoy también suma los otros ingresos (DP-05) | Cumple | Contabilidad |
+| RF-CON-05 | Ganancia neta = bruta − gastos + otros ingresos | Los aportes del dueño no suman: se registran aparte (DT-21) | Cumple | Contabilidad |
 | RF-CON-06 | Por día, semana, mes, año y rango personalizado | Selector de período | Cumple | Contabilidad |
 
 ### Flujo de dinero (RF-FLU)
@@ -134,7 +134,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
 | RF-FLU-01 | Cuánto dinero entró | Total de entradas del período | Cumple | Flujo de dinero |
-| RF-FLU-02 | Cuánto dinero salió | Total de salidas del período | **Parcial**: los depósitos al banco cuentan como salida (RF-NUE-02) | Flujo de dinero |
+| RF-FLU-02 | Cuánto dinero salió | Total de salidas del período; un depósito al banco no es salida, solo cambia el dinero de lugar (DT-22) | Cumple | Flujo de dinero |
 | RF-FLU-03 | Cuánto se vendió | Tarjeta Vendido | Cumple | Flujo de dinero |
 | RF-FLU-04 | Cuánto se gastó | Tarjeta Gastado | Cumple | Flujo de dinero |
 | RF-FLU-05 | Cuánto se compró en mercancía | Tarjeta Comprado en mercancía | Cumple | Flujo de dinero |
@@ -175,7 +175,7 @@ Criterio de aceptación: todos visibles en **Inicio** para el administrador.
 | RF-REP-07 | Ventas al por mayor | Cumple |
 | RF-REP-08 | Ganancias | Cumple |
 | RF-REP-09 | Gastos | Cumple |
-| RF-REP-10 | Flujo de caja | Parcial (misma limitación que RF-FLU-02) |
+| RF-REP-10 | Flujo de caja | Cumple |
 | RF-REP-11 | Cuentas por cobrar | Cumple |
 | RF-REP-12 | Cuentas por pagar | Cumple |
 | RF-REP-13 | Clientes | Cumple |
@@ -197,7 +197,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 
 | ID | Requisito | Criterio de aceptación | Estado |
 |---|---|---|---|
-| RF-HIS-01 | Registro de ventas, compras, gastos, pagos, abonos, ajustes, devoluciones, anulaciones y cambios de precio | Cada uno aparece en Historial de movimientos | Cumple (el detalle de gastos muestra claves en inglés, RF-NUE-08) |
+| RF-HIS-01 | Registro de ventas, compras, gastos, pagos, abonos, ajustes, devoluciones, anulaciones y cambios de precio | Cada uno aparece en Historial de movimientos, con el detalle en español | Cumple |
 | RF-HIS-02 | Fecha, hora, usuario y computadora en cada movimiento | Columnas del historial | Cumple |
 
 ### Entrega
@@ -216,31 +216,31 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-03 | Windows 10/11 de 64 bits | Instalación y uso verificados en Windows real | Parcial: el CI instala, usa, reinstala y desinstala el programa en Windows Server en cada cambio. Falta Windows 10/11 de escritorio (piloto, O6) |
 | RNF-04 | Copias de seguridad automáticas | Una copia diaria, con las últimas 30 | Cumple (en el mismo disco) |
 | RNF-05 | Copias fuera de la computadora | Copia automática a USB o nube, incluidas las fotos | Cumple: copia diaria con fotos a una memoria USB o carpeta de OneDrive o Google Drive, con aviso a los 7 días (DT-20) |
-| RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Parcial: falta la recuperación del administrador. El resto está revisado en [Seguridad](../tecnico/seguridad.md) |
+| RNF-06 | Seguridad de acceso | Contraseñas cifradas; permisos comprobados en el núcleo; recuperación del administrador | Cumple: código de recuperación de un solo uso (RF-NUE-06). Revisado en [Seguridad](../tecnico/seguridad.md) |
 | RNF-07 | Integridad de datos | Cada operación es atómica, queda en disco al confirmarse y no se abren dos instancias | Cumple (SQLite en modo WAL; una venta que se reintenta por la red no se duplica) |
 | RNF-08 | Rendimiento con años de datos | Pantallas en menos de 1 s con 3 años de operación simulada | Cumple: con 19,710 ventas, lo más lento tarda 60 ms en el núcleo y 0.3 s en pantalla ([Rendimiento](../tecnico/rendimiento.md)) |
 | RNF-09 | Instalador firmado | Windows no muestra la advertencia al instalar | Falta: el CI está listo para firmar, pero no se compró el certificado (DT-18) |
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 40 pruebas de lógica, 7 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 56 pruebas de lógica, 10 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
-## 3. Requisitos nuevos detectados (propuestos)
+## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. Están **pendientes de aprobación** del cliente. Si se aprueban, pasan a [O5](objetivos.md#o5-brechas-funcionales).
+Surgieron al revisar el sistema. Se aprobaron todos (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4.
 
-| ID | Requisito | Motivo |
-|---|---|---|
-| RF-NUE-01 | Cargar saldos iniciales de clientes y proveedores | Al empezar a usar el sistema ya existen deudas |
-| RF-NUE-02 | Separar "depósito al banco" de "retiro" en caja | Hoy el depósito cuenta como dinero que salió del negocio |
-| RF-NUE-03 | Imprimir el recibo directo en la impresora de tickets de 80 mm | Hoy se abre la ventana de impresión en cada venta |
-| RF-NUE-04 | Imprimir etiquetas de código de barras | Para productos que no traen código |
-| RF-NUE-05 | Importar productos desde Excel | Carga inicial más rápida |
-| RF-NUE-06 | Recuperar la contraseña del administrador | Hoy, sin otro administrador, no hay forma |
-| RF-NUE-07 | Exigir el precio al detalle al crear un producto | Hoy, si se deja vacío, se guarda en 0 |
-| RF-NUE-08 | Historial legible en todos los casos | Los gastos muestran claves en inglés |
-| RF-NUE-09 | Incluir las fotos en la copia de seguridad | Hoy la copia `.db` no las incluye |
+| ID | Requisito | Criterio de aceptación | Estado | Dónde |
+|---|---|---|---|---|
+| RF-NUE-01 | Cargar saldos iniciales de clientes y proveedores | El saldo se cobra o se paga con abonos y suma a las cuentas por cobrar o pagar, pero no cuenta como venta ni compra del período | Cumple | Detalle de cliente y de proveedor → **Saldo inicial** |
+| RF-NUE-02 | Separar "depósito al banco" de "retiro" en caja | El depósito saca el efectivo de la caja sin ser salida del negocio; el retiro es solo del administrador (DT-22) | Cumple | Caja |
+| RF-NUE-03 | Imprimir el recibo directo en la impresora de tickets | Con la impresora elegida, el recibo sale sin ventana, en papel de 58 u 80 mm, y opcionalmente al cobrar (DT-23) | Cumple (falta probarlo con la impresora real, O6) | Configuración → Impresora de recibos |
+| RF-NUE-04 | Imprimir etiquetas de código de barras | Etiquetas Code 128 de 50×25, 40×30 o 60×40 mm con nombre, código y precio; el lector las reconoce | Cumple | Inventario → **Etiquetas** |
+| RF-NUE-05 | Importar productos desde Excel | Lee .xlsx y CSV, muestra una vista previa con los errores por fila y crea o actualiza por SKU | Cumple | Inventario → **Importar** |
+| RF-NUE-06 | Recuperar la contraseña del administrador | Código de un solo uso que se genera en Usuarios y se usa en la pantalla de entrada de la PC principal | Cumple | Usuarios, pantalla de entrada |
+| RF-NUE-07 | Exigir el precio al detalle al crear un producto | Sin precio, o en 0, no se guarda (tampoco al importar) | Cumple | Inventario |
+| RF-NUE-08 | Historial legible en todos los casos | Ningún detalle muestra claves en inglés, tampoco en los registros anteriores | Cumple | Historial de movimientos |
+| RF-NUE-09 | Incluir las fotos en la copia de seguridad | La copia fuera de la PC lleva las fotos y restaurar las recupera | Cumple (O4) | Configuración → Copias de seguridad |
 
 ## 4. Fuera de alcance
 

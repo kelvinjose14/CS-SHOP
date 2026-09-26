@@ -7,6 +7,8 @@ App.register({
     const tb = toolbar(page, { right: html`<button class="btn primary" id="u-new">${icon('plus')} Nuevo usuario</button>` });
     const box = el(html`<div class="card"></div>`);
     page.appendChild(box);
+    const rec = el(html`<div class="card" id="rec-card"></div>`);
+    page.appendChild(rec);
     page.appendChild(el(html`
       <div class="card roles">
         <div><h3>Administrador</h3><ul><li>Ver contabilidad, ganancias y costos</li><li>Registrar compras y gastos</li><li>Ajustar inventario y precios</li><li>Devoluciones y anulaciones</li><li>Ver reportes y administrar usuarios</li></ul></div>
@@ -29,8 +31,49 @@ App.register({
     };
     $('#u-new', tb).onclick = () => userForm(null, load);
     await load();
+    await renderRecovery(rec);
   },
 });
+
+// Código de recuperación del administrador (RF-NUE-06).
+async function renderRecovery(card) {
+  const st = await api('recovery.status');
+  setHTML(card, html`
+    <h3>${icon('lock')} Código de recuperación</h3>
+    <p class="muted">Si se olvida la contraseña del administrador, este código permite poner una nueva desde la pantalla de entrada de la PC principal. Sirve <b>una sola vez</b>. Guárdelo impreso o anotado <b>fuera de la tienda</b>, y no lo comparta.</p>
+    ${st.exists ? html`<p>Hay un código vigente, creado el <b>${Fmt.datetime(st.created_at)}</b> por ${st.created_by}. Si lo pierde, genere otro: el anterior deja de servir.</p>` : html`<div class="warn-box">${icon('alert')} No hay código de recuperación. Si se olvida la contraseña del único administrador, no se podrá entrar.</div>`}
+    <div class="inline"><button class="btn" id="rec-new">${st.exists ? 'Generar otro código…' : 'Generar código…'}</button></div>`);
+  $('#rec-new', card).onclick = () => modal({
+    title: 'Generar código de recuperación',
+    width: 440,
+    body: html`<p class="muted">Por seguridad, escriba su contraseña actual.</p><label class="field"><span>Contraseña actual</span><input name="password" type="password"></label>`,
+    actions: [
+      { label: 'Cancelar' },
+      {
+        label: 'Generar', primary: true,
+        onClick: async ({ body }) => {
+          const { code } = await api('recovery.create', formData(body));
+          modal({
+            title: 'Código de recuperación',
+            width: 480,
+            body: html`<p>Anote o imprima este código y guárdelo fuera de la tienda. <b>No se volverá a mostrar.</b></p><div class="recovery-code mono" id="rec-code">${code}</div>`,
+            actions: [{ label: 'Imprimir', onClick: async () => { await window.capsApi.printHtml(recoveryHtml(code)).catch((e) => toast(e.message, 'error')); return false; } }, { label: 'Ya lo guardé', primary: true }],
+            onClose: () => renderRecovery(card),
+          });
+        },
+      },
+    ],
+  });
+}
+
+function recoveryHtml(code) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:20mm}h1{font-size:18px}.c{font:bold 24px 'Courier New',monospace;letter-spacing:2px;border:2px solid #000;padding:12px;display:inline-block;margin:12px 0}</style></head><body>
+    <h1>${esc(App.settings.business_name)} · Código de recuperación del administrador</h1>
+    <div class="c">${esc(code)}</div>
+    <p>Generado el ${esc(new Date().toLocaleString('es-DO'))}. Sirve una sola vez.</p>
+    <p>Uso: en la PC principal, pantalla de entrada → "¿Olvidó la contraseña del administrador?".</p>
+    <p>Guárdelo en un lugar seguro, fuera de la tienda.</p></body></html>`;
+}
 
 function userForm(u, onSaved) {
   u = u || { role: 'vendedor', active: 1 };
@@ -89,6 +132,7 @@ App.register({
           </div>
         </div>
         <div class="row-end"><button class="btn primary big" id="st-save">Guardar configuración</button></div>
+        <div class="card" id="prn-card"></div>
         <div class="card" id="net-card"></div>
         ${App.info.mode === 'principal' ? html`
         <div class="card">
@@ -136,6 +180,7 @@ App.register({
       await App.loadSettings();
       toast('Configuración guardada.');
     };
+    renderPrinter($('#prn-card', form));
     renderNetwork($('#net-card', form));
     renderUpdates($('#upd-card', form));
     if (App.info.mode === 'principal') renderExternal($('#ext-box', form));
@@ -156,6 +201,40 @@ App.register({
     };
   },
 });
+
+// Impresora de recibos de esta PC (RF-NUE-03). Cada PC tiene la suya.
+async function renderPrinter(card) {
+  const [p, list] = await Promise.all([window.capsApi.printer.get(), window.capsApi.printer.list().catch(() => [])]);
+  const names = list.map((x) => [x.name, x.label + (x.isDefault ? ' (predeterminada)' : '')]);
+  if (p.name && !list.some((x) => x.name === p.name)) names.push([p.name, `${p.name} (no encontrada)`]);
+  setHTML(card, html`
+    <h3>${icon('print')} Impresora de recibos de esta PC</h3>
+    <p class="muted">Con una impresora elegida, el recibo sale directo, sin la ventana de impresión. Se configura en cada computadora.</p>
+    <div class="grid-2">
+      <label class="field"><span>Impresora</span><select id="prn-name">${options(names, p.name, { empty: 'Preguntar cada vez' })}</select></label>
+      <label class="field"><span>Ancho del papel</span><select id="prn-width">${options([['80', '80 mm'], ['58', '58 mm']], String(p.width))}</select></label>
+      <label class="check"><input type="checkbox" id="prn-auto" ${p.auto ? 'checked' : ''}> Imprimir el recibo al cobrar, sin preguntar</label>
+    </div>
+    ${!list.length ? html`<p class="muted small">Windows no informó impresoras instaladas. Instale el controlador de la impresora de tickets y vuelva a abrir esta pantalla.</p>` : ''}
+    <div class="inline"><button class="btn" id="prn-test">Imprimir prueba</button></div>`);
+  const save = async () => {
+    await window.capsApi.printer.set({ name: $('#prn-name', card).value, width: Number($('#prn-width', card).value), auto: $('#prn-auto', card).checked });
+    toast('Impresora guardada.');
+  };
+  ['#prn-name', '#prn-width', '#prn-auto'].forEach((sel) => ($(sel, card).onchange = () => save().catch((e) => toast(e.message, 'error'))));
+  $('#prn-test', card).onclick = async () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const sample = {
+      id: 0, created_at: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:00`,
+      sale_type: 'detalle', payment_type: 'contado', user_name: App.user.name, subtotal: 100, discount: 0, total: 100, change_given: 0, returned_total: 0, balance: 0, status: 'pagado',
+      items: [{ description: 'PRUEBA DE IMPRESIÓN', qty: 1, unit_price: 100 }], payments: [{ method: 'efectivo', amount: 100, kind: 'inicial' }],
+    };
+    try {
+      await window.capsApi.printHtml(receiptHtml(sample, Number($('#prn-width', card).value)), { receipt: true });
+    } catch (e) { toast(e.message, 'error'); }
+  };
+}
 
 // Configuración → Red: cómo trabaja esta PC y, en la principal, las computadoras conectadas.
 async function renderNetwork(card) {

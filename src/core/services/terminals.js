@@ -68,7 +68,11 @@ function save(ctx, { id, name, active }) {
   }
   return ctx.db.tx(() => {
     ctx.db.update('terminals', id, data);
-    audit(ctx, 'editar_pc', 'pc', id, { antes: { nombre: t.name, activa: t.active }, despues: data });
+    const yesNo = (v) => (v ? 'sí' : 'no');
+    const details = { pc: t.name };
+    if (data.name !== undefined && data.name !== t.name) details.nombre = { antes: t.name, despues: data.name };
+    if (data.active !== undefined && data.active !== t.active) details.activa = { antes: yesNo(t.active), despues: yesNo(data.active) };
+    audit(ctx, 'editar_pc', 'pc', id, details);
     return id;
   });
 }
