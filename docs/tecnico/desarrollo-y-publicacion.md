@@ -127,7 +127,7 @@ CAPSSHOP_DATA=/tmp/pc-b npm start      # Conectar a la PC principal → Buscar �
 | Evento | Qué corre |
 |---|---|
 | Pull request y ejecución manual (Actions → Run workflow) | Los dos trabajos |
-| Etiqueta `v*` (al publicar una versión) | Lo mismo y, además, adjunta `CAPS-Shop-Setup-<versión>.exe` a la versión en GitHub Releases |
+| Etiqueta `v*`, o **Run workflow** en `main` con **Publicar** | Lo mismo y, además, publica la versión en GitHub Releases con el instalador, `latest.yml`, el `.blockmap` y las notas del CHANGELOG |
 
 No se une un pull request con CI en rojo.
 
@@ -142,10 +142,11 @@ Se usa versionado semántico:
    - Suba `version` en `package.json`. El nombre del instalador sale de ahí.
    - Mueva las notas de **Sin publicar** a la nueva versión en `CHANGELOG.md`, con la fecha.
 2. Una el pull request a `main`.
-3. Cree la etiqueta `vX.Y.Z` sobre el commit de unión en `main`, de una de estas dos formas:
+3. Publique, de una de estas formas:
+   - **Desde GitHub Actions (la más simple):** **Actions** → **Instalador Windows** → **Run workflow** → **Branch: main**, marque **Publicar** → **Run workflow**. El CI toma la versión de `package.json`, crea la etiqueta `vX.Y.Z` sobre ese commit de `main` y publica. Si esa versión ya estaba publicada, falla sin tocar nada.
    - **Desde la terminal:** `git fetch origin main && git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
    - **En GitHub** → **Releases** → **Draft a new release**: **Choose a tag** `vX.Y.Z` con **Create new tag on publish**, **Target: `main`** (revíselo siempre: si la rama principal del repositorio no es `main`, GitHub propone otra) y **Publish release**.
-4. El flujo de CI arranca con la etiqueta y, en unos 5 minutos, crea o completa la versión **CAPS Shop vX.Y.Z**:
+4. En unos 5 minutos, el CI crea o completa la versión **CAPS Shop vX.Y.Z**:
    - la descripción son las notas de esa versión en `CHANGELOG.md`, sacadas por `scripts/notas-version.js`. Si la etiqueta no coincide con `package.json` o el CHANGELOG no tiene la sección, el CI falla antes de construir nada;
    - el `.exe`;
    - `latest.yml` y el `.blockmap`, que usan las PCs instaladas para enterarse de la versión nueva ([Actualizaciones](#actualizaciones)).
