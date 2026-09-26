@@ -83,6 +83,7 @@ const CASH_LABELS = {
   aporte_capital: 'Aportes del dueño',
   anulacion_compra: 'Reembolsos de compras',
   anulacion_gasto: 'Gastos anulados',
+  anulacion_pago_proveedor: 'Pagos a proveedores anulados',
   gasto: 'Gastos',
   compra: 'Compras de mercancía',
   pago_proveedor: 'Pagos a proveedores',
@@ -92,30 +93,42 @@ const CASH_LABELS = {
   anulacion_aporte: 'Aportes anulados',
   anulacion_venta: 'Ventas anuladas',
   anulacion_ingreso: 'Ingresos anulados',
+  anulacion_abono: 'Abonos anulados',
+  anulacion_entrada: 'Entradas anuladas',
+  anulacion_retiro: 'Retiros anulados',
+  anulacion_deposito: 'Depósitos anulados',
 };
 
-// Movimientos que solo cambian el dinero de lugar (efectivo → banco): no son entradas ni salidas del negocio.
-const TRANSFERS = ['deposito_banco'];
+// Movimientos que solo cambian el dinero de lugar (efectivo → banco, y su anulación): no son entradas
+// ni salidas del negocio.
+const TRANSFERS = ['deposito_banco', 'anulacion_deposito'];
 
+// Movimientos manuales de caja que el administrador puede anular, y la categoría de la anulación.
+const CASH_VOIDS = { deposito_caja: 'anulacion_entrada', retiro_caja: 'anulacion_retiro', deposito_banco: 'anulacion_deposito' };
+
+// Resumen de una caja. Cada línea ya descuenta sus anulaciones (un retiro anulado no cuenta como retiro),
+// y la suma de las líneas siempre da el efectivo esperado.
 function sessionSummary(db, session) {
   const rows = db.all(
     "SELECT direction, category, SUM(amount) AS amount FROM money_movements WHERE session_id = ? AND method = 'efectivo' GROUP BY direction, category",
     [session.id]
   );
-  const by = (cat) => round2(rows.filter((r) => r.category === cat).reduce((s, r) => s + r.amount, 0));
+  const sum = (dir, cat) => round2(rows.filter((r) => r.direction === dir && r.category === cat).reduce((s, r) => s + r.amount, 0));
   const totalIn = round2(rows.filter((r) => r.direction === 'in').reduce((s, r) => s + r.amount, 0));
   const totalOut = round2(rows.filter((r) => r.direction === 'out').reduce((s, r) => s + r.amount, 0));
-  const cashSales = round2(by('venta') + by('abono_cliente'));
-  const otherIn = round2(totalIn - cashSales);
-  const expensesOut = round2(by('gasto') + by('compra') + by('pago_proveedor'));
-  const withdrawals = by('retiro_caja');
-  const deposits = by('deposito_banco');
-  const otherOut = round2(totalOut - expensesOut - withdrawals - deposits);
+  const cashSales = sum('in', 'venta');
+  const payments = sum('in', 'abono_cliente');
+  const withdrawals = round2(sum('out', 'retiro_caja') - sum('in', 'anulacion_retiro'));
+  const deposits = round2(sum('out', 'deposito_banco') - sum('in', 'anulacion_deposito'));
+  const entryVoids = sum('out', 'anulacion_entrada');
+  const otherIn = round2(totalIn - cashSales - payments - sum('in', 'anulacion_retiro') - sum('in', 'anulacion_deposito') - entryVoids);
+  const expensesOut = round2(sum('out', 'gasto') + sum('out', 'compra') + sum('out', 'pago_proveedor'));
+  const otherOut = round2(totalOut - expensesOut - sum('out', 'retiro_caja') - sum('out', 'deposito_banco') - entryVoids);
   const expected = round2(session.opening_amount + totalIn - totalOut);
   return {
     ...session,
-    cash_sales: by('venta'),
-    customer_payments: by('abono_cliente'),
+    cash_sales: cashSales,
+    customer_payments: payments,
     other_income: otherIn,
     expenses_paid: expensesOut,
     withdrawals,
@@ -130,10 +143,12 @@ function sessionSummary(db, session) {
 
 function cashMovements(db, sessionId, order = 'DESC') {
   return db.all(
-    `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id
+    `SELECT m.*, u.name AS user_name,
+            EXISTS (SELECT 1 FROM money_movements a WHERE a.ref_type = 'anulacion' AND a.ref_id = m.id) AS voided
+       FROM money_movements m LEFT JOIN users u ON u.id = m.user_id
       WHERE m.session_id = ? AND m.method = 'efectivo' ORDER BY m.id ${order}`,
     [sessionId]
-  ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category }));
+  ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category, voidable: m.category in CASH_VOIDS && !m.voided ? 1 : 0 }));
 }
 
 // Caja de la PC que consulta. El administrador ve además las cajas abiertas en otras PCs.
@@ -197,6 +212,27 @@ function cashMovement(ctx, { type, amount, description }) {
     // El depósito entra al banco: el dinero del negocio no cambia, solo pasa de efectivo a banco.
     if (type === 'deposito_banco') ledger(ctx, { direction: 'in', amount: amt, method: 'transferencia', category: 'deposito_banco', refType: 'caja', refId: s.id, description: desc });
     audit(ctx, move.action, 'caja', s.id, { monto: amt, descripcion: desc });
+    return id;
+  });
+}
+
+// Anula una entrada, un depósito al banco o un retiro registrado por error (auditoría 3.4). Solo el
+// administrador y solo mientras esa caja siga abierta: una vez cerrada, el error ya quedó en la
+// diferencia del cierre. La anulación es un movimiento contrario en la misma caja (también la del banco).
+function cashVoid(ctx, { movement_id, reason }) {
+  const why = text(reason, 'Motivo', { required: true });
+  return ctx.db.tx(() => {
+    const m = ctx.db.get('SELECT * FROM money_movements WHERE id = ?', [movement_id]);
+    if (!m || m.method !== 'efectivo' || !(m.category in CASH_VOIDS)) throw new AppError('Solo se anulan entradas de efectivo, depósitos al banco y retiros.');
+    if (ctx.db.get("SELECT id FROM money_movements WHERE ref_type = 'anulacion' AND ref_id = ?", [m.id])) throw new AppError('Ese movimiento ya está anulado.');
+    const s = ctx.db.get('SELECT * FROM cash_sessions WHERE id = ?', [m.session_id]);
+    if (!s || s.status !== 'abierta') throw new AppError('Esa caja ya se cerró: el error quedó en la diferencia de ese cierre.');
+    const category = CASH_VOIDS[m.category];
+    const description = `Anulación: ${m.description || CASH_LABELS[m.category]} (${why})`;
+    const id = ledger(ctx, { direction: m.direction === 'in' ? 'out' : 'in', amount: m.amount, method: 'efectivo', category, refType: 'anulacion', refId: m.id, description, session: s.id });
+    // El depósito tuvo también su entrada al banco: se anula igual.
+    if (m.category === 'deposito_banco') ledger(ctx, { direction: 'out', amount: m.amount, method: 'transferencia', category, refType: 'anulacion', refId: m.id, description });
+    audit(ctx, 'anular_movimiento_caja', 'caja', s.id, { movimiento: CASH_LABELS[m.category], monto: m.amount, descripcion: m.description, motivo: why });
     return id;
   });
 }
@@ -269,7 +305,7 @@ function cashHistory(ctx, { from, to } = {}) {
     `SELECT cs.*, t.name AS terminal_name, uo.name AS opened_by_name, uc.name AS closed_by_name FROM cash_sessions cs
        LEFT JOIN terminals t ON t.id = cs.terminal_id
        LEFT JOIN users uo ON uo.id = cs.opened_by LEFT JOIN users uc ON uc.id = cs.closed_by
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY cs.id DESC LIMIT 500`,
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY cs.id DESC`,
     params
   );
 }
@@ -282,4 +318,4 @@ function cashSession(ctx, { id }) {
   return out;
 }
 
-module.exports = { expenses, incomes, capital, cashStatus, cashOpen, cashMovement, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS, TRANSFERS };
+module.exports = { expenses, incomes, capital, cashStatus, cashOpen, cashMovement, cashVoid, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS, TRANSFERS };

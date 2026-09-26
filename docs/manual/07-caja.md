@@ -54,6 +54,8 @@ Los tres botones de arriba piden **Monto** y **Descripción**:
 
 No se puede depositar ni retirar más de lo esperado en caja.
 
+**Si se registró mal una entrada, un depósito o un retiro** (administrador): en **Movimientos de efectivo**, pulse **Anular** en esa fila y escriba el motivo. Se registra el movimiento contrario en la misma caja y la fila queda marcada **Anulado**; después registre el correcto. Solo mientras esa caja esté abierta: una vez cerrada, el error ya quedó en la diferencia del cierre.
+
 ## 7.3 Cerrar la caja
 
 ![Cerrar caja](img/cierre-caja.jpg)
@@ -100,3 +102,4 @@ Así el flujo neto muestra lo que de verdad ganó o gastó la tienda. Los depós
 | **No hay suficiente efectivo en caja (esperado: …).** | El depósito o el retiro supera lo que debería haber |
 | **Descripción es obligatorio.** | Escriba para qué es el movimiento; en un depósito, el banco y la boleta |
 | **Solo el administrador puede hacer retiros de caja…** | El vendedor registra el efectivo que va al banco con **Depósito al banco** |
+| **Esa caja ya se cerró: el error quedó en la diferencia de ese cierre.** | Un movimiento solo se anula con su caja abierta. Anote la explicación en el historial de cierres |

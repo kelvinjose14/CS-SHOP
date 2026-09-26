@@ -26,7 +26,8 @@ function supplierGet(ctx, { id }) {
   if (!s) throw new AppError('Proveedor no encontrado.');
   s.purchases = ctx.db.all('SELECT * FROM purchases WHERE supplier_id = ? ORDER BY date DESC, id DESC', [id]);
   s.payments = ctx.db.all(
-    `SELECT pp.*, u.name AS user_name FROM purchase_payments pp LEFT JOIN users u ON u.id = pp.user_id
+    `SELECT pp.*, u.name AS user_name, p.payment_type AS purchase_payment_type, p.status AS purchase_status
+       FROM purchase_payments pp JOIN purchases p ON p.id = pp.purchase_id LEFT JOIN users u ON u.id = pp.user_id
       WHERE pp.supplier_id = ? ORDER BY pp.date DESC, pp.id DESC`,
     [id]
   );
@@ -218,13 +219,64 @@ function pay(ctx, { purchase_id, supplier_id, amount, method: m, date: d, note }
   });
 }
 
+// Anula un pago a proveedor registrado por error (auditoría 3.4). Solo en compras a crédito: el pago de
+// una compra de contado se corrige anulando la compra. El dinero vuelve con un movimiento contrario.
+function voidPayment(ctx, { payment_id, reason }) {
+  const why = text(reason, 'Motivo', { required: true });
+  return ctx.db.tx(() => {
+    const pay = ctx.db.get('SELECT * FROM purchase_payments WHERE id = ?', [payment_id]);
+    if (!pay) throw new AppError('Pago no encontrado.');
+    if (pay.voided) throw new AppError('Ese pago ya está anulado.');
+    const purchase = ctx.db.get('SELECT * FROM purchases WHERE id = ?', [pay.purchase_id]);
+    if (purchase.status === 'anulada') throw new AppError('La compra está anulada.');
+    if (purchase.payment_type !== 'credito') throw new AppError('Es el pago de una compra de contado: para corregirlo, anule la compra.');
+    const paid = round2(purchase.paid - pay.amount);
+    ctx.db.update('purchase_payments', pay.id, { voided: 1 });
+    ctx.db.update('purchases', purchase.id, { paid, balance: round2(purchase.total - paid), status: accountStatus(purchase.total, paid) });
+    const supplier = ctx.db.get('SELECT name FROM suppliers WHERE id = ?', [purchase.supplier_id]);
+    ledger(ctx, { direction: 'in', amount: pay.amount, method: pay.method, category: 'anulacion_pago_proveedor', refType: 'pago_proveedor', refId: pay.id, description: `Anulación de pago a ${supplier.name} (compra #${purchase.id}): ${why}` });
+    audit(ctx, 'anular_pago_proveedor', 'proveedor', purchase.supplier_id, { compra: purchase.id, monto: pay.amount, metodo: pay.method, motivo: why });
+    return true;
+  });
+}
+
+// Costo promedio sin la compra que se anula (auditoría 3.3). Cada vez que una compra cambió el costo quedó
+// en el historial ("cambio_precio", origen "Compra #id") con el antes y el después:
+// - si nada volvió a cambiar el costo después de esa compra, el costo vuelve exactamente al de antes
+//   (la mercancía que queda es la que ya estaba);
+// - si otra compra lo cambió después, se quita del promedio lo que aportó esta (cantidad × costo);
+// - si esta compra no cambió el costo, queda igual.
+function costWithout(product, qty, unitCost, record) {
+  if (!record) return product.cost;
+  if (Math.abs(product.cost - record.despues) < 0.00005) return record.antes;
+  const remaining = product.stock - qty;
+  if (remaining > 0) {
+    const cost = (product.stock * product.cost - qty * unitCost) / remaining;
+    if (Number.isFinite(cost) && cost >= 0) return Math.round(cost * 10000) / 10000;
+  }
+  return product.cost;
+}
+
 function voidPurchase(ctx, { id, reason }) {
   const why = text(reason, 'Motivo de anulación', { required: true });
   return ctx.db.tx(() => {
     const p = get(ctx, { id });
     if (p.status === 'anulada') throw new AppError('La compra ya está anulada.');
-    for (const it of p.items) {
+    // Cambios de costo que hizo esta compra, del más nuevo al más viejo (un producto puede repetirse).
+    const records = {};
+    for (const r of ctx.db.all("SELECT entity_id, details FROM audit_log WHERE action = 'cambio_precio' AND details LIKE ? ORDER BY id DESC", [`%"origen":"Compra #${id}"%`])) {
+      const d = JSON.parse(r.details);
+      if (d.cost) (records[r.entity_id] = records[r.entity_id] || []).push(d.cost);
+    }
+    // En orden inverso al de la compra, para deshacer el promedio paso a paso si un producto se repite.
+    for (const it of [...p.items].reverse()) {
+      const product = ctx.db.get('SELECT id, name, stock, cost FROM products WHERE id = ?', [it.product_id]);
+      const cost = costWithout(product, it.qty, it.unit_cost, (records[product.id] || []).shift());
       changeStock(ctx, it.product_id, -it.qty, 'anulacion_compra', { refType: 'compra', refId: id, unitCost: it.unit_cost, note: `Anulación compra #${id}` });
+      if (Math.abs(cost - product.cost) > 0.00005) {
+        ctx.db.update('products', product.id, { cost, updated_at: now() });
+        audit(ctx, 'cambio_precio', 'producto', product.id, { producto: product.name, origen: `Anulación compra #${id}`, cost: { antes: product.cost, despues: cost } });
+      }
     }
     const paid = round2(p.payments.filter((x) => !x.voided).reduce((s, x) => s + x.amount, 0));
     for (const pay of p.payments.filter((x) => !x.voided)) {
@@ -253,4 +305,4 @@ function payables(ctx, { supplier_id, only_open = true } = {}) {
   );
 }
 
-module.exports = { supplierList, supplierGet, supplierSave, supplierOpening, create, list, get, pay, voidPurchase, payables };
+module.exports = { supplierList, supplierGet, supplierSave, supplierOpening, create, list, get, pay, voidPayment, voidPurchase, payables };

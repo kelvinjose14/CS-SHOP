@@ -72,6 +72,14 @@ Menú **Finanzas** → **Cuentas por cobrar**.
 - **Dinero:** entra como "Abonos de clientes". Si fue en efectivo, suma a la caja abierta.
 - **Historial:** queda registrado quién lo recibió y cuándo.
 
+### Anular un abono registrado por error (administrador)
+
+Si se registró un abono equivocado (otro monto, otro cliente, repetido):
+1. Abra el cliente (o la venta) → en **Historial de pagos**, pulse **Anular** en ese pago.
+2. Escriba el motivo y acepte.
+
+La deuda vuelve a quedar como antes y el dinero sale con el mismo método; si fue en efectivo, sale de la caja de esta computadora. Después registre el abono correcto. Solo se anulan abonos de ventas **a crédito**; el cobro de una venta de contado se corrige anulando la venta ([3.4](03-ventas.md#34-anular-una-venta-administrador)).
+
 ## 6.5 Errores comunes
 
 | Mensaje | Qué hacer |
@@ -80,3 +88,5 @@ Menú **Finanzas** → **Cuentas por cobrar**.
 | **El abono excede el balance pendiente (…).** | Corrija el monto: no se puede cobrar de más |
 | **No tiene permiso para registrar pagos de clientes.** | El administrador desactivó esta opción para el vendedor |
 | **La caja está cerrada…** | Abono en efectivo sin caja abierta: abra la caja |
+| **Es el cobro de una venta de contado: para corregirlo, anule la venta.** | Anule la venta completa y vuelva a registrarla |
+| **Ese dinero ya se le devolvió al cliente en una devolución…** | El abono ya se compensó con una devolución: no hay que anularlo |

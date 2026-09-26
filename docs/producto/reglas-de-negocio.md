@@ -17,6 +17,11 @@ Cada regla indica dónde está en el código. Todos los ejemplos numéricos est�
 - El costo se guarda con 4 decimales para no acumular errores de redondeo. En pantalla se muestra con 2.
 - Cada venta **guarda el costo del momento** en cada línea (`sale_items.unit_cost`). Si después cambia el costo, las ventas pasadas no cambian.
 - Editar el costo a mano en **Inventario** también queda registrado en el historial (`cambio_precio`).
+- **Al anular una compra** (`voidPurchase`), el costo vuelve a como estaría sin ella:
+  - si nada volvió a cambiar el costo después de esa compra, vuelve **exactamente al de antes**: la mercancía que queda es la que ya estaba;
+  - si otra compra lo cambió después, se quita del promedio lo que aportó la anulada: (existencia × costo − cantidad × costo de compra) / (existencia − cantidad);
+  - el cambio queda en el historial con origen "Anulación compra #…".
+  - **Ejemplo:** 10 gorras a RD$ 100; se compran 10 a RD$ 500 (costo RD$ 300) y se venden 5. Al anular la compra, el costo vuelve a **RD$ 100**. Es la prueba `test/auditoria.test.js`.
 
 **Ejemplo:** hay 10 gorras a RD$ 500 y se compran 10 más a RD$ 600. El costo nuevo es (10 × 500 + 10 × 600) / 20 = **RD$ 550**.
 
@@ -55,6 +60,7 @@ Fuente: `src/core/services/reports.js` (`salesTotals`, `profit`).
 Fuente: `src/core/services/sales.js` (`create`).
 
 - **Precio:** sale de la lista según el tipo de venta, **detalle** o **por mayor**. Solo el administrador puede cambiarlo en la venta.
+- **Nunca se vende en 0:** si el producto no tiene precio para ese tipo de venta (por ejemplo, sin precio por mayor), la venta se rechaza con **"… no tiene precio por mayor"**. El administrador puede escribir el precio en la venta; para regalar algo, se usa el descuento.
 - **Descuentos:** hay un descuento general de la venta, y el núcleo también acepta descuentos por línea.
   - El vendedor puede descontar como máximo el **% configurado** (10 % por defecto) del subtotal antes de descuentos, sumando todos los descuentos.
   - Si la opción está desactivada, no puede descontar nada.
@@ -135,7 +141,13 @@ Fuente: `sales.js` (`createReturn`). Solo el administrador.
   - Las unidades salen del inventario; si ya no hay existencia suficiente, no se puede anular.
   - Lo pagado vuelve como entrada de dinero ("Reembolsos de compras").
   - La compra queda **Anulada** con saldo 0.
-- **Gasto o ingreso** (`finance.js`): queda anulado y se registra el movimiento de dinero contrario.
+- **Gasto, ingreso o aporte** (`finance.js`): queda anulado y se registra el movimiento de dinero contrario.
+- **Abono de un cliente** (`sales.js`, `voidPayment`), solo el administrador:
+  - Solo en ventas a crédito (el cobro de una venta de contado se corrige anulando la venta).
+  - La deuda vuelve a quedar como antes del abono y el dinero sale con su método ("Abonos anulados"). En efectivo, sale de la caja de la PC donde se anula.
+  - No se puede si ese dinero ya se le devolvió al cliente en una devolución.
+- **Pago a un proveedor** (`purchases.js`, `voidPayment`), igual: solo en compras a crédito; la deuda vuelve a estar pendiente y el dinero regresa ("Pagos a proveedores anulados").
+- **Entrada, depósito al banco o retiro de caja** (`finance.js`, `cashVoid`), solo el administrador y **solo con esa caja abierta**. Se registra el movimiento contrario en **la misma caja** del original, aunque se anule desde otra PC; el depósito también se anula del lado del banco. Una vez cerrada la caja, el error ya quedó en la diferencia de ese cierre.
 - Nada se borra. Todas las anulaciones piden un motivo y quedan en el historial.
 
 ## 8. Caja

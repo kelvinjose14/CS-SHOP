@@ -100,10 +100,14 @@ Estados de una venta: **Pagado**, **Parcial** (abonada en parte), **Pendiente** 
 - **Estado:** la venta queda como **Anulada**. Deja de contar en ventas y ganancias, pero sigue visible en el historial.
 - **Límite:** una venta con devoluciones no se puede anular.
 
+### Corregir un pago de la venta (administrador)
+En el detalle de una venta **a crédito**, **Pagos** → **Anular** en un abono registrado por error ([Clientes, 6.4](06-clientes-y-cobros.md#anular-un-abono-registrado-por-error-administrador)).
+
 ## 3.5 Errores comunes
 
 | Mensaje | Qué pasa | Qué hacer |
 |---|---|---|
+| **"…" no tiene precio por mayor.** / **…al detalle.** | El producto no tiene precio para ese tipo de venta, y el sistema no lo vende en 0. El administrador le pone precio en **Inventario**, o escribe el precio en la venta |
 | **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | Se intentó cobrar en efectivo sin caja abierta | Ir a **Caja** → **Abrir caja**, o cobrar con otro método |
 | **Existencia insuficiente de "…" (disponible: N).** | Se quiere vender más de lo que hay | Revisar la cantidad; si el inventario está mal, el administrador lo ajusta ([Inventario](04-inventario.md)) |
 | **"…" está agotado.** | El producto tiene existencia 0 | Igual que el anterior |

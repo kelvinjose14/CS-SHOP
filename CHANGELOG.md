@@ -4,10 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.2.0] - 2026-09-26
+
+Para el piloto en la tienda (O6). Una PC con la 1.1.0 la ofrece al administrador en **Configuración → Actualizaciones**; con la 1.0.0, instálela encima.
+
 ### Agregado
 - **Conteo de inventario** (Inventario → Conteo): se cuentan muchas gorras con el lector o a mano, con hoja de conteo imprimible, y se aplican todas las diferencias con un motivo. Lo vendido mientras se contaba no se ajusta; el conteo sin terminar se guarda en la PC.
 - **Kit del piloto** en `docs/piloto/`: plan, capacitación con ejercicios comprobados, bitácora y lista de aceptación generada de los requisitos.
 - Publicar una versión desde GitHub Actions (**Run workflow** con **Publicar**), sin crear la etiqueta a mano.
+- **Anular un abono, un pago a proveedor o una entrada, depósito o retiro de caja** registrado por error (administrador, con motivo): se registra el movimiento contrario y queda en el historial.
+- Registro de la [auditoría de producción](docs/tecnico/auditoria.md) con el estado de cada hallazgo.
+
+### Corregido
+- Una venta al por mayor de un producto sin precio por mayor salía en RD$ 0. Ahora se rechaza; el administrador puede escribir el precio en la venta.
+- Los reportes largos (ventas, movimientos, flujo, historial, cierres) se cortaban sin avisar y sus totales salían mal. Ahora traen todas las filas: en pantalla se ven 1,000 con **Mostrar todas**, y los totales, el CSV y el PDF incluyen todas.
+- Al anular una compra, el costo promedio de sus productos no volvía a como estaba.
+- El vendedor recibía el costo de cada venta en el detalle de un cliente.
 
 ## [1.1.0] - 2026-09-26
 
@@ -97,5 +109,6 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.2.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.2.0
 [1.1.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.1.0
 [1.0.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.0.0

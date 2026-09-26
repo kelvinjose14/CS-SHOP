@@ -7,6 +7,7 @@ Revisión del objetivo O3 (25/09/2026). Cada punto indica cómo está protegido,
 | Área | Estado | Se comprueba en |
 |---|---|---|
 | Permisos por perfil | En el núcleo, para **todas** las operaciones | `test/permissions.test.js` |
+| Costos ocultos al vendedor | Ninguna respuesta al vendedor trae costos, ganancias ni márgenes (se revisan todas) | `test/auditoria.test.js` |
 | Contraseñas | scrypt con sal; cambio obligatorio de la inicial, exigido también por la red; límite de intentos | `test/core.test.js`, `permissions`, `backup`, `network` |
 | Red entre computadoras | **Cifrada y autenticada** con la clave de conexión; la clave no viaja | `test/network.test.js` |
 | Interfaz | Aislada de Node; HTML escapado; CSP | Revisión de código |
@@ -68,5 +69,7 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 | Quien use la PC principal como administrador ve la clave de conexión | Es parte de su rol; puede cambiarla en Configuración → Red | — |
 | Una PC conectada sin sesión puede volver a conectarse a otra "principal" (pantalla de entrada) | Solo aparece si hay error de conexión y no permite convertirla en principal. Una principal falsa no conoce la clave, así que no puede descifrar | — |
 | Quien consiga el código de recuperación puede poner una contraseña nueva al administrador | Sirve una vez, solo en la PC principal, con límite de intentos; el administrador lo guarda fuera de la tienda. Queda en el historial | — |
-| El instalador no está firmado | Aviso de Windows al instalar | O4 |
-| Los respaldos quedan en el mismo disco, sin cifrar | La carpeta de datos es del usuario de Windows | O4 |
+| El instalador no está firmado | Aviso de Windows al instalar. Si alguien entra a la cuenta de GitHub, podría publicar una actualización falsa | Certificado (DT-18), verificación en dos pasos en GitHub y proteger `main` |
+| El vendedor puede registrar un depósito al banco que nadie compara con el banco | El dueño revisa los depósitos contra el estado de cuenta | Reporte de depósitos por verificar ([auditoría 4.2](auditoria.md#seguridad)) |
+| La ventana no bloquea la navegación fuera de la app; un nombre que empieza con `=` se ejecuta como fórmula al abrir el CSV | No hay enlaces externos; los nombres los escriben usuarios de la tienda | [Auditoría 4.5 y 4.6](auditoria.md#seguridad) |
+| La base y las copias (también la externa) no van cifradas | La carpeta de datos es del usuario de Windows | Cifrar la copia externa; BitLocker ([auditoría 4.3](auditoria.md#seguridad)) |

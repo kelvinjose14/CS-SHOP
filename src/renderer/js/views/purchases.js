@@ -347,7 +347,7 @@ async function supplierDetail(id, onChange) {
       }),
     });
   }
-  modal({
+  const m = modal({
     title: s.name,
     width: 920,
     body: html`
@@ -370,11 +370,15 @@ async function supplierDetail(id, onChange) {
           { key: 'amount', label: 'Monto', money: true, total: true },
           { key: 'note', label: 'Nota' },
           { key: 'user_name', label: 'Usuario' },
-          { key: 'voided', label: '', render: (r) => (r.voided ? badge('anulada') : '') },
+          voidPayColumn((r) => r.purchase_payment_type === 'credito' && r.purchase_status !== 'anulada'),
         ],
         rows: s.payments, empty: 'Sin pagos.',
       })}`,
     actions,
+  });
+  bindVoidPayments(m.body, s.payments, {
+    method: 'purchases.voidPayment', what: (r) => `pago a ${s.name} (${Fmt.purchaseNo(r.purchase_id)})`, cashNote: 'el efectivo vuelve a la caja de esta PC',
+    onDone: () => { m.close(); onChange && onChange(); supplierDetail(id, onChange); },
   });
 }
 
@@ -414,15 +418,10 @@ App.register({
         if (e.target.closest('[data-pay]')) return;
         purchaseDetail(r.id, load);
       });
-      $$('tbody tr[data-idx]', box).forEach((tr) => {
-        const b = $('[data-pay]', tr);
-        if (!b) return;
-        const r = rows[Number(tr.dataset.idx)];
-        b.onclick = () => paymentDialog({
-          title: `Pago a ${r.supplier_name} · ${Fmt.purchaseNo(r.id)}`, maxAmount: r.balance, withDate: true,
-          onSubmit: async (f) => { await api('purchases.pay', { purchase_id: r.id, ...f }); toast('Pago registrado.'); load(); },
-        });
-      });
+      onRowButton(box, '[data-pay]', rows, (r) => paymentDialog({
+        title: `Pago a ${r.supplier_name} · ${Fmt.purchaseNo(r.id)}`, maxAmount: r.balance, withDate: true,
+        onSubmit: async (f) => { await api('purchases.pay', { purchase_id: r.id, ...f }); toast('Pago registrado.'); load(); },
+      }));
       $('#ap-export', tb).onclick = () => exportCsv('cuentas-por-pagar', cols, rows);
     };
     await load();

@@ -83,6 +83,8 @@ Dentro de cada reporte:
 - **Imprimir** lo manda a la impresora.
 - **← Todos los reportes** vuelve a la lista.
 
+**Reportes largos:** en pantalla se ven las primeras **1,000 filas**, con el aviso "Se muestran 1,000 de N filas" y el botón **Mostrar todas**. Los **totales**, el **CSV**, el **PDF** y **Imprimir** incluyen siempre **todas** las filas.
+
 ## 9.4 Historial de movimientos
 
 Menú **Análisis** → **Historial de movimientos**.

@@ -106,7 +106,7 @@ function cashflow(ctx, params = {}) {
   const totalIn = round2(flows.filter((r) => r.direction === 'in').reduce((s, r) => s + r.amount, 0));
   const totalOut = round2(flows.filter((r) => r.direction === 'out').reduce((s, r) => s + r.amount, 0));
   const movements = db.all(
-    `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id WHERE m.date BETWEEN ? AND ? ORDER BY m.id DESC LIMIT 3000`,
+    `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id WHERE m.date BETWEEN ? AND ? ORDER BY m.id DESC`,
     [from, to]
   ).map((m) => ({ ...m, label: CASH_LABELS[m.category] || m.category }));
   const sales = salesTotals(db, from, to);
@@ -117,7 +117,8 @@ function cashflow(ctx, params = {}) {
     net: round2(totalIn - totalOut),
     inflows: group('in'),
     outflows: group('out'),
-    bank_deposits: round2(rows.filter((r) => r.category === 'deposito_banco' && r.direction === 'out').reduce((s, r) => s + r.amount, 0)),
+    // Neto de anulaciones: la parte en efectivo del depósito (sale) menos la de su anulación (vuelve).
+    bank_deposits: round2(rows.filter((r) => r.method === 'efectivo' && TRANSFERS.includes(r.category)).reduce((s, r) => s + (r.direction === 'out' ? r.amount : -r.amount), 0)),
     capital: round2(flows.filter((r) => r.category === 'aporte_capital' || r.category === 'anulacion_aporte').reduce((s, r) => s + (r.direction === 'in' ? r.amount : -r.amount), 0)),
     by_method: Object.values(byMethod).map((m) => ({ ...m, net: round2(m.in - m.out) })),
     sold: sales.net,
@@ -211,7 +212,7 @@ function auditLog(ctx, { from, to, user_id, action, entity, search } = {}) {
   return ctx.db.all(
     `SELECT a.*, u.name AS user_name, t.name AS terminal_name FROM audit_log a
        LEFT JOIN users u ON u.id = a.user_id LEFT JOIN terminals t ON t.id = a.terminal_id
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY a.id DESC LIMIT 3000`,
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY a.id DESC`,
     params
   );
 }

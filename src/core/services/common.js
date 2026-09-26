@@ -52,14 +52,16 @@ function openCashSession(db, terminalId = 1) {
   return db.get("SELECT * FROM cash_sessions WHERE status = 'abierta' AND terminal_id = ? ORDER BY id DESC LIMIT 1", [terminalId]);
 }
 
-// Registra una entrada o salida de dinero. El efectivo se asocia a la caja abierta de la PC que lo registra.
-function ledger(ctx, { direction, amount, method, category, refType, refId, description, date }) {
+// Registra una entrada o salida de dinero. El efectivo se asocia a la caja abierta de la PC que lo registra,
+// o a la caja indicada en session (al anular un movimiento, va a la misma caja del original).
+function ledger(ctx, { direction, amount, method, category, refType, refId, description, date, session }) {
   amount = round2(amount);
   if (amount <= 0) return null;
   let sessionId = null;
-  if (method === 'efectivo') {
-    const session = openCashSession(ctx.db, ctx.terminal);
-    if (session) sessionId = session.id;
+  if (method === 'efectivo' && session) sessionId = session;
+  else if (method === 'efectivo') {
+    const open = openCashSession(ctx.db, ctx.terminal);
+    if (open) sessionId = open.id;
     else if (getSetting(ctx.db, 'require_open_cash') === '1') {
       throw new AppError('La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.', 'CASH_CLOSED');
     }

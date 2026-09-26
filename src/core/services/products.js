@@ -273,7 +273,7 @@ function movements(ctx, { product_id, from, to, type } = {}) {
        JOIN products p ON p.id = m.product_id
        LEFT JOIN users u ON u.id = m.user_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY m.id DESC LIMIT 2000`,
+      ORDER BY m.id DESC`,
     params
   );
   return rows.map((r) => {

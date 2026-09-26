@@ -63,6 +63,12 @@ Hay tres caminos:
 
 En la ventana escriba el **Monto** (se propone el pendiente), el **Método de pago**, la **Fecha** y una **Nota** opcional. Pulse **Registrar pago**.
 
+### Anular un pago a proveedor registrado por error (administrador)
+
+Abra el proveedor → en **Historial de pagos**, pulse **Anular** en ese pago y escriba el motivo. La compra vuelve a quedar pendiente por ese monto y el dinero regresa con el mismo método (en efectivo, a la caja de esta computadora). Solo en compras **a crédito**: el pago de una compra de contado se corrige anulando la compra.
+
+Al **anular una compra**, el costo promedio de sus productos vuelve a como estaba antes de esa compra ([Reglas de negocio](../producto/reglas-de-negocio.md#1-costo-de-cada-gorra-costo-promedio)).
+
 ## 5.5 Errores comunes
 
 | Mensaje | Qué hacer |
