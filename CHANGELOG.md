@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Documentación
+- La rama por defecto del repositorio ya es `main`: se quitó el aviso de pendiente en objetivos y en la guía de publicación.
+
 ## [1.3.1] - 2026-09-26
 
 Corrección menor de la 1.3.0. Se instala encima o desde Configuración → Actualizaciones.

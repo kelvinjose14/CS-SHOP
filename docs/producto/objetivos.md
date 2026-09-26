@@ -35,7 +35,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 | 6 | ~~Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.)~~ **Resueltas en O5**; falta probar la impresora de tickets real | — | O6 |
 | 7 | No se ha usado con datos reales | No hay aceptación del cliente | O6 |
 
-**Detalle técnico pendiente:** la etiqueta `v1.0.0` apunta al último commit de la rama de trabajo en lugar del commit de unión en `main`. El código es idéntico. La causa es que la **rama por defecto** del repositorio es la rama de trabajo. El dueño debe cambiarla a `main` en GitHub → Settings → General → Default branch. En adelante, las versiones se crean con destino `main` ([Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión)).
+**Detalle técnico:** la etiqueta `v1.0.0` apunta al último commit de la rama de trabajo en lugar del commit de unión en `main`. El código es idéntico. La causa era que la **rama por defecto** del repositorio era la rama de trabajo. El dueño la cambió a `main` el 26/09/2026, y las versiones se crean con destino `main` ([Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión)).
 
 ## Mapa
 
@@ -170,7 +170,7 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 | Actualización | `src/main/updates.js`: busca en GitHub Releases, avisa al administrador y este instala con un botón. Las PCs con otra versión se actualizan desde la pantalla de entrada (DT-19) | Hecho |
 | Respaldos fuera de la PC, con fotos y alerta a los 7 días | Configuración → Copias de seguridad; `backend.js` (`externalBackup`) (DT-20) | Hecho |
 | Guía de soporte | [Manual 14: Soporte y recuperación](../manual/14-soporte-y-recuperacion.md) | Hecho |
-| Versiones con destino `main` | [Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión) | Hecho. Falta que el dueño cambie la **rama por defecto** del repositorio a `main` (hoy es la rama de trabajo) |
+| Versiones con destino `main` | [Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión) | Hecho. La **rama por defecto** del repositorio es `main` desde el 26/09/2026 |
 
 **Criterios de terminado que dependen de la tienda:**
 - **Sin advertencia de Windows:** requiere el certificado.
