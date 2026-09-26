@@ -21,6 +21,8 @@ const METHODS = {
   'users.save': [ADMIN, users.save],
   'settings.get': [ALL, users.settingsGet],
   'settings.save': [ADMIN, users.settingsSave],
+  'recovery.status': [ADMIN, users.recoveryStatus],
+  'recovery.create': [ADMIN, users.recoveryCreate],
 
   'products.list': [ALL, products.list],
   'products.get': [ALL, products.get],
@@ -28,12 +30,14 @@ const METHODS = {
   'products.summary': [ALL, products.summary],
   'products.movements': [ALL, products.movements],
   'products.save': [ADMIN, products.save],
+  'products.import': [ADMIN, products.importRows],
   'products.adjust': [ADMIN, products.adjust],
 
   'suppliers.list': [ADMIN, purchases.supplierList],
   'suppliers.get': [ADMIN, purchases.supplierGet],
   'suppliers.save': [ADMIN, purchases.supplierSave],
   'suppliers.pay': [ADMIN, purchases.pay],
+  'suppliers.opening': [ADMIN, purchases.supplierOpening],
   'purchases.create': [ADMIN, purchases.create],
   'purchases.list': [ADMIN, purchases.list],
   'purchases.get': [ADMIN, purchases.get],
@@ -44,6 +48,7 @@ const METHODS = {
   'customers.list': [ALL, sales.customerList],
   'customers.get': [ALL, sales.customerGet],
   'customers.save': [ALL, sales.customerSave],
+  'customers.opening': [ADMIN, sales.customerOpening],
   'sales.create': [ALL, sales.create],
   'sales.list': [ALL, sales.list],
   'sales.get': [ALL, sales.get],
@@ -58,6 +63,9 @@ const METHODS = {
   'incomes.list': [ADMIN, finance.incomes.list],
   'incomes.create': [ADMIN, finance.incomes.create],
   'incomes.void': [ADMIN, finance.incomes.void],
+  'capital.list': [ADMIN, finance.capital.list],
+  'capital.create': [ADMIN, finance.capital.create],
+  'capital.void': [ADMIN, finance.capital.void],
 
   'cash.status': [ALL, finance.cashStatus],
   'cash.open': [ALL, finance.cashOpen],
@@ -110,6 +118,12 @@ function createApi(db) {
       const token = crypto.randomBytes(24).toString('hex');
       sessions.set(token, { user, terminal, lastSeen: Date.now(), touched: 0 });
       return { token, user };
+    },
+    // Recuperación con el código de un solo uso (sin sesión). Cierra las sesiones de ese usuario.
+    recover(params, { terminal = terminals.PRINCIPAL } = {}) {
+      const user = users.recover({ db, terminal }, params || {});
+      for (const [token, s] of sessions) if (s.user.id === user.id) sessions.delete(token);
+      return user;
     },
     logout(token) {
       sessions.delete(token);

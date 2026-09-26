@@ -15,7 +15,8 @@ const DEFAULT_SETTINGS = {
   seller_max_discount_pct: '10',
   receipt_footer: '¡Gracias por su compra!',
   expense_categories: JSON.stringify(['Alquiler', 'Transporte', 'Publicidad', 'Nómina', 'Servicios', 'Internet', 'Delivery', 'Otros']),
-  income_categories: JSON.stringify(['Otros ingresos', 'Aporte del dueño', 'Servicios']),
+  // Los aportes del dueño no van aquí: se registran aparte y no son ganancia (DT-21).
+  income_categories: JSON.stringify(['Otros ingresos', 'Servicios']),
 };
 
 function getSetting(db, key) {
@@ -23,9 +24,10 @@ function getSetting(db, key) {
   return row ? row.value : DEFAULT_SETTINGS[key];
 }
 
+// Las claves que empiezan con "_" son internas (por ejemplo, el código de recuperación) y nunca salen del núcleo.
 function getSettings(db) {
   const out = { ...DEFAULT_SETTINGS };
-  for (const r of db.all('SELECT key, value FROM settings')) out[r.key] = r.value;
+  for (const r of db.all("SELECT key, value FROM settings WHERE key NOT LIKE '\\_%' ESCAPE '\\'")) out[r.key] = r.value;
   return out;
 }
 

@@ -68,6 +68,7 @@ const App = {
           </form>
           ${canUpdate ? html`<button class="btn block" id="login-update">${icon('download')} Actualizar esta PC</button>` : ''}
           <p class="login-hint">${icon('pc')} ${this.pcLabel()}${canSetup ? html` · <a href="#" id="login-setup">Configurar esta PC</a> · <a href="#" id="login-diag">Guardar diagnóstico</a>` : ''}</p>
+          ${this.info.mode === 'principal' ? html`<p class="login-hint"><a href="#" id="login-recover">¿Olvidó la contraseña del administrador?</a></p>` : ''}
           <p class="login-hint">Sistema de inventario y contabilidad · v${this.info.version}</p>
         </div>
       </div>`);
@@ -106,6 +107,44 @@ const App = {
     };
     const setup = $('#login-setup');
     if (setup) setup.onclick = (e) => { e.preventDefault(); this.showSetup({ back: () => this.showLogin(), terminalOnly: true }); };
+    const rec = $('#login-recover');
+    if (rec) rec.onclick = (e) => { e.preventDefault(); this.showRecover(); };
+  },
+
+  // Recuperar la contraseña del administrador con el código de un solo uso (RF-NUE-06).
+  showRecover() {
+    document.body.className = 'login-page';
+    setHTML(document.body, html`
+      <div class="login">
+        <div class="login-card">
+          <img src="assets/logo.png" alt="" class="login-logo small">
+          <h2>Recuperar contraseña</h2>
+          <p class="muted">Escriba el <b>código de recuperación</b> que se generó en Configuración → Usuarios. Sirve una sola vez.</p>
+          <form id="rec-form" autocomplete="off">
+            <label class="field"><span>Usuario administrador</span><input name="username" required value="admin"></label>
+            <label class="field"><span>Código de recuperación</span><input name="code" required placeholder="XXXX-XXXX-XXXX-XXXX" class="mono"></label>
+            <label class="field"><span>Nueva contraseña (mínimo 6)</span><input name="password" type="password" required minlength="6"></label>
+            <label class="field"><span>Repetir nueva contraseña</span><input name="password2" type="password" required></label>
+            <div class="login-error"></div>
+            <button class="btn primary block" type="submit">Cambiar contraseña</button>
+          </form>
+          <p class="login-hint"><a href="#" id="rec-back">Volver</a></p>
+          <p class="login-hint">¿No tiene el código? Otro administrador puede cambiarle la contraseña en Configuración → Usuarios.</p>
+        </div>
+      </div>`);
+    $('#rec-back').onclick = (e) => { e.preventDefault(); this.showLogin(); };
+    $('#rec-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const f = formData(e.target);
+      if (f.password !== f.password2) return ($('.login-error').textContent = 'Las contraseñas no coinciden.');
+      try {
+        await window.capsApi.recover({ username: f.username, code: f.code, password: f.password });
+        this.showLogin();
+        toast('Contraseña cambiada. Entre con la nueva. El código ya no sirve: genere otro.');
+      } catch (err) {
+        $('.login-error').textContent = err.message;
+      }
+    };
   },
 
   onLoggedOut(message, code) {

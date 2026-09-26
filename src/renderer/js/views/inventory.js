@@ -43,7 +43,9 @@ App.register({
         </div>
         ${admin ? html`<label class="check"><input type="checkbox" id="p-inactive"> Ver inactivos</label>` : ''}`,
       right: html`
+        <button class="btn" id="p-labels">${icon('tag')} Etiquetas</button>
         <button class="btn" id="p-export">${icon('download')} Exportar</button>
+        ${admin ? html`<button class="btn" id="p-import">${icon('upload')} Importar</button>` : ''}
         ${admin ? html`<button class="btn primary" id="p-new">${icon('plus')} Nuevo producto</button>` : ''}`,
     });
     const listBox = el(html`<div class="card"></div>`);
@@ -75,7 +77,9 @@ App.register({
     if (admin) {
       $('#p-inactive', tb).onchange = (e) => { state.includeInactive = e.target.checked; load(); };
       $('#p-new', tb).onclick = () => productForm(null, load);
+      $('#p-import', tb).onclick = () => importProducts(load);
     }
+    $('#p-labels', tb).onclick = () => labelsDialog(rows.filter((p) => p.active));
     $('#p-export', tb).onclick = () => exportCsv('inventario', productColumns(), rows);
     await load();
     $('#p-search', tb).focus();
@@ -129,10 +133,11 @@ async function productDetail(id, onChange) {
     actions: admin
       ? [
           { label: 'Cerrar' },
+          { label: 'Etiquetas', onClick: () => { labelsDialog([p]); return false; } },
           { label: 'Ajustar existencia', onClick: () => { adjustForm(p, () => { onChange(); }); } },
           { label: 'Editar', primary: true, onClick: () => { productForm(p, onChange); } },
         ]
-      : [{ label: 'Cerrar' }],
+      : [{ label: 'Cerrar' }, { label: 'Etiquetas', onClick: () => { labelsDialog([p]); return false; } }],
   });
   return m;
 }
@@ -282,3 +287,123 @@ App.register({
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'mes' });
   },
 });
+
+/* ---------- Etiquetas de código de barras (RF-NUE-04) ---------- */
+
+const LABEL_SIZES = { '50x25': [50, 25], '40x30': [40, 30], '60x40': [60, 40] };
+
+// Una etiqueta por página del tamaño de la etiqueta: así funcionan las impresoras de etiquetas en rollo.
+function labelsHtml(items, { size = '50x25', price = true } = {}) {
+  const [w, h] = LABEL_SIZES[size] || LABEL_SIZES['50x25'];
+  const one = (p) => `<div class="l">
+      <div class="n">${esc([p.name, p.color, p.size].filter(Boolean).join(' · '))}</div>
+      <div class="b">${barcodeSvg(p.barcode || p.sku)}</div>
+      <div class="c">${esc(p.barcode || p.sku)}${price ? `<b>${esc(Fmt.money(p.price_retail))}</b>` : ''}</div>
+    </div>`;
+  const labels = items.flatMap((it) => Array.from({ length: it.qty }, () => one(it.p))).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page { size: ${w}mm ${h}mm; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #000; }
+    .l { width: ${w}mm; height: ${h}mm; padding: 1.5mm 2mm; display: flex; flex-direction: column; page-break-after: always; overflow: hidden; }
+    .n { font-size: ${h < 30 ? 7 : 8}pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .b { flex: 1; min-height: 0; margin: 1mm 0; }
+    .b svg { width: 100%; height: 100%; display: block; }
+    .c { font-size: 7pt; display: flex; justify-content: space-between; font-family: 'Courier New', monospace; }
+    .c b { font-family: Arial, sans-serif; font-size: ${h < 30 ? 8 : 10}pt; }
+  </style></head><body>${labels}</body></html>`;
+}
+
+function labelsDialog(products) {
+  if (!products.length) return toast('No hay productos en la lista. Busque los productos y vuelva a pulsar Etiquetas.', 'error');
+  const list = products.slice(0, 300);
+  const m = modal({
+    title: 'Imprimir etiquetas',
+    width: 640,
+    body: html`
+      <p class="muted">Cada etiqueta lleva el código de barras del producto o, si no tiene, su SKU. El lector de la caja los reconoce igual.</p>
+      <div class="grid-2">
+        <label class="field"><span>Tamaño de la etiqueta</span><select name="size">${options([['50x25', '50 × 25 mm'], ['40x30', '40 × 30 mm'], ['60x40', '60 × 40 mm']], '50x25')}</select></label>
+        <label class="check"><input type="checkbox" name="price" checked> Imprimir el precio al detalle</label>
+      </div>
+      <div class="inline"><button class="btn small" type="button" id="lb-stock">Una por unidad en existencia</button><button class="btn small" type="button" id="lb-one">Una de cada</button></div>
+      <div class="table-wrap lb-list">
+        <table class="table"><thead><tr><th>Producto</th><th>Código</th><th class="r">Cantidad</th></tr></thead>
+        <tbody>${list.map((p, i) => html`<tr><td>${productLabel(p)}</td><td><code>${p.barcode || p.sku}</code></td><td class="r"><input type="number" min="0" max="500" step="1" value="1" data-lb="${i}" class="qty-input"></td></tr>`)}</tbody></table>
+      </div>
+      ${products.length > list.length ? html`<p class="muted small">Se muestran los primeros ${list.length}. Use la búsqueda para elegir otros.</p>` : ''}`,
+    actions: [
+      { label: 'Cancelar' },
+      {
+        label: 'Imprimir', primary: true,
+        onClick: async ({ body }) => {
+          const f = formData(body);
+          const items = $$('[data-lb]', body).map((i) => ({ p: list[Number(i.dataset.lb)], qty: Math.max(0, Math.min(500, Math.floor(Number(i.value) || 0))) })).filter((x) => x.qty > 0);
+          if (!items.length) throw new Error('Indique cuántas etiquetas quiere de al menos un producto.');
+          await window.capsApi.printHtml(labelsHtml(items, { size: f.size, price: f.price }));
+        },
+      },
+    ],
+  });
+  $('#lb-stock', m.body).onclick = () => $$('[data-lb]', m.body).forEach((i) => (i.value = Math.max(0, list[Number(i.dataset.lb)].stock)));
+  $('#lb-one', m.body).onclick = () => $$('[data-lb]', m.body).forEach((i) => (i.value = 1));
+}
+
+/* ---------- Importar productos desde Excel o CSV (RF-NUE-05) ---------- */
+
+const IMPORT_LABELS = {
+  name: 'Nombre', brand: 'Marca', model: 'Modelo', color: 'Color', size: 'Talla', sku: 'SKU', barcode: 'Código de barras', cost: 'Costo',
+  price_retail: 'Precio detalle', price_wholesale: 'Precio por mayor', initial_stock: 'Existencia', min_stock: 'Mínimo', notes: 'Notas',
+};
+
+function importProducts(onDone) {
+  const m = modal({
+    title: 'Importar productos',
+    width: 820,
+    body: html`
+      <p>Cargue la lista de productos desde un archivo de <b>Excel (.xlsx)</b> o <b>CSV</b>. La primera fila debe tener los títulos: <b>Nombre</b> y <b>Precio detalle</b> son obligatorios; los demás (Marca, Modelo, Color, Talla, SKU, Código de barras, Costo, Precio por mayor, Existencia, Mínimo, Notas) son opcionales.</p>
+      <ul class="muted small">
+        <li>Si el SKU (o el código de barras) ya existe, se actualizan los datos y precios de ese producto. Su existencia no cambia: eso se hace con <b>Ajustar existencia</b>.</li>
+        <li>Primero verá una vista previa. No se guarda nada hasta que pulse <b>Importar</b>.</li>
+      </ul>
+      <div class="inline"><button class="btn" type="button" id="imp-template">${icon('download')} Descargar plantilla</button><button class="btn primary" type="button" id="imp-file">${icon('upload')} Elegir archivo…</button></div>
+      <div id="imp-preview"></div>`,
+    actions: [{ label: 'Cerrar' }],
+  });
+  const box = $('#imp-preview', m.body);
+  $('#imp-template', m.body).onclick = async () => { try { if (await window.capsApi.productTemplate()) toast('Plantilla guardada.'); } catch (e) { toast(e.message, 'error'); } };
+  $('#imp-file', m.body).onclick = async () => {
+    let file;
+    try {
+      file = await window.capsApi.readProducts();
+    } catch (e) { return toast(e.message, 'error'); }
+    if (!file) return;
+    if (!file.records.length) return setHTML(box, html`<div class="error-box">El archivo ${file.file} no tiene filas de productos debajo de los títulos.</div>`);
+    const preview = await api('products.import', { rows: file.records, dryRun: true });
+    const ignored = file.mapped.filter((x) => !x.field && x.header).map((x) => x.header);
+    const ok = preview.created + preview.updated;
+    setHTML(box, html`
+      <h4>${file.file}</h4>
+      <p>Columnas: ${file.mapped.filter((x) => x.field).map((x) => html`<span class="chip">${x.header} → ${IMPORT_LABELS[x.field]}</span> `)}
+      ${ignored.length ? html`<br><span class="muted small">Se ignoran: ${ignored.join(', ')}</span>` : ''}</p>
+      <div class="kv cols-3">
+        <div><span>Productos nuevos</span><b class="text-ok">${preview.created}</b></div>
+        <div><span>Se actualizan</span><b>${preview.updated}</b></div>
+        <div><span>Con error (no se importan)</span><b class="${preview.errors ? 'text-danger' : ''}">${preview.errors}</b></div>
+      </div>
+      <div class="imp-list"><table class="table"><thead><tr><th>Fila</th><th>Producto</th><th>Resultado</th></tr></thead><tbody>
+        ${preview.results.map((r) => html`<tr class="${r.action === 'error' ? 'err' : ''}"><td>${r.line}</td><td>${r.name}${r.sku ? html` <code>${r.sku}</code>` : ''}</td>
+          <td>${r.action === 'crear' ? 'Nuevo' : r.action === 'actualizar' ? 'Se actualiza' : html`<b class="text-danger">${r.message}</b>`}${r.note ? html`<div class="muted small">${r.note}</div>` : ''}</td></tr>`)}
+      </tbody></table></div>
+      <div class="inline"><button class="btn primary" type="button" id="imp-go" ${ok ? '' : 'disabled'}>Importar ${ok} ${ok === 1 ? 'producto' : 'productos'}</button></div>`);
+    $('#imp-go', box).onclick = async (e) => {
+      e.target.disabled = true;
+      try {
+        const r = await api('products.import', { rows: file.records });
+        toast(`Importación lista: ${r.created} nuevos, ${r.updated} actualizados${r.errors ? `, ${r.errors} con error` : ''}.`);
+        m.close();
+        onDone();
+      } catch { e.target.disabled = false; }
+    };
+  };
+}

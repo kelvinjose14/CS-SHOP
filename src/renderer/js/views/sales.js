@@ -201,6 +201,8 @@ App.register({
             { label: 'Nueva venta', primary: true },
           ],
         });
+        // Con impresora de tickets elegida y "imprimir al cobrar", el recibo sale solo.
+        window.capsApi.printer.get().then((p) => { if (p.auto && p.name) printReceipt(s); }).catch(() => {});
       } catch { /* mensaje mostrado */ } finally {
         btn.disabled = false;
       }
@@ -218,16 +220,18 @@ App.register({
   },
 });
 
-function receiptHtml(s) {
+// Recibo para impresora de tickets de 80 mm (72 mm impresos) o de 58 mm (48 mm impresos).
+function receiptHtml(s, width = 80) {
   const st = App.settings;
+  const narrow = Number(width) === 58;
   const rows = s.items.map((i) => `
     <tr><td colspan="3">${esc(i.description)}</td></tr>
     <tr><td>${i.qty} x ${esc(Fmt.money(i.unit_price))}</td><td></td><td class="r">${esc(Fmt.money(i.qty * i.unit_price))}</td></tr>`).join('');
   const pays = s.payments.filter((p) => !p.voided).map((p) => `<tr><td>${esc(METHOD_LABELS[p.method])}${p.kind === 'abono' ? ' (abono)' : ''}</td><td></td><td class="r">${esc(Fmt.money(p.amount))}</td></tr>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    @page { margin: 4mm; }
-    body { font-family: 'Courier New', monospace; font-size: 12px; width: 72mm; margin: 0 auto; color: #000; }
-    h1 { font-size: 16px; text-align: center; margin: 0; letter-spacing: 1px; }
+    @page { margin: ${narrow ? '2mm' : '4mm'}; }
+    body { font-family: 'Courier New', monospace; font-size: ${narrow ? 10 : 12}px; width: ${narrow ? 48 : 72}mm; margin: 0 auto; color: #000; }
+    h1 { font-size: ${narrow ? 13 : 16}px; text-align: center; margin: 0; letter-spacing: 1px; }
     .c { text-align: center; } .r { text-align: right; } table { width: 100%; border-collapse: collapse; }
     hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; } .big { font-size: 15px; font-weight: bold; }
   </style></head><body>
@@ -259,7 +263,8 @@ function receiptHtml(s) {
 
 async function printReceipt(s) {
   try {
-    await window.capsApi.printHtml(receiptHtml(s));
+    const p = await window.capsApi.printer.get();
+    await window.capsApi.printHtml(receiptHtml(s, p.width), { receipt: true });
   } catch (err) {
     toast(err.message, 'error');
   }

@@ -8,9 +8,9 @@ const CUSTOMER_TOTALS = `
   COALESCE((SELECT SUM(total - returned_total) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND payment_type = 'credito'), 0) AS credit_sold,
   COALESCE((SELECT SUM(paid) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND payment_type = 'credito'), 0) AS credit_paid,
   COALESCE((SELECT SUM(balance) FROM sales WHERE customer_id = c.id AND status <> 'anulada'), 0) AS balance,
-  COALESCE((SELECT SUM(total - returned_total) FROM sales WHERE customer_id = c.id AND status <> 'anulada'), 0) AS total_bought,
+  COALESCE((SELECT SUM(total - returned_total) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND opening = 0), 0) AS total_bought,
   (SELECT MIN(due_date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND balance > 0) AS next_due,
-  (SELECT MAX(date) FROM sales WHERE customer_id = c.id AND status <> 'anulada') AS last_purchase`;
+  (SELECT MAX(date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND opening = 0) AS last_purchase`;
 
 function customerList(ctx, { search = '', includeInactive = false, withBalance = false } = {}) {
   const where = [];
@@ -53,6 +53,25 @@ function customerSave(ctx, data) {
     }
     const id = ctx.db.insert('customers', { ...fields, created_at: now() });
     audit(ctx, 'crear_cliente', 'cliente', id, { nombre: fields.name });
+    return id;
+  });
+}
+
+// Saldo que el cliente ya debía al empezar a usar el sistema. Se guarda como una venta a crédito
+// sin artículos (se cobra con abonos, como cualquier otra), pero no cuenta como venta del período.
+function customerOpening(ctx, { customer_id, amount, date: d, due_date, note }) {
+  const customer = ctx.db.get('SELECT * FROM customers WHERE id = ?', [customer_id]);
+  if (!customer) throw new AppError('Cliente no encontrado.');
+  const total = money(amount, 'Saldo inicial', { allowZero: false });
+  const odate = date(d || today());
+  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento');
+  return ctx.db.tx(() => {
+    const id = ctx.db.insert('sales', {
+      customer_id: customer.id, date: odate, sale_type: 'detalle', payment_type: 'credito', subtotal: total, discount: 0, total, cost_total: 0,
+      paid: 0, change_given: 0, balance: total, due_date: due, status: 'pendiente', note: text(note, 'Nota', { max: 500 }) || 'Saldo inicial',
+      user_id: ctx.user.id, created_at: now(), opening: 1,
+    });
+    audit(ctx, 'saldo_inicial_cliente', 'cliente', customer.id, { cliente: customer.name, monto: total, venta: id });
     return id;
   });
 }
@@ -175,6 +194,8 @@ function list(ctx, { from, to, customer_id, sale_type, payment_type, status, use
   if (payment_type) { where.push('s.payment_type = ?'); params.push(payment_type); }
   if (status) { where.push('s.status = ?'); params.push(status); }
   if (user_id) { where.push('s.user_id = ?'); params.push(user_id); }
+  // Los saldos iniciales no son ventas del período; se ven en la cuenta del cliente.
+  if (!customer_id) where.push('s.opening = 0');
   const rows = ctx.db.all(
     `SELECT s.*, c.name AS customer_name, u.name AS user_name,
             (SELECT COALESCE(SUM(qty),0) FROM sale_items WHERE sale_id = s.id) AS units,
@@ -325,4 +346,4 @@ function receivables(ctx, { customer_id, only_open = true } = {}) {
   );
 }
 
-module.exports = { customerList, customerGet, customerSave, create, list, get, pay, createReturn, voidSale, receivables };
+module.exports = { customerList, customerGet, customerSave, customerOpening, create, list, get, pay, createReturn, voidSale, receivables };

@@ -41,7 +41,9 @@ function makeEntry(table, kind) {
           description: `${fields.category}${fields.description ? ' - ' + fields.description : ''}`,
           date: fields.date,
         });
-        audit(ctx, kind === 'gasto' ? 'registrar_gasto' : 'registrar_ingreso', kind, id, fields);
+        audit(ctx, kind === 'gasto' ? 'registrar_gasto' : 'registrar_ingreso', kind, id, {
+          categoria: fields.category, descripcion: fields.description, fecha: fields.date, monto: fields.amount, metodo: fields.method,
+        });
         return id;
       });
     },
@@ -78,6 +80,7 @@ const CASH_LABELS = {
   abono_cliente: 'Abonos de clientes',
   otro_ingreso: 'Otros ingresos',
   deposito_caja: 'Entradas a caja',
+  aporte_capital: 'Aportes del dueño',
   anulacion_compra: 'Reembolsos de compras',
   anulacion_gasto: 'Gastos anulados',
   gasto: 'Gastos',
@@ -85,9 +88,14 @@ const CASH_LABELS = {
   pago_proveedor: 'Pagos a proveedores',
   devolucion: 'Devoluciones a clientes',
   retiro_caja: 'Retiros',
+  deposito_banco: 'Depósitos al banco',
+  anulacion_aporte: 'Aportes anulados',
   anulacion_venta: 'Ventas anuladas',
   anulacion_ingreso: 'Ingresos anulados',
 };
+
+// Movimientos que solo cambian el dinero de lugar (efectivo → banco): no son entradas ni salidas del negocio.
+const TRANSFERS = ['deposito_banco'];
 
 function sessionSummary(db, session) {
   const rows = db.all(
@@ -101,7 +109,8 @@ function sessionSummary(db, session) {
   const otherIn = round2(totalIn - cashSales);
   const expensesOut = round2(by('gasto') + by('compra') + by('pago_proveedor'));
   const withdrawals = by('retiro_caja');
-  const otherOut = round2(totalOut - expensesOut - withdrawals);
+  const deposits = by('deposito_banco');
+  const otherOut = round2(totalOut - expensesOut - withdrawals - deposits);
   const expected = round2(session.opening_amount + totalIn - totalOut);
   return {
     ...session,
@@ -110,6 +119,7 @@ function sessionSummary(db, session) {
     other_income: otherIn,
     expenses_paid: expensesOut,
     withdrawals,
+    bank_deposits: deposits,
     other_out: otherOut,
     total_in: totalIn,
     total_out: totalOut,
@@ -159,21 +169,81 @@ function cashOpen(ctx, { amount, note }) {
   });
 }
 
+// Movimientos manuales de efectivo:
+// - entrada: sencillo o cambio que se pone en la gaveta;
+// - deposito_banco: el efectivo pasa al banco. Sigue siendo dinero del negocio: no es gasto ni
+//   salida del flujo, solo cambia de lugar (DT-22). Lo puede registrar el vendedor;
+// - retiro: dinero que sale del negocio (por ejemplo, para el dueño). Solo el administrador (DT-22).
+const CASH_MOVES = {
+  entrada: { direction: 'in', category: 'deposito_caja', action: 'entrada_caja' },
+  deposito_banco: { direction: 'out', category: 'deposito_banco', action: 'deposito_banco' },
+  retiro: { direction: 'out', category: 'retiro_caja', action: 'retiro_caja', admin: true },
+};
+
 function cashMovement(ctx, { type, amount, description }) {
+  const move = CASH_MOVES[type];
+  if (!move) throw new AppError('Tipo de movimiento inválido.');
+  if (move.admin && !isAdmin(ctx)) throw new AppError('Solo el administrador puede hacer retiros de caja. Para llevar el efectivo al banco, use "Depósito al banco".', 'FORBIDDEN');
   const amt = money(amount, 'Monto', { allowZero: false });
   const desc = text(description, 'Descripción', { required: true });
   return ctx.db.tx(() => {
     const s = openCashSession(ctx.db, ctx.terminal);
     if (!s) throw new AppError('No hay caja abierta.');
-    if (type === 'retiro') {
+    if (move.direction === 'out') {
       const { expected } = sessionSummary(ctx.db, s);
       if (amt > expected + 0.004) throw new AppError(`No hay suficiente efectivo en caja (esperado: ${expected.toFixed(2)}).`);
     }
-    const id = ledger(ctx, { direction: type === 'retiro' ? 'out' : 'in', amount: amt, method: 'efectivo', category: type === 'retiro' ? 'retiro_caja' : 'deposito_caja', refType: 'caja', refId: s.id, description: desc });
-    audit(ctx, type === 'retiro' ? 'retiro_caja' : 'entrada_caja', 'caja', s.id, { monto: amt, descripcion: desc });
+    const id = ledger(ctx, { direction: move.direction, amount: amt, method: 'efectivo', category: move.category, refType: 'caja', refId: s.id, description: desc });
+    // El depósito entra al banco: el dinero del negocio no cambia, solo pasa de efectivo a banco.
+    if (type === 'deposito_banco') ledger(ctx, { direction: 'in', amount: amt, method: 'transferencia', category: 'deposito_banco', refType: 'caja', refId: s.id, description: desc });
+    audit(ctx, move.action, 'caja', s.id, { monto: amt, descripcion: desc });
     return id;
   });
 }
+
+// ---------- Aportes de capital del dueño ----------
+// Dinero que el dueño pone en el negocio. Entra al flujo de dinero pero no es ganancia (DT-21).
+
+const capital = {
+  list(ctx, { from, to, includeVoided = false } = {}) {
+    const where = [];
+    const params = [];
+    if (!includeVoided) where.push('c.voided = 0');
+    if (from) { where.push('c.date >= ?'); params.push(from); }
+    if (to) { where.push('c.date <= ?'); params.push(to); }
+    return ctx.db.all(
+      `SELECT c.*, u.name AS user_name FROM capital c LEFT JOIN users u ON u.id = c.user_id
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.date DESC, c.id DESC`,
+      params
+    );
+  },
+  create(ctx, data) {
+    const fields = {
+      description: text(data.description, 'Descripción', { max: 300 }),
+      date: date(data.date || today()),
+      amount: money(data.amount, 'Monto', { allowZero: false }),
+      method: method(data.method),
+    };
+    return ctx.db.tx(() => {
+      const id = ctx.db.insert('capital', { ...fields, user_id: ctx.user.id, created_at: now() });
+      ledger(ctx, { direction: 'in', amount: fields.amount, method: fields.method, category: 'aporte_capital', refType: 'aporte', refId: id, description: fields.description || 'Aporte del dueño', date: fields.date });
+      audit(ctx, 'aporte_capital', 'aporte', id, { monto: fields.amount, metodo: fields.method, fecha: fields.date, descripcion: fields.description });
+      return id;
+    });
+  },
+  void(ctx, { id, reason }) {
+    const why = text(reason, 'Motivo', { required: true });
+    return ctx.db.tx(() => {
+      const c = ctx.db.get('SELECT * FROM capital WHERE id = ?', [id]);
+      if (!c) throw new AppError('Aporte no encontrado.');
+      if (c.voided) throw new AppError('El aporte ya está anulado.');
+      ctx.db.update('capital', id, { voided: 1, void_reason: why });
+      ledger(ctx, { direction: 'out', amount: c.amount, method: c.method, category: 'anulacion_aporte', refType: 'aporte', refId: id, description: `Anulación aporte #${id}` });
+      audit(ctx, 'anular_aporte', 'aporte', id, { monto: c.amount, motivo: why });
+      return true;
+    });
+  },
+};
 
 function cashClose(ctx, { counted, note }) {
   const real = money(counted, 'Efectivo contado');
@@ -212,4 +282,4 @@ function cashSession(ctx, { id }) {
   return out;
 }
 
-module.exports = { expenses, incomes, cashStatus, cashOpen, cashMovement, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS };
+module.exports = { expenses, incomes, capital, cashStatus, cashOpen, cashMovement, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS, TRANSFERS };

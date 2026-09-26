@@ -286,6 +286,26 @@ const MIGRATIONS = [
   CREATE INDEX ix_return_items_return ON return_items(return_id);
   CREATE INDEX ix_audit_action ON audit_log(action);
   `,
+
+  // v4: saldos iniciales de clientes y proveedores (una venta o compra sin artículos que no cuenta
+  // como venta ni compra del período) y aportes de capital del dueño, que no son ganancia (DT-21).
+  `
+  ALTER TABLE sales ADD COLUMN opening INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE purchases ADD COLUMN opening INTEGER NOT NULL DEFAULT 0;
+
+  CREATE TABLE capital (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    amount REAL NOT NULL,
+    method TEXT NOT NULL,
+    description TEXT,
+    voided INTEGER NOT NULL DEFAULT 0,
+    void_reason TEXT,
+    user_id INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX ix_capital_date ON capital(date);
+  `,
 ];
 
 // Aplica las migraciones que falten. Se llama dentro de una transacción: si una falla, no queda nada a medias.

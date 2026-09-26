@@ -128,6 +128,20 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
       token = r.token;
       return r.user;
     },
+    // Código de recuperación del administrador (RF-NUE-06). Mismo límite de intentos que la entrada.
+    async recover({ username, code, password }) {
+      const who = `recuperar:${String(username || '').toLowerCase()}`;
+      if (logins.blocked(who)) throw new AppError('Demasiados intentos fallidos. Espere un minuto e intente de nuevo.', 'RATE');
+      try {
+        api.recover({ username, code, password }, { terminal: PRINCIPAL });
+      } catch (err) {
+        if (err.code === 'AUTH') logins.fail(who);
+        throw err;
+      }
+      logins.clear(who);
+      log.info('usuarios', `Contraseña de "${username}" recuperada con el código`);
+      return true;
+    },
     async logout() {
       api.logout(token);
       token = null;
@@ -362,6 +376,9 @@ function createRemote({ version, config, saveConfig }) {
       token = r.token;
       user = r.user;
       return user;
+    },
+    async recover() {
+      throw new AppError('La contraseña se recupera en la PC principal, con el código de recuperación.', 'VALIDATION');
     },
     async logout() {
       await client.logout(token).catch(() => {});

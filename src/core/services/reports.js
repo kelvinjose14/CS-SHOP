@@ -2,7 +2,7 @@
 // Contabilidad, flujo de dinero, dashboard y reportes.
 const { today, round2, periodRange, addDays } = require('../util');
 const { openCashSession, isAdmin } = require('./common');
-const { CASH_LABELS } = require('./finance');
+const { CASH_LABELS, TRANSFERS } = require('./finance');
 const finance = require('./finance');
 const products = require('./products');
 
@@ -21,7 +21,7 @@ function salesTotals(db, from, to) {
             COALESCE(SUM(CASE WHEN sale_type='mayor' THEN total ELSE 0 END),0) AS wholesale,
             COALESCE(SUM(CASE WHEN payment_type='contado' THEN total ELSE 0 END),0) AS cash_sales,
             COALESCE(SUM(CASE WHEN payment_type='credito' THEN total ELSE 0 END),0) AS credit_sales
-       FROM sales WHERE status <> 'anulada' AND date BETWEEN ? AND ?`,
+       FROM sales WHERE status <> 'anulada' AND opening = 0 AND date BETWEEN ? AND ?`,
     [from, to]
   );
   const r = db.get('SELECT COALESCE(SUM(r.total),0) AS total, COALESCE(SUM(r.cost_total),0) AS cost FROM returns r JOIN sales s ON s.id = r.sale_id WHERE s.status <> \'anulada\' AND r.date BETWEEN ? AND ?', [from, to]);
@@ -44,8 +44,8 @@ function profit(ctx, params = {}) {
   const fmt = days > 62 ? "substr(date,1,7)" : 'date';
   const series = {};
   const add = (rows, key) => rows.forEach((r) => { series[r.k] = series[r.k] || { k: r.k, sales: 0, cogs: 0, expenses: 0, other: 0 }; series[r.k][key] += r.v; });
-  add(db.all(`SELECT ${fmt} AS k, SUM(total) AS v FROM sales WHERE status <> 'anulada' AND date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'sales');
-  add(db.all(`SELECT ${fmt} AS k, SUM(cost_total) AS v FROM sales WHERE status <> 'anulada' AND date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'cogs');
+  add(db.all(`SELECT ${fmt} AS k, SUM(total) AS v FROM sales WHERE status <> 'anulada' AND opening = 0 AND date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'sales');
+  add(db.all(`SELECT ${fmt} AS k, SUM(cost_total) AS v FROM sales WHERE status <> 'anulada' AND opening = 0 AND date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'cogs');
   add(db.all(`SELECT ${fmt.replace('date', 'r.date')} AS k, -SUM(r.total) AS v FROM returns r JOIN sales s ON s.id=r.sale_id WHERE s.status <> 'anulada' AND r.date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'sales');
   add(db.all(`SELECT ${fmt.replace('date', 'r.date')} AS k, -SUM(r.cost_total) AS v FROM returns r JOIN sales s ON s.id=r.sale_id WHERE s.status <> 'anulada' AND r.date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'cogs');
   add(db.all(`SELECT ${fmt} AS k, SUM(amount) AS v FROM expenses WHERE voided = 0 AND date BETWEEN ? AND ? GROUP BY k`, [from, to]), 'expenses');
@@ -87,9 +87,11 @@ function cashflow(ctx, params = {}) {
   const { from, to } = periodRange(params);
   const db = ctx.db;
   const rows = db.all('SELECT direction, category, method, SUM(amount) AS amount, COUNT(*) AS count FROM money_movements WHERE date BETWEEN ? AND ? GROUP BY direction, category, method', [from, to]);
+  // Los depósitos al banco no son entradas ni salidas del negocio: el dinero cambia de lugar.
+  const flows = rows.filter((r) => !TRANSFERS.includes(r.category));
   const group = (dir) => {
     const map = {};
-    rows.filter((r) => r.direction === dir).forEach((r) => {
+    flows.filter((r) => r.direction === dir).forEach((r) => {
       map[r.category] = map[r.category] || { category: r.category, label: CASH_LABELS[r.category] || r.category, amount: 0, methods: {} };
       map[r.category].amount = round2(map[r.category].amount + r.amount);
       map[r.category].methods[r.method] = round2((map[r.category].methods[r.method] || 0) + r.amount);
@@ -101,8 +103,8 @@ function cashflow(ctx, params = {}) {
     byMethod[r.method] = byMethod[r.method] || { method: r.method, in: 0, out: 0 };
     byMethod[r.method][r.direction] = round2(byMethod[r.method][r.direction] + r.amount);
   });
-  const totalIn = round2(rows.filter((r) => r.direction === 'in').reduce((s, r) => s + r.amount, 0));
-  const totalOut = round2(rows.filter((r) => r.direction === 'out').reduce((s, r) => s + r.amount, 0));
+  const totalIn = round2(flows.filter((r) => r.direction === 'in').reduce((s, r) => s + r.amount, 0));
+  const totalOut = round2(flows.filter((r) => r.direction === 'out').reduce((s, r) => s + r.amount, 0));
   const movements = db.all(
     `SELECT m.*, u.name AS user_name FROM money_movements m LEFT JOIN users u ON u.id = m.user_id WHERE m.date BETWEEN ? AND ? ORDER BY m.id DESC LIMIT 3000`,
     [from, to]
@@ -115,10 +117,12 @@ function cashflow(ctx, params = {}) {
     net: round2(totalIn - totalOut),
     inflows: group('in'),
     outflows: group('out'),
+    bank_deposits: round2(rows.filter((r) => r.category === 'deposito_banco' && r.direction === 'out').reduce((s, r) => s + r.amount, 0)),
+    capital: round2(flows.filter((r) => r.category === 'aporte_capital' || r.category === 'anulacion_aporte').reduce((s, r) => s + (r.direction === 'in' ? r.amount : -r.amount), 0)),
     by_method: Object.values(byMethod).map((m) => ({ ...m, net: round2(m.in - m.out) })),
     sold: sales.net,
     spent: round2(db.value('SELECT COALESCE(SUM(amount),0) FROM expenses WHERE voided = 0 AND date BETWEEN ? AND ?', [from, to])),
-    purchased: round2(db.value("SELECT COALESCE(SUM(total),0) FROM purchases WHERE status <> 'anulada' AND date BETWEEN ? AND ?", [from, to])),
+    purchased: round2(db.value("SELECT COALESCE(SUM(total),0) FROM purchases WHERE status <> 'anulada' AND opening = 0 AND date BETWEEN ? AND ?", [from, to])),
     receivables: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM sales WHERE status <> 'anulada'")),
     payables: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM purchases WHERE status <> 'anulada'")),
     cash_expected: currentCash(ctx),
@@ -174,7 +178,7 @@ function dashboard(ctx) {
     gross_profit_month: monthProfit.gross_profit,
     net_profit_month: monthProfit.net_profit,
     expenses_month: monthProfit.expenses,
-    purchases_month: round2(db.value("SELECT COALESCE(SUM(total),0) FROM purchases WHERE status <> 'anulada' AND date BETWEEN ? AND ?", [month.from, month.to])),
+    purchases_month: round2(db.value("SELECT COALESCE(SUM(total),0) FROM purchases WHERE status <> 'anulada' AND opening = 0 AND date BETWEEN ? AND ?", [month.from, month.to])),
     receivables: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM sales WHERE status <> 'anulada'")),
     receivables_overdue: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM sales WHERE status <> 'anulada' AND balance > 0 AND due_date < ?", [t])),
     payables: round2(db.value("SELECT COALESCE(SUM(balance),0) FROM purchases WHERE status <> 'anulada'")),
