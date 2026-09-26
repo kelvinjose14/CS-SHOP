@@ -6,7 +6,7 @@ Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP �
 
 **Versión publicada: 1.0.0**, que funciona en una sola computadora. En desarrollo, sin publicar ([cambios](CHANGELOG.md)):
 - **Varias computadoras en red:** una PC principal guarda los datos y las demás se conectan a ella, cada una con su caja ([manual](docs/manual/13-varias-computadoras.md)).
-- **Funciones:** están todas las del pedido original. Cumplen 100 de 103 requisitos ([Requisitos](docs/producto/requisitos.md)).
+- **Funciones:** están todas las del pedido original (102 de 103 requisitos cumplen) y las 9 nuevas: saldos iniciales, depósito al banco, aportes del dueño, importar desde Excel, etiquetas, recibo directo a la impresora y recuperación de la contraseña ([Requisitos](docs/producto/requisitos.md)).
 - **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).
 - **Todavía no está lista para producción:** falta firmar el instalador (hace falta comprar un certificado) y probarla en la tienda con Windows 10/11 y datos reales. El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
 
@@ -39,7 +39,7 @@ Toda la documentación está en [`docs/`](docs/README.md), en español:
 ```bash
 npm install
 npm start     # abre la aplicación
-npm test      # pruebas de lógica, migración, respaldos, permisos y red
+npm test      # pruebas de lógica, migración, respaldos, permisos, red e importación
 npm run test:ui    # pruebas de interfaz con la app real
 npm run test:perf  # rendimiento con 3 años de datos
 ```

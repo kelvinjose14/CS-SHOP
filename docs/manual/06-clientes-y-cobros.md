@@ -20,6 +20,17 @@ Menú **Finanzas** → **Clientes**.
 - Al pulsar un cliente se ven todas sus compras, su historial de pagos y los botones **Editar** y **Registrar abono**.
 - Para dar de baja un cliente, en **Editar** desmarque **Activo**. No se borran clientes.
 
+### Saldo inicial (administrador)
+
+![Saldo inicial](img/saldo-inicial.jpg)
+
+Si un cliente ya le debía antes de usar el sistema (por ejemplo, lo anotado en el cuaderno):
+1. Abra el cliente → **Saldo inicial**.
+2. Escriba el **Monto**, la **Fecha de la deuda**, cuándo **Vence** y una **Nota**.
+3. **Guardar saldo**.
+
+El saldo aparece en **Cuentas por cobrar** marcado como **Saldo inicial** y se cobra con abonos, como cualquier otra deuda. **No cuenta como venta**: no suma a las ventas ni a la ganancia, ni mueve inventario.
+
 ## 6.2 Vender a crédito
 
 En **Nueva venta**, elija el cliente, marque **Crédito**, revise la **Fecha de vencimiento** y, si deja un adelanto, escríbalo como **Abono inicial**. Detalle en [Ventas](03-ventas.md#31-hacer-una-venta).

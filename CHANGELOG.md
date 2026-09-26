@@ -5,6 +5,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 ## Sin publicar
 
 ### Agregado
+- **Saldos iniciales** de clientes y proveedores: lo que ya se debía al empezar. Se cobra o se paga con abonos, pero no cuenta como venta ni compra.
+- **Depósito al banco** en Caja, separado del **Retiro**. El depósito no es salida del negocio en el Flujo de dinero. El vendedor deposita; solo el administrador retira.
+- **Aportes del dueño** (Gastos → Aportes del dueño): entran al flujo de dinero, pero no suman a la ganancia.
+- **Importar productos** desde Excel (.xlsx) o CSV, con plantilla, vista previa y errores por fila. Crea productos nuevos o actualiza por SKU.
+- **Etiquetas de código de barras** (Code 128) de 50×25, 40×30 o 60×40 mm, con nombre, código y precio.
+- **Impresora de recibos de cada PC**: el recibo sale directo, sin ventana, en papel de 80 o 58 mm, y opcionalmente al cobrar. Con **Imprimir prueba**.
+- **Código de recuperación** del administrador: se genera en Usuarios y, en la PC principal, permite poner una contraseña nueva. Sirve una vez.
 - **Copia fuera de esta computadora** (Configuración → Copias de seguridad):
   - diaria, con la base **y las fotos**, a una memoria USB o a la carpeta de OneDrive o Google Drive;
   - si la memoria no está conectada, se hace al conectarla;
@@ -39,6 +46,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 - Este archivo de cambios.
 
 ### Cambiado
+- **Migración 4:** saldos iniciales (`opening` en ventas y compras) y tabla de aportes del dueño.
+- El precio al detalle es obligatorio al crear o editar un producto.
+- El **Historial de movimientos** muestra todo en español (gastos, usuarios, configuración, computadoras, cambios de precio), también en los registros anteriores. La configuración guarda solo lo que cambió, con el antes y el después.
+- La categoría "Aporte del dueño" ya no viene entre los otros ingresos.
 - **La red entre computadoras va cifrada** con la clave de conexión (AES-256-GCM). La clave ya no viaja por la red. Las claves nuevas tienen 10 caracteres.
 - **Migración 3:** índices de las tablas de detalle. Con 3 años de datos, la lista de ventas del año bajó de 16 s a 34 ms.
 - El cambio de la contraseña inicial lo exige el núcleo: sin cambiarla no se puede operar, tampoco desde otra computadora.

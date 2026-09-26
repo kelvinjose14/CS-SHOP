@@ -105,13 +105,48 @@ Menú **Inventario** → **Movimientos de inventario**. Muestra todas las entrad
 - **Inventario** → filtro **Reponer**: la misma lista con todos los datos.
 - Para decidir cuánto pedir, compare con **Reportes** → **Productos más vendidos** ([Contabilidad y reportes](09-contabilidad-y-reportes.md)).
 
-## 4.7 Errores comunes
+## 4.7 Importar productos desde Excel (administrador)
+
+![Importar productos](img/importar.jpg)
+
+Para cargar muchos productos de una vez, por ejemplo al empezar.
+
+1. **Inventario** → **Importar**.
+2. Si no tiene una lista, pulse **Descargar plantilla**: es un archivo CSV que se abre en Excel, con los títulos y un ejemplo.
+3. Prepare la lista en Excel. La **primera fila** lleva los títulos:
+   - obligatorios: **Nombre** y **Precio detalle**;
+   - opcionales: **Marca**, **Modelo**, **Color**, **Talla**, **SKU**, **Código de barras**, **Costo**, **Precio por mayor**, **Existencia**, **Mínimo** y **Notas**. Otras columnas se ignoran.
+4. Guárdela como **Libro de Excel (.xlsx)** o **CSV**. Los archivos `.xls` viejos no se leen: guárdelos de nuevo como `.xlsx`.
+5. **Elegir archivo…** muestra una **vista previa**: cuántos productos son nuevos, cuántos se actualizan y cuáles tienen error, con la **fila** de Excel y el motivo. Todavía no se guardó nada.
+6. Corrija los errores en Excel y vuelva a elegir el archivo, o pulse **Importar** para cargar solo las filas correctas.
+
+- Si una fila trae un **SKU** que ya existe (o, sin SKU, un **código de barras** que ya existe), se **actualizan** los datos y precios de ese producto; lo que la fila deja vacío no se toca. La existencia de un producto que ya estaba **no cambia**: use **Ajustar existencia**.
+- Los precios pueden venir como `1500`, `1,500.00` o `1.500,00`.
+- La importación queda en el **Historial de movimientos**.
+
+## 4.8 Etiquetas de código de barras
+
+![Etiquetas](img/etiquetas.jpg)
+
+Para las gorras que no traen código de barras, o para poner el precio.
+
+1. **Inventario** → busque los productos (la búsqueda y los filtros eligen cuáles salen) → **Etiquetas**. Para uno solo, ábralo y pulse **Etiquetas**.
+2. Elija el **tamaño**: 50 × 25, 40 × 30 o 60 × 40 mm, y si lleva el **precio al detalle**.
+3. Escriba cuántas etiquetas de cada uno, o pulse **Una por unidad en existencia**.
+4. **Imprimir** abre la ventana de impresión: elija la impresora de etiquetas (o una normal con hojas de etiquetas).
+
+Cada etiqueta lleva el nombre, color y talla, el código de barras (Code 128) y el precio. Si el producto no tiene código de barras, se imprime su **SKU**: el lector de la caja lo reconoce igual al vender.
+
+## 4.9 Errores comunes
 
 | Mensaje | Qué hacer |
 |---|---|
 | **Ya existe un producto con ese SKU.** | Use otro código o deje el campo vacío para que se asigne uno |
 | **Ya existe un producto con ese código de barras.** | Ese código ya pertenece a otro producto: búsquelo en la lista |
 | **Nombre es obligatorio.** | Escriba el nombre |
+| **Precio al detalle es obligatorio.** / **Precio al detalle debe ser mayor que cero.** | Todo producto necesita su precio al detalle, para no venderlo en 0 |
+| **No se encontró la columna "Nombre" en la primera fila.** | Al importar, la primera fila del Excel debe tener los títulos. Use la plantilla |
+| **El SKU se repite: ya está en la fila N.** | Al importar, dos filas son el mismo producto. Deje una |
 | **La existencia no cambia con este ajuste.** | El conteo es igual a la existencia actual: no hace falta ajustar |
 | **Existencia insuficiente de "…" (disponible: N).** | Una **Salida** no puede dejar la existencia en negativo |
 | **Motivo es obligatorio.** | Escriba el motivo del ajuste |

@@ -38,7 +38,8 @@ Fuente: `src/core/services/reports.js` (`salesTotals`, `profit`).
 
 - Las **compras de mercancía no son gasto**. Se vuelven inventario y pasan a costo al venderse.
 - Una devolución **sin** reingreso al inventario no descuenta el costo: la gorra dañada queda como pérdida.
-- Los **aportes del dueño** registrados como "otros ingresos" suman a la ganancia neta. Ver la decisión pendiente DP-05 en [Decisiones](decisiones.md).
+- Los **aportes del dueño** no son otros ingresos: se registran en **Gastos → Aportes del dueño**, entran al flujo de dinero y **no suman a la ganancia** (DT-21).
+- Los **saldos iniciales** de clientes y proveedores no son ventas ni compras: no suman a las ventas, al costo ni a lo comprado del período (regla 5).
 
 **Ejemplo:** se venden 2 gorras de RD$ 1,200 con RD$ 100 de descuento. Cada gorra costó RD$ 500, y ese día se pagan RD$ 300 de transporte.
 
@@ -97,6 +98,7 @@ Fuente: `src/core/util.js` (`accountStatus`), `sales.js` (`pay`) y `purchases.js
 - **Abono a un cliente o proveedor:** se reparte empezando por la factura con **fecha de vencimiento más próxima**. Sin fecha de vencimiento, cuenta la fecha de la venta o compra.
 - Un abono no puede superar el saldo pendiente.
 - El vendedor solo puede registrar abonos si la opción está activada.
+- **Saldo inicial** (RF-NUE-01): lo que un cliente o proveedor ya debía al empezar a usar el sistema. Se guarda como una venta o compra a crédito **sin artículos** (`opening = 1`), con su fecha y vencimiento. Se cobra o se paga con abonos como cualquier otra, y suma a las cuentas por cobrar o por pagar, pero no aparece en las listas de ventas y compras ni en los reportes del período. Lo registra solo el administrador.
 
 ## 6. Devoluciones
 
@@ -146,7 +148,11 @@ Fuente: `src/core/services/finance.js` (`sessionSummary`, `cashStatus`), `common
 - **Efectivo de la tienda** (Inicio y Flujo de dinero) = suma, por cada computadora activa, de su efectivo esperado si la caja está abierta, o de lo contado en su último cierre si está cerrada.
 - **Efectivo esperado** = efectivo inicial + todas las entradas en efectivo de la sesión − todas las salidas en efectivo de la sesión.
 - **Diferencia al cerrar** = efectivo real contado − efectivo esperado. Negativa es faltante; positiva, sobrante.
-- Un **retiro** no puede superar el efectivo esperado.
+- **Movimientos manuales de efectivo** (DT-22):
+  - **Entrada de efectivo:** sencillo o cambio que se pone en la gaveta. Cualquier usuario.
+  - **Depósito al banco:** el efectivo sale de la caja y entra al banco (método transferencia). **No es gasto ni salida del negocio.** Cualquier usuario, con descripción obligatoria.
+  - **Retiro:** dinero que sale del negocio (por ejemplo, para el dueño). **Solo el administrador.**
+- Un depósito o un retiro no puede superar el efectivo esperado.
 - Un gasto o una compra con **fecha anterior** pagados en efectivo salen de la **caja abierta hoy**. Su fecha solo afecta los reportes.
 
 **Ejemplo:** la caja abre con RD$ 1,000 y se vende en efectivo por RD$ 2,300. El efectivo esperado es **RD$ 3,300**. Si se cuentan RD$ 3,250, la diferencia es **−RD$ 50** (faltante).
@@ -169,6 +175,7 @@ Fuente: `reports.js` (`cashflow`).
   - Ventas.
   - Abonos de clientes.
   - Otros ingresos.
+  - Aportes del dueño (no son ganancia, DT-21).
   - Entradas a caja.
   - Reembolsos de compras anuladas.
   - Gastos anulados.
@@ -179,7 +186,8 @@ Fuente: `reports.js` (`cashflow`).
   - Retiros de caja.
   - Ventas anuladas.
   - Ingresos anulados.
-- **Limitación conocida:** los retiros de caja, incluidos los depósitos al banco, cuentan como salida. Ver [Objetivos](objetivos.md#o5-brechas-funcionales).
+- **Depósitos al banco:** no son entrada ni salida; el dinero cambia de lugar. Se muestran aparte y en **Por método de pago** (sale del efectivo y entra a transferencia).
+- **Ejemplo:** con RD$ 1,000 en la caja, se depositan RD$ 400 al banco y el dueño retira RD$ 100. En la caja quedan **RD$ 500**. En el flujo, salió **RD$ 100** (el retiro); por método, el efectivo baja RD$ 500 y la transferencia sube RD$ 400. Es la prueba `test/o5.test.js`.
 
 ## 10. Períodos y fechas
 
@@ -203,6 +211,7 @@ Fuente: `src/core/api.js` y `users.js`.
   - Se guardan cifradas con scrypt y una sal por usuario.
   - Si el administrador crea o restablece una contraseña, y con las contraseñas iniciales, se exige cambiarla al entrar. Lo exige el núcleo: hasta cambiarla, solo se puede leer la configuración y cambiar la contraseña, también desde otra PC.
   - Tras 5 intentos fallidos en un minuto, ese usuario queda bloqueado un minuto en esa computadora.
+- **Código de recuperación** (RF-NUE-06): el administrador lo genera en Usuarios, escribiendo su contraseña. Tiene 16 caracteres, sirve **una vez** y solo se guarda su huella (scrypt). Con él, en la pantalla de entrada de la **PC principal**, un administrador activo pone una contraseña nueva; se cierran sus sesiones abiertas. Los intentos fallidos se limitan como los de la entrada.
 - Un usuario desactivado pierde la sesión en su siguiente operación.
 - El administrador no puede quitarse su propio rol ni desactivarse.
 - El **historial** (`audit_log`) registra fecha, hora, usuario, acción y detalle de cada operación que cambia datos, además de los inicios de sesión. No se puede editar desde el programa.

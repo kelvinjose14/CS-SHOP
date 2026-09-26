@@ -8,7 +8,8 @@
 
 | Acción | Vendedor | Administrador |
 |---|:---:|:---:|
-| Abrir y cerrar caja, entradas y retiros | ✔ | ✔ |
+| Abrir y cerrar caja, entradas de efectivo y depósitos al banco | ✔ | ✔ |
+| Retiros (dinero que sale del negocio) | ✘ | ✔ |
 | Ver el historial de cierres y las cajas abiertas en otras computadoras | ✘ | ✔ |
 
 > Solo el **efectivo** pasa por la caja. Los cobros y pagos con tarjeta o transferencia no cambian la caja; se ven en [Flujo de dinero](09-contabilidad-y-reportes.md#92-flujo-de-dinero).
@@ -36,14 +37,22 @@ La caja abierta muestra:
 | **+ Abonos de clientes** | Abonos recibidos en efectivo |
 | **+ Otros ingresos** | Otros ingresos en efectivo, **Entradas de efectivo**, reembolsos de compras anuladas y gastos anulados |
 | **− Gastos y pagos en efectivo** | Gastos, compras y pagos a proveedores hechos en efectivo |
-| **− Retiros** | Retiros registrados (depósitos al banco, dinero que se lleva el dueño) |
+| **− Depósitos al banco** | Efectivo que se llevó al banco |
+| **− Retiros** | Dinero que salió del negocio, por ejemplo lo que se lleva el dueño |
 | **− Devoluciones y anulaciones** | Reembolsos de devoluciones y dinero devuelto al anular ventas (solo aparece si hubo) |
 | **Efectivo esperado en caja** | El resultado: lo que debería haber en la gaveta |
 
 A la derecha, **Movimientos de efectivo** lista cada uno con hora, concepto, detalle, monto y usuario.
 
-- **Entrada de efectivo:** para meter dinero que no es venta, por ejemplo sencillo para dar cambio. Pide **Monto** y **Descripción**.
-- **Retiro:** para sacar dinero que no es un gasto, por ejemplo un depósito al banco o un retiro del dueño. Pide **Monto** y **Descripción**. No se puede retirar más de lo esperado en caja.
+Los tres botones de arriba piden **Monto** y **Descripción**:
+
+| Botón | Para qué | Quién |
+|---|---|---|
+| **Entrada de efectivo** | Meter dinero que no es venta, por ejemplo sencillo para dar cambio | Todos |
+| **Depósito al banco** | Llevar efectivo de la gaveta al banco. En la descripción, anote el banco y el número de la boleta. **No es un gasto:** el dinero sigue siendo del negocio, solo cambia de lugar | Todos |
+| **Retiro** | Sacar dinero que sale del negocio, por ejemplo lo que se lleva el dueño | Solo el administrador |
+
+No se puede depositar ni retirar más de lo esperado en caja.
 
 ## 7.3 Cerrar la caja
 
@@ -74,9 +83,12 @@ Debajo, **Historial de cierres** lista cada apertura de todas las computadoras c
 
 Al pulsar un cierre se ven todos sus movimientos.
 
-## 7.5 Aviso sobre los retiros
+## 7.5 Depósito al banco o retiro
 
-Hoy un depósito al banco se registra como **Retiro**. En **Flujo de dinero** cuenta como dinero que salió del negocio, aunque solo cambió de lugar. Por eso el flujo neto puede verse más negativo de lo real. La corrección está anotada en [Objetivos](../producto/objetivos.md#o5-brechas-funcionales): separar "depósito al banco" de "retiro del dueño".
+- **Depósito al banco:** en **Flujo de dinero** no cuenta como dinero que entró ni que salió. Se ve aparte, en **Efectivo depositado al banco**, y en **Por método de pago**: baja el efectivo y sube la transferencia.
+- **Retiro:** sí cuenta como dinero que salió del negocio.
+
+Así el flujo neto muestra lo que de verdad ganó o gastó la tienda. Los depósitos que se registraron como **Retiro** antes de esta versión siguen contando como salida.
 
 ## 7.6 Errores comunes
 
@@ -84,6 +96,7 @@ Hoy un depósito al banco se registra como **Retiro**. En **Flujo de dinero** cu
 |---|---|
 | **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | Abra la caja de esta computadora (7.1) |
 | **Ya hay una caja abierta en esta computadora.** | Cada computadora tiene una sola caja abierta a la vez: ciérrela antes de abrir otra |
-| **No hay caja abierta.** | Se intentó un retiro, una entrada o un cierre sin caja abierta |
-| **No hay suficiente efectivo en caja (esperado: …).** | El retiro supera lo que debería haber |
-| **Descripción es obligatorio.** | Escriba para qué es la entrada o el retiro |
+| **No hay caja abierta.** | Se intentó un depósito, un retiro, una entrada o un cierre sin caja abierta |
+| **No hay suficiente efectivo en caja (esperado: …).** | El depósito o el retiro supera lo que debería haber |
+| **Descripción es obligatorio.** | Escriba para qué es el movimiento; en un depósito, el banco y la boleta |
+| **Solo el administrador puede hacer retiros de caja…** | El vendedor registra el efectivo que va al banco con **Depósito al banco** |

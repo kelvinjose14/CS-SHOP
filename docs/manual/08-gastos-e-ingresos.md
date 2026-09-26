@@ -35,11 +35,22 @@ Menú **Finanzas** → **Gastos**.
 ## 8.3 Otros ingresos
 
 En la misma pantalla, pestaña **Otros ingresos**, se registra el dinero que entra y no es una venta de gorras.
-- Ejemplos: un servicio de bordado o un aporte del dueño.
-- Categorías por defecto: Otros ingresos, Aporte del dueño y Servicios.
+- Ejemplos: un servicio de bordado o la venta de cajas vacías.
+- Categorías por defecto: Otros ingresos y Servicios.
 - Funciona igual que los gastos: **Registrar ingreso**, filtros y anulación.
 
-Los otros ingresos **suman** en la ganancia neta. Si registra un aporte de capital del dueño aquí, contará como ganancia. Tenga eso en cuenta al leer los números ([Decisiones](../producto/decisiones.md), DP-05).
+Los otros ingresos **suman** en la ganancia neta.
+
+## 8.3.1 Aportes del dueño
+
+![Aportes del dueño](img/aportes.jpg)
+
+Pestaña **Aportes del dueño**: el dinero que el dueño pone en el negocio, por ejemplo para una compra grande.
+- **Registrar aporte** pide fecha, monto, método y descripción.
+- El aporte aparece en **Flujo de dinero** como dinero que entró, pero **no suma a la ganancia**: no lo produjo la tienda (DT-21).
+- Si se registró por error, anúlelo con el ícono de la papelera y un motivo.
+
+Si en una versión anterior registró aportes como **Otros ingresos → Aporte del dueño**, esos siguen sumando a la ganancia. Anúlelos y regístrelos de nuevo aquí si quiere corregir los números.
 
 ## 8.4 Errores comunes
 

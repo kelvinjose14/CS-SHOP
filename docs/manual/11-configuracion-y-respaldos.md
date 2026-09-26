@@ -21,7 +21,7 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 | **El vendedor puede registrar abonos de clientes** | Activado | Permite que el vendedor reciba abonos |
 | **El vendedor puede aplicar descuentos** | Activado | Si se desactiva, el vendedor no puede dar descuentos |
 | **Categorías de gastos** | Alquiler, Transporte, Publicidad, Nómina, Servicios, Internet, Delivery, Otros | Una por línea. Cambiarlas no modifica los gastos ya registrados |
-| **Categorías de otros ingresos** | Otros ingresos, Aporte del dueño, Servicios | Una por línea |
+| **Categorías de otros ingresos** | Otros ingresos, Servicios | Una por línea. Los aportes del dueño van aparte ([8.3.1](08-gastos-e-ingresos.md#831-aportes-del-dueño)) |
 
 Cada cambio de configuración queda en el **Historial de movimientos**.
 
@@ -123,3 +123,17 @@ En una computadora conectada, el diagnóstico muestra a qué PC principal está 
 - Con varias computadoras, **primero la PC principal** y después las demás ([Soporte y recuperación, 14.4](14-soporte-y-recuperacion.md#144-instalar-una-versión-nueva)).
 
 Cuando hay versión nueva, la barra de arriba muestra **Versión X disponible** (solo al administrador).
+
+## 11.8 Impresora de recibos de esta PC
+
+![Impresora de recibos](img/impresora.jpg)
+
+**Configuración** → **Impresora de recibos de esta PC**. Se configura **en cada computadora**, porque cada una tiene su impresora. Se guarda al cambiar, sin pulsar **Guardar configuración**.
+
+| Opción | Efecto |
+|---|---|
+| **Impresora** | La impresora de tickets instalada en Windows. Con **Preguntar cada vez**, al imprimir se abre la ventana de impresión |
+| **Ancho del papel** | **80 mm** (el más común) o **58 mm**. El recibo se ajusta al ancho |
+| **Imprimir el recibo al cobrar, sin preguntar** | Al registrar una venta, el recibo sale solo |
+
+Pulse **Imprimir prueba** para comprobarlo. Si no aparece la impresora, instale su controlador de Windows y vuelva a abrir **Configuración**. Si falla al imprimir, el mensaje dice el motivo: revise que esté encendida, conectada y con papel.
