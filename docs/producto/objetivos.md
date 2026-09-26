@@ -13,11 +13,13 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 100 de 103 cumplen).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 40 de lógica, migración, respaldos, permisos y red;
-  - 7 de interfaz con la app real;
+  - 45 de lógica, migración, respaldos, permisos, red y actualizaciones;
+  - 8 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
+- Actualizaciones con aviso desde GitHub y copia diaria fuera de la PC, con fotos (O4).
+- Guía de soporte y recuperación ([manual 14](../manual/14-soporte-y-recuperacion.md)).
 - Instalador de Windows generado y publicado automáticamente en GitHub.
 
 **Lo que NO está listo para producción:**
@@ -26,14 +28,13 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 |---|---|---|---|
 | 1 | ~~Funciona en una sola computadora~~ **Resuelto en O2**, pendiente de probar en la red real de la tienda | — | O6 |
 | 2 | Instalador probado en CI (Windows Server), pero no en Windows 10/11 de escritorio | Podría haber diferencias en la tienda | O6 |
-| 3 | Instalador sin firma digital | Windows muestra una advertencia y puede bloquearlo | O4 |
-| 4 | Sin actualización automática | Cada versión nueva hay que instalarla a mano en cada PC | O4 |
-| 5 | Respaldos solo en el mismo disco y sin fotos | Si el disco falla, se pierde todo | O4 |
-| 6 | ~~Sin registro de errores~~, ~~rendimiento sin medir~~ e ~~interfaz sin pruebas~~ **Resueltos en O3** | — | — |
-| 9 | Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.) | Operación diaria incompleta | O5 |
-| 10 | No se ha usado con datos reales | No hay aceptación del cliente | O6 |
+| 3 | Instalador sin firma digital: el CI está listo, falta comprar el certificado (DT-18) | Windows muestra una advertencia al instalar | O4 (decisión del dueño) |
+| 4 | ~~Sin actualización automática~~ y ~~respaldos solo en el mismo disco~~ **Resueltos en O4** | — | — |
+| 5 | ~~Sin registro de errores~~, ~~rendimiento sin medir~~ e ~~interfaz sin pruebas~~ **Resueltos en O3** | — | — |
+| 6 | Brechas funcionales (saldos iniciales, depósitos, ticket directo, etc.) | Operación diaria incompleta | O5 |
+| 7 | No se ha usado con datos reales | No hay aceptación del cliente | O6 |
 
-**Detalle técnico pendiente:** la etiqueta `v1.0.0` apunta al último commit de la rama de trabajo en lugar del commit de unión en `main`. El código es idéntico. En adelante, las versiones se crean con destino `main` ([Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md)).
+**Detalle técnico pendiente:** la etiqueta `v1.0.0` apunta al último commit de la rama de trabajo en lugar del commit de unión en `main`. El código es idéntico. La causa es que la **rama por defecto** del repositorio es la rama de trabajo. El dueño debe cambiarla a `main` en GitHub → Settings → General → Default branch. En adelante, las versiones se crean con destino `main` ([Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión)).
 
 ## Mapa
 
@@ -121,7 +122,7 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 
 ### O3. Calidad para producción
 
-**Estado:** terminado, en revisión (pull request). Decisión: DT-17.
+**Estado:** hecho (PR #4, 25/09/2026). Decisión: DT-17.
 
 **Resultado:**
 
@@ -158,7 +159,22 @@ La base técnica ya ayuda: toda la lógica pasa por un único punto (`src/core/a
 
 ### O4. Instalación y operación
 
-**Estado:** pendiente.
+**Estado:** terminado, en revisión (pull request), salvo la firma. Decisiones: DT-18, DT-19 y DT-20.
+
+**Resultado:**
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Instalador firmado | CI listo para firmar con los secretos `WIN_CSC_LINK` y `WIN_CSC_KEY_PASSWORD` ([Desarrollo](../tecnico/desarrollo-y-publicacion.md#firma-del-instalador)) | **Pendiente**: el dueño decidió no comprar el certificado todavía (DT-18) |
+| Actualización | `src/main/updates.js`: busca en GitHub Releases, avisa al administrador y este instala con un botón. Las PCs con otra versión se actualizan desde la pantalla de entrada (DT-19) | Hecho |
+| Respaldos fuera de la PC, con fotos y alerta a los 7 días | Configuración → Copias de seguridad; `backend.js` (`externalBackup`) (DT-20) | Hecho |
+| Guía de soporte | [Manual 14: Soporte y recuperación](../manual/14-soporte-y-recuperacion.md) | Hecho |
+| Versiones con destino `main` | [Desarrollo y publicación](../tecnico/desarrollo-y-publicacion.md#publicar-una-versión) | Hecho. Falta que el dueño cambie la **rama por defecto** del repositorio a `main` (hoy es la rama de trabajo) |
+
+**Criterios de terminado que dependen de la tienda:**
+- **Sin advertencia de Windows:** requiere el certificado.
+- **Una versión nueva se instala en todas las PCs:** se comprobará con la primera versión publicada después de esta.
+- **Restaurar la copia externa en una PC nueva:** está probado automáticamente (`test/backup.test.js`, `test/ui/setup.test.js`). En la tienda se hará en el piloto (O6).
 
 **Meta:** instalar, actualizar y respaldar sin depender de un técnico.
 

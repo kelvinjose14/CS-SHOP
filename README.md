@@ -7,7 +7,8 @@ Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP �
 **Versión publicada: 1.0.0**, que funciona en una sola computadora. En desarrollo, sin publicar ([cambios](CHANGELOG.md)):
 - **Varias computadoras en red:** una PC principal guarda los datos y las demás se conectan a ella, cada una con su caja ([manual](docs/manual/13-varias-computadoras.md)).
 - **Funciones:** están todas las del pedido original. Cumplen 100 de 103 requisitos ([Requisitos](docs/producto/requisitos.md)).
-- **Todavía no está lista para producción:** falta, entre otras cosas, probar el instalador en Windows real, firmarlo y hacer respaldos fuera de la PC. El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
+- **Copias y actualizaciones:** copia diaria fuera de la PC (USB o nube) con las fotos, y actualizaciones con aviso ([Soporte y recuperación](docs/manual/14-soporte-y-recuperacion.md)).
+- **Todavía no está lista para producción:** falta firmar el instalador (hace falta comprar un certificado) y probarla en la tienda con Windows 10/11 y datos reales. El orden de trabajo está en [Objetivos](docs/producto/objetivos.md).
 
 ## Instalar
 
@@ -29,7 +30,7 @@ Toda la documentación está en [`docs/`](docs/README.md), en español:
 
 | Para | Dónde |
 |---|---|
-| **Dueño y vendedor** | [Manual de uso](docs/README.md#manual-de-uso): 13 páginas con capturas |
+| **Dueño y vendedor** | [Manual de uso](docs/README.md#manual-de-uso): 14 páginas con capturas |
 | **Decidir qué se construye** | [Requisitos](docs/producto/requisitos.md), [Reglas de negocio](docs/producto/reglas-de-negocio.md), [Objetivos](docs/producto/objetivos.md), [Decisiones](docs/producto/decisiones.md) |
 | **Desarrolladores** | [Arquitectura](docs/tecnico/arquitectura.md), [Red](docs/tecnico/red.md), [Modelo de datos](docs/tecnico/modelo-de-datos.md), [Desarrollo y publicación](docs/tecnico/desarrollo-y-publicacion.md) |
 

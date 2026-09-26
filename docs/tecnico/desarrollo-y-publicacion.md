@@ -29,13 +29,14 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 
 ## Pruebas
 
-**`npm test`** (40 pruebas, sin ventanas):
+**`npm test`** (45 pruebas, sin ventanas):
 
 | Archivo | Pruebas | Qué cubre |
 |---|---|---|
 | `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
 | `test/migration.test.js` | 4 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; migración que falla sin dejar nada a medias; rechazo de una base más nueva; respaldos válidos |
-| `test/backup.test.js` | 5 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal |
+| `test/backup.test.js` | 8 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal; **copia fuera de la PC** con fotos, memoria desconectada, aviso de 7 días y restaurar trayendo las fotos |
+| `test/updates.test.js` | 2 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
 | `test/permissions.test.js` | 1 | Todas las operaciones: el vendedor recibe "sin permiso" en las de administrador; sin sesión, nada; con la contraseña inicial, solo cambiarla |
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
 | `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos, búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
@@ -50,8 +51,8 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `screens.test.js` | Todas las pantallas y los 15 reportes como administrador, y las del vendedor |
 | `flows.test.js` | Venta con lector y cambio, compra a crédito, abono, devolución, anulación y cierre de caja con faltante, comprobando los números |
 | `network.test.js` | Dos instancias: principal y conectada, venta, caja de la otra PC, fotos por la red, sin conexión y reconexión |
-| `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan |
-| `installed.test.js` | El programa **instalado**: solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
+| `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan; copia fuera de la PC y aviso del Inicio |
+| `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).
 
@@ -142,13 +143,42 @@ Se usa versionado semántico:
    - **Target: `main`**. Revíselo siempre: si la rama principal del repositorio no es `main`, GitHub propone otra.
    - Título `CAPS Shop X.Y.Z` y, como descripción, las notas del CHANGELOG.
    - **Publish release**.
-4. El flujo de CI arranca con la etiqueta. En unos 4 minutos, el `.exe` aparece adjunto a la versión.
+4. El flujo de CI arranca con la etiqueta. En unos 5 minutos aparecen adjuntos a la versión:
+   - el `.exe`;
+   - `latest.yml` y el `.blockmap`, que usan las PCs instaladas para enterarse de la versión nueva ([Actualizaciones](#actualizaciones)).
 5. Verifique:
-   - que el instalador esté adjunto;
+   - que el instalador, `latest.yml` y el `.blockmap` estén adjuntos;
    - que se instale sobre la versión anterior sin perder datos. Los datos viven en `%APPDATA%`, fuera de la carpeta del programa.
    - **con varias PCs:** que todas tengan la misma versión. La principal rechaza a las de otra versión.
 
-> La versión 1.0.0 quedó con la etiqueta en la rama de trabajo (`claude/lucid-tesla-gqar2k`), con código idéntico a `main`. Las siguientes deben apuntar a `main`.
+> **Rama por defecto:** hoy la rama por defecto del repositorio es `claude/lucid-tesla-gqar2k`, y por eso GitHub propone esa rama como destino. La versión 1.0.0 quedó así, con código idéntico a `main`. **El dueño debe cambiarla a `main`** en GitHub → Settings → General → Default branch. Hasta entonces, elija `main` a mano en **Target**.
+
+## Actualizaciones
+
+- **Cómo funciona:** el programa instalado usa `electron-updater` (`src/main/updates.js`) con GitHub Releases como origen (`build.publish` en `package.json`; el repositorio es público).
+  - Busca al abrir y cada 6 horas.
+  - **No descarga ni instala** hasta que el administrador pulsa **Instalar** (DT-19).
+- **Qué necesita:** que cada versión tenga adjuntos `latest.yml` y el `.blockmap`. El CI los sube.
+- **Borradores y prerelease:** una versión en borrador o marcada como prerelease no se ofrece.
+- **Dónde está desactivado:** en desarrollo (`npm start`) y en las pruebas, la sección muestra "Las actualizaciones funcionan en el programa instalado". `CAPSSHOP_NO_UPDATES=1` las desactiva también en el programa instalado.
+- **Pruebas:**
+  - `test/updates.test.js`, con un actualizador falso;
+  - `test/ui/installed.test.js`: el programa instalado busca actualizaciones sin fallar.
+
+## Firma del instalador
+
+Hoy el instalador **no** está firmado (DT-18), así que Windows muestra "Windows protegió su PC". El CI ya está preparado:
+
+1. **Compre un certificado de firma de código.** Opciones:
+   - **Azure Trusted Signing**: unos US$10 al mes. Pide verificar la empresa. Usa otra configuración en `electron-builder` (`azureSignOptions`).
+   - **Certificado OV** de una autoridad como Sectigo o DigiCert: unos US$200–400 al año. Hoy se entregan en un token USB o en un servicio en la nube; confirme con el vendedor que permite firmar desde CI.
+2. **Con un certificado en archivo `.pfx`:**
+   - conviértalo a base64: `base64 -w0 certificado.pfx`;
+   - cárguelo en GitHub → Settings → Secrets and variables → Actions:
+     - `WIN_CSC_LINK`: el base64;
+     - `WIN_CSC_KEY_PASSWORD`: la contraseña.
+3. El paso **Construir instalador** del CI los pasa a `electron-builder` como `CSC_LINK` y `CSC_KEY_PASSWORD`, y el `.exe` sale firmado. **Sin los secretos, sale sin firmar, como hoy.**
+4. **Verificación:** clic derecho en el `.exe` → Propiedades → **Firmas digitales**. Al instalar ya no debe aparecer "Windows protegió su PC". Con certificados OV nuevos, el aviso puede seguir unos días, hasta que el certificado gane reputación.
 
 ## Convenciones
 

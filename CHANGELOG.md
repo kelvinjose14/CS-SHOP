@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 ## Sin publicar
 
 ### Agregado
+- **Copia fuera de esta computadora** (Configuración → Copias de seguridad):
+  - diaria, con la base **y las fotos**, a una memoria USB o a la carpeta de OneDrive o Google Drive;
+  - si la memoria no está conectada, se hace al conectarla;
+  - el Inicio avisa al administrador si pasan 7 días sin copia.
+  - Al restaurar una de estas copias, también vuelven las fotos.
+- **Actualizaciones con aviso** desde GitHub Releases:
+  - el programa avisa al administrador y este instala con un botón;
+  - una PC conectada con otra versión que la principal se actualiza desde la pantalla de entrada.
+- Guía **Soporte y recuperación** (manual 14): la PC principal se daña, cambiar de PC, versiones nuevas y pedir ayuda.
+- El CI queda listo para firmar el instalador cuando haya certificado, y publica `latest.yml` para las actualizaciones.
 - **Registro de errores** en `registros\` (14 días) y **Configuración → Soporte → Guardar diagnóstico**, un archivo para el soporte sin contraseñas ni la clave. También está en la pantalla de entrada de una PC conectada que no puede conectarse.
 - **Pruebas automáticas en CI**, en Linux y en Windows:
   - interfaz con la app real: todas las pantallas, flujos principales, dos computadoras e instalación nueva;
@@ -40,6 +50,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 - El README ahora es una presentación corta que enlaza a la documentación.
 
 ### Corregido
+- Al abrir una ventana, el cursor saltaba al primer campo 30 ms después, aunque ya se estuviera escribiendo en otro: lo escrito caía en el campo equivocado. Lo encontró la prueba de interfaz de la devolución.
 - Los avisos que dependen del código de error (sesión terminada, sin conexión) no llegaban a la pantalla: el código se perdía entre Electron y la interfaz.
 
 ## [1.0.0] - 2026-09-25

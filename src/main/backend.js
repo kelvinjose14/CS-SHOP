@@ -8,13 +8,34 @@ const os = require('os');
 const path = require('path');
 const { openDatabase, validateDatabaseFile } = require('../core/db');
 const { createApi } = require('../core/api');
-const { AppError, today } = require('../core/util');
+const { AppError, today, now } = require('../core/util');
 const { getSetting } = require('../core/services/common');
 const net = require('../net/server');
 const { createClient } = require('../net/client');
 const log = require('./log');
 
 const PRINCIPAL = 1;
+const EXTERNAL_FOLDER = 'CAPS Shop respaldos';
+const EXTERNAL_KEEP = 30;
+const EXTERNAL_WARN_DAYS = 7;
+const DAILY_DB = /^capsshop-\d{4}-\d{2}-\d{2}\.db$/;
+
+// Copia a "to" los archivos de "from" que falten o hayan cambiado de tamaño. Devuelve cuántos copió.
+function syncFolder(from, to) {
+  if (!fs.existsSync(from)) return 0;
+  fs.mkdirSync(to, { recursive: true });
+  let copied = 0;
+  for (const f of fs.readdirSync(from)) {
+    const src = path.join(from, f);
+    const dst = path.join(to, f);
+    const st = fs.statSync(src);
+    if (!st.isFile()) continue;
+    if (fs.existsSync(dst) && fs.statSync(dst).size === st.size) continue;
+    fs.copyFileSync(src, dst);
+    copied++;
+  }
+  return copied;
+}
 
 // Direcciones IPv4 de esta PC en la red local (para escribirlas en las demás PCs).
 function localAddresses() {
@@ -73,8 +94,9 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
   }
 
   if (config.share) await startSharing();
+  let externalTimer = null;
 
-  return {
+  const self = {
     mode: 'principal',
     info() {
       return {
@@ -154,6 +176,77 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
 
     // ---------- Respaldos ----------
     backupsDir,
+
+    // Copia fuera de esta PC (memoria USB o carpeta de OneDrive / Google Drive): base del día y fotos.
+    externalStatus() {
+      const ext = config.external_backup || {};
+      const days = ext.last_at ? Math.floor((Date.now() - new Date(ext.last_at.replace(' ', 'T')).getTime()) / 86400000) : null;
+      return {
+        dir: ext.dir || null,
+        last_at: ext.last_at || null,
+        last_error: ext.last_error || null,
+        days_since: days,
+        // Aviso: nunca configurada, nunca copiada, o más de 7 días sin copia.
+        overdue: !ext.dir || days === null || days >= EXTERNAL_WARN_DAYS,
+      };
+    },
+    externalBackup({ force = false } = {}) {
+      const ext = config.external_backup || {};
+      if (!ext.dir) return null;
+      if (!force && ext.last_at && ext.last_at.slice(0, 10) === today()) return null; // ya se copió hoy
+      const target = path.join(ext.dir, EXTERNAL_FOLDER);
+      const save = (changes) => {
+        config.external_backup = { ...ext, ...changes };
+        saveConfig(config);
+      };
+      if (!fs.existsSync(ext.dir)) {
+        const msg = `No se encontró la carpeta ${ext.dir}. Si es una memoria USB, conéctela; la copia se hará sola.`;
+        if (ext.last_error !== msg) log.warn('respaldo', msg);
+        save({ last_error: msg });
+        return null;
+      }
+      try {
+        fs.mkdirSync(target, { recursive: true });
+        db.backupTo(path.join(target, `capsshop-${today()}.db`));
+        const photos = syncFolder(photosDir, path.join(target, 'fotos'));
+        const files = fs.readdirSync(target).filter((f) => DAILY_DB.test(f)).sort();
+        while (files.length > EXTERNAL_KEEP) fs.unlinkSync(path.join(target, files.shift()));
+        save({ last_at: now(), last_error: null });
+        log.info('respaldo', `Copia externa en ${target} (${photos} fotos nuevas)`);
+        return { dir: target, photos };
+      } catch (err) {
+        const msg = `No se pudo copiar a ${ext.dir}: ${err.message}`;
+        log.error('respaldo', msg, err);
+        save({ last_error: msg });
+        return null;
+      }
+    },
+    setExternalDir(dir) {
+      requireAdmin();
+      if (dir) {
+        if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new AppError('La carpeta elegida no existe.');
+        const probe = path.join(dir, `.capsshop-prueba-${process.pid}`);
+        try {
+          fs.writeFileSync(probe, 'ok');
+          fs.rmSync(probe);
+        } catch {
+          throw new AppError('No se puede escribir en esa carpeta. Elija otra (por ejemplo, la memoria USB o la carpeta de OneDrive).');
+        }
+      }
+      config.external_backup = dir ? { dir, last_at: null, last_error: null } : null;
+      saveConfig(config);
+      log.info('respaldo', dir ? `Copia externa configurada en ${dir}` : 'Copia externa desactivada');
+      if (dir) self.externalBackup({ force: true });
+      return self.externalStatus();
+    },
+    backupNow() {
+      requireAdmin();
+      if (!(config.external_backup || {}).dir) throw new AppError('Elija primero la carpeta de la copia externa.');
+      self.externalBackup({ force: true });
+      const st = self.externalStatus();
+      if (st.last_error) throw new AppError(st.last_error);
+      return st;
+    },
     // Copia automática diaria (se conservan las últimas 30).
     autoBackup() {
       try {
@@ -202,12 +295,23 @@ async function createLocal({ dataDir, version, config, saveConfig }) {
         api = createApi(db);
         token = null;
       }
+      // Una copia externa trae sus fotos al lado: se recuperan las que falten.
+      const photos = path.join(path.dirname(file), 'fotos');
+      if (fs.existsSync(photos)) {
+        const n = syncFolder(photos, photosDir);
+        if (n) log.info('respaldo', `Se recuperaron ${n} fotos de ${photos}`);
+      }
     },
     async close() {
+      clearInterval(externalTimer);
       await stopSharing();
       db.close();
     },
   };
+  // La copia externa se intenta cada hora: si la memoria USB no estaba conectada, se hace al conectarla.
+  externalTimer = setInterval(() => self.externalBackup(), 60 * 60 * 1000);
+  externalTimer.unref();
+  return self;
 }
 
 function createRemote({ version, config, saveConfig }) {

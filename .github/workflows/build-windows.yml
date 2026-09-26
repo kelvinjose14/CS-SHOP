@@ -59,13 +59,21 @@ jobs:
       - name: Pruebas de interfaz
         run: npm run test:ui
 
+      # Firma: si el repositorio tiene los secretos WIN_CSC_LINK (certificado .pfx en base64) y
+      # WIN_CSC_KEY_PASSWORD, el instalador sale firmado; si no, sale sin firmar (DT-18).
       - name: Construir instalador
         run: npx electron-builder --win nsis --publish never
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: CAPS-Shop-Setup
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
           if-no-files-found: error
 
       - name: Instalar, usar, reinstalar y desinstalar
@@ -99,4 +107,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          # latest.yml y el .blockmap son los que usan las PCs instaladas para saber que hay versión nueva.
+          files: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml

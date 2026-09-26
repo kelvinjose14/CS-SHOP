@@ -32,6 +32,17 @@ contextBridge.exposeInMainWorld('capsApi', {
   backupCreate: () => unwrap(ipcRenderer.invoke('backup:create')),
   backupRestore: () => unwrap(ipcRenderer.invoke('backup:restore')),
   backupOpenFolder: () => unwrap(ipcRenderer.invoke('backup:openFolder')),
+  updates: {
+    status: () => unwrap(ipcRenderer.invoke('update:status')),
+    check: () => unwrap(ipcRenderer.invoke('update:check')),
+    install: () => unwrap(ipcRenderer.invoke('update:install')),
+  },
+  external: {
+    status: () => unwrap(ipcRenderer.invoke('backup:externalStatus')),
+    choose: () => unwrap(ipcRenderer.invoke('backup:chooseExternal')),
+    clear: () => unwrap(ipcRenderer.invoke('backup:clearExternal')),
+    now: () => unwrap(ipcRenderer.invoke('backup:externalNow')),
+  },
   logError: (message) => ipcRenderer.invoke('log:renderer', message).catch(() => {}),
   support: {
     diagnostic: () => unwrap(ipcRenderer.invoke('support:diagnostic')),

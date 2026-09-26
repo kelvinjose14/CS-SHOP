@@ -65,7 +65,9 @@ test('PC principal y PC conectada', async (t) => {
   await B.win.waitForSelector('#offline', { timeout: 30000 });
   A = await launch(t, aDir);
   await A.win.waitForSelector('#login-form');
-  await B.win.click('#off-retry');
+  // Se reconecta sola cada 5 s; si el aviso sigue, se pulsa "Reintentar ahora" (puede desaparecer antes).
+  const retry = await B.win.$('#off-retry');
+  if (retry) await retry.click({ timeout: 2000 }).catch(() => {});
   await B.win.waitForSelector('#login-form', { timeout: 30000 });
   assert.match(await text(B.win, '.login-error'), /Su sesión terminó/);
   assert.equal(await B.win.$('#offline'), null);

@@ -3,7 +3,7 @@
 // Datos: base de muestra de la versión 1.0.0 (caja de la PC principal abierta).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { dataDir, launch, login, go, settle, text } = require('./helpers');
+const { dataDir, launch, login, go, settle, text, eventually } = require('./helpers');
 
 const api = (win, name, params) => win.evaluate(([n, p]) => api(n, p), [name, params]);
 
@@ -52,30 +52,29 @@ test('venta, compra a crédito, abono, devolución, anulación y cierre de caja'
   await win.fill('.modal [name=amount]', '500');
   await win.selectOption('.modal [name=method]', 'transferencia').catch(() => {});
   await win.click('.modal-foot .btn.primary');
-  await settle(win);
-  assert.equal((await api(win, 'reports.dashboard')).receivables, receivablesBefore - 500);
+  assert.ok(await eventually(async () => (await api(win, 'reports.dashboard')).receivables === receivablesBefore - 500), 'el abono rebaja lo que deben');
 
   // --- Devolución de la venta de hoy: vuelve la gorra al inventario ---
   const [sale] = await api(win, 'sales.list', {});
   await go(win, 'sales');
-  await win.click('.table tbody tr[data-idx]');
+  await win.evaluate((id) => saleDetail(id, () => App.reload()), sale.id);
   await win.waitForSelector('.modal');
   await win.click('.modal-foot >> text=Devolución');
   await win.waitForSelector('[data-item]');
-  await win.fill('[data-item] >> nth=0', '1');
-  await win.fill('.modal [name=reason]', 'Talla incorrecta');
-  await win.click('.modal-back:last-child .modal-foot .btn.primary');
-  await settle(win);
-  assert.equal((await api(win, 'sales.get', { id: sale.id })).returned_total > 0, true);
+  const ret = win.locator('.modal-back', { has: win.locator('[data-item]') });
+  await ret.locator('[data-item]').first().fill('1');
+  await ret.locator('[name=reason]').fill('Talla incorrecta');
+  await ret.locator('.modal-foot .btn.primary').click();
+  assert.ok(await eventually(async () => (await api(win, 'sales.get', { id: sale.id })).returned_total > 0), 'la devolución quedó registrada');
 
   // --- Anulación de otra venta: se sella con motivo ---
   const other = (await api(win, 'sales.list', {})).find((s) => s.id !== sale.id && s.status !== 'anulada' && !(s.returned_total > 0));
   await win.evaluate((id) => saleDetail(id, () => App.reload()), other.id);
   await win.click('.modal-foot >> text=Anular venta');
-  await win.fill('.modal-back:last-child [name=v]', 'Venta duplicada');
-  await win.click('.modal-back:last-child .modal-foot .btn.primary');
-  await settle(win);
-  assert.equal((await api(win, 'sales.get', { id: other.id })).status, 'anulada');
+  const prompt = win.locator('.modal-back', { has: win.locator('[name=v]') });
+  await prompt.locator('[name=v]').fill('Venta duplicada');
+  await prompt.locator('.modal-foot .btn.primary').click();
+  assert.ok(await eventually(async () => (await api(win, 'sales.get', { id: other.id })).status === 'anulada'), 'la venta quedó anulada');
 
   // --- Cierre de caja con un faltante de 50 ---
   const expected = (await api(win, 'cash.status')).open.expected;
@@ -83,6 +82,7 @@ test('venta, compra a crédito, abono, devolución, anulación y cierre de caja'
   await win.click('#cash-close');
   await win.fill('.modal [name=counted]', String(expected - 50));
   await win.click('.modal-foot .btn.primary');
+  await eventually(async () => (await api(win, 'cash.status')).open === null);
   await settle(win);
   const [last] = await api(win, 'cash.history', {});
   assert.equal(last.status, 'cerrada');

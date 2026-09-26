@@ -29,6 +29,7 @@ src/
     backend.js   Local (PC principal: base en este proceso) o remoto (PC conectada: todo por la red)
     config.js    config.json de esta PC (modo, clave, principal)
     log.js       Registro de errores en <datos>/registros (14 días) para el diagnóstico
+    updates.js   Actualizaciones desde GitHub Releases, con aviso (el administrador instala)
     preload.js   Puente seguro: expone window.capsApi a la interfaz
   renderer/    Interfaz (HTML, CSS y JavaScript sin framework ni compilación)
     index.html   Carga los scripts en orden
@@ -111,9 +112,12 @@ Lo que falta para producción, con el objetivo que lo resuelve ([Objetivos](../p
 | Sin linter ni verificación de tipos | Todo el código | Errores de escritura se detectan solo con las pruebas | Si el código crece |
 | Scripts globales sin módulos ni compilación | `renderer/js` | Sencillo, pero sin aislamiento entre pantallas | Si el código crece |
 | Probado en Windows Server (CI), no en Windows 10/11 de escritorio | CI | Diferencias de escritorio sin detectar | O6 (piloto) |
-| Respaldos sin fotos y en el mismo disco | `backend.js` (`autoBackup`, `backupTo`) | Riesgo de pérdida | O4 |
-| Sin firma ni actualización automática | `package.json` (`build`) | Advertencia de Windows e instalación manual en cada PC | O4 |
+| Instalador sin firma | CI listo (`WIN_CSC_LINK`) | Advertencia de Windows al instalar | Cuando se compre el certificado (DT-18) |
 | El instalador no crea la regla del firewall | `package.json` (`nsis`) | Windows pregunta la primera vez que la principal comparte | O4 |
+
+**Resueltos en O4:**
+- **Copia fuera de la PC:** diaria y con las fotos, a una memoria USB o a la nube, con aviso a los 7 días.
+- **Actualizaciones:** con aviso, desde GitHub Releases.
 
 **Resueltos en O3:**
 - **Rendimiento:** medido con 3 años de datos; todo por debajo de 1 s tras la migración 3 ([Rendimiento](rendimiento.md)).

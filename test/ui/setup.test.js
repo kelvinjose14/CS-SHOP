@@ -97,3 +97,23 @@ test('si faltan las fotos, se muestra el ícono en lugar de una imagen rota', as
   assert.equal(await win.$$eval('img.thumb', (l) => l.length), 0);
   assert.ok((await win.$$eval('.thumb.ph', (l) => l.length)) >= 12);
 });
+
+test('copia fuera de la computadora desde Configuración, con aviso en el Inicio', async (t) => {
+  const dir = dataDir({ demo: true });
+  const usb = fs.mkdtempSync(path.join(require('os').tmpdir(), 'capsshop-usb-'));
+  const { app, win, errors } = await launch(t, dir);
+  await login(win, 'admin', 'admin123');
+  await go(win, 'dashboard');
+  assert.ok(await win.$('#ext-warning'), 'aviso: no hay copia externa');
+  await mockDialogs(app, { open: usb });
+  await go(win, 'settings');
+  await win.click('#ext-choose');
+  await win.waitForSelector('#ext-now');
+  const target = path.join(usb, 'CAPS Shop respaldos');
+  assert.ok(fs.readdirSync(target).some((f) => /^capsshop-\d{4}-\d{2}-\d{2}\.db$/.test(f)));
+  assert.ok(fs.readdirSync(path.join(target, 'fotos')).length >= 12, 'con las fotos');
+  assert.match(await text(win, '#ext-box'), /Última copia/);
+  await go(win, 'dashboard');
+  assert.equal(await win.$('#ext-warning'), null, 'sin aviso después de copiar');
+  assert.deepEqual(errors, []);
+});

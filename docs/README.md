@@ -2,7 +2,7 @@
 
 Sistema de inventario, compras, ventas, caja y contabilidad para **CAPS._.SHOP · Tienda de Gorras**.
 
-Versión documentada: **1.0.0** (25/09/2026), más lo hecho en O2 (red) y O3 (calidad), aún sin publicar. Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
+Versión documentada: **1.0.0** (25/09/2026), más lo hecho en O2 (red), O3 (calidad) y O4 (instalación y operación), aún sin publicar. Los cambios de cada versión están en el [CHANGELOG](../CHANGELOG.md).
 
 ## ¿Qué leer?
 
@@ -30,6 +30,7 @@ Versión documentada: **1.0.0** (25/09/2026), más lo hecho en O2 (red) y O3 (ca
 | 11 | [Configuración y respaldos](manual/11-configuracion-y-respaldos.md) | Ajustes del negocio, copias de seguridad y cambio de computadora |
 | 12 | [Problemas frecuentes](manual/12-problemas-frecuentes.md) | Mensajes de error y qué hacer |
 | 13 | [Varias computadoras en red](manual/13-varias-computadoras.md) | PC principal, conectar otras PCs, caja por PC y sin conexión |
+| 14 | [Soporte y recuperación](manual/14-soporte-y-recuperacion.md) | Si la PC principal se daña, cambiar de PC, versiones nuevas y pedir ayuda |
 
 ## Producto: lo que queremos construir
 
