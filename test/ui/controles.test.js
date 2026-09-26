@@ -73,7 +73,7 @@ test('crédito autorizado por el administrador, costo 0 confirmado y cliente des
   await win.click('#pos-pay-type [data-v=credito]');
   await win.click('#pos-charge');
   await win.waitForSelector(`${dialog}:has-text("Autorizar crédito")`);
-  assert.match(await text(win, `${dialog} .modal-body`), /debería 700\.00 y su límite de crédito es 500\.00/);
+  assert.match(await text(win, `${dialog} .modal-body`), /debería RD\$ 700\.00 y su límite de crédito es RD\$ 500\.00/);
   await win.click(`${dialog} .modal-foot .btn.primary`);
   await win.waitForSelector('.done-no');
   assert.equal((await api(win, 'customers.get', { id: cu })).balance, 700);
@@ -89,7 +89,7 @@ test('crédito autorizado por el administrador, costo 0 confirmado y cliente des
   await win.fill('#page [data-k=unit_cost]', '0');
   await win.click('#page #pu-save');
   await win.waitForSelector(`${dialog}:has-text("Revisar costos")`);
-  assert.match(await text(win, `${dialog} .modal-body`), /"Gorra de control" a costo 0 \(el actual es 200\.00\)/);
+  assert.match(await text(win, `${dialog} .modal-body`), /"Gorra de control" a costo 0 \(el actual es RD\$ 200\.00\)/);
   await win.click(`${dialog} .modal-foot .btn.primary`);
   assert.ok(await eventually(async () => (await api(win, 'products.get', { id: p })).stock === 5));
 

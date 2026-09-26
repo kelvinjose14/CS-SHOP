@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Corregido
+- Los mensajes del sistema escriben los montos como en pantalla, con el símbolo de la moneda y separador de miles ("RD$ 6,600.00" en vez de "6600.00"): crédito vencido o sobre el límite, costos por confirmar, apertura de caja, abonos y pagos.
+
 ## [1.3.0] - 2026-09-26
 
 Controles de la [auditoría de producción](docs/tecnico/auditoria.md) (secciones 2 y 4). La base pasa a la versión 5 al abrir: todas las PCs deben tener la 1.3.0 (actualice primero la PC principal).

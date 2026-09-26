@@ -110,8 +110,14 @@ function changeStock(ctx, productId, qty, type, { refType, refId, note, unitCost
   return after;
 }
 
+// Monto para los mensajes, igual que en pantalla: "RD$ 6,600.00" (con el símbolo de Configuración).
+function fmtMoney(db, n) {
+  const v = Number(n) || 0;
+  return `${v < 0 ? '-' : ''}${getSetting(db, 'currency')} ${Math.abs(v).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function isAdmin(ctx) {
   return ctx.user && ctx.user.role === 'admin';
 }
 
-module.exports = { DEFAULT_SETTINGS, getSetting, getSettings, setSetting, audit, ledger, changeStock, openCashSession, isAdmin };
+module.exports = { DEFAULT_SETTINGS, fmtMoney, getSetting, getSettings, setSetting, audit, ledger, changeStock, openCashSession, isAdmin };

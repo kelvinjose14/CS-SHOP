@@ -31,7 +31,7 @@ test('2.1: abrir la caja con otro monto que el del último cierre pide el motivo
   const { call } = await setup();
   call('cash.open', { amount: 500 }); // la primera vez no hay con qué comparar
   call('cash.close', { counted: 1000 });
-  assert.throws(() => call('cash.open', { amount: 200 }), code('OPENING_REASON', /\(200\.00\).*\(1000\.00\)/));
+  assert.throws(() => call('cash.open', { amount: 200 }), code('OPENING_REASON', /\(RD\$ 200\.00\).*\(RD\$ 1,000\.00\)/));
   const id = call('cash.open', { amount: 200, reason: 'El dueño se llevó 800 al banco' });
   const s = call('cash.status').open;
   assert.equal(s.id, id);
@@ -118,7 +118,7 @@ test('2.3: clientes desactivados: solo el administrador, sin deuda y sin ventas'
   const p = call('products.save', { name: 'Gorra', cost: 100, price_retail: 500, initial_stock: 20 });
   const cu = call('customers.save', { name: 'Luis' });
   call('sales.create', { customer_id: cu, payment_type: 'credito', items: [{ product_id: p, qty: 1 }] });
-  assert.throws(() => call('customers.save', { id: cu, name: 'Luis', active: false }), /Luis debe 500\.00: no se puede desactivar/);
+  assert.throws(() => call('customers.save', { id: cu, name: 'Luis', active: false }), /Luis debe RD\$ 500\.00: no se puede desactivar/);
   as(api, 'vendedor');
   assert.throws(() => call('customers.save', { id: cu, name: 'Luis', active: false }), code('FORBIDDEN'));
   call('customers.save', { id: cu, name: 'Luis Pérez', phone: '809' }); // editar sí puede
@@ -150,7 +150,7 @@ test('2.4: límite de crédito y deuda vencida; el administrador autoriza', asyn
   call('customers.save', { id: cu, name: 'Ana', credit_limit: 999999 }); // el vendedor no cambia el límite
   assert.equal(call('customers.get', { id: cu }).credit_limit, 1000);
   credit(2); // debe 800
-  assert.throws(() => credit(1), code('CREDIT_BLOCKED', /debería 1200\.00 y su límite de crédito es 1000\.00.*Solo el administrador/));
+  assert.throws(() => credit(1), code('CREDIT_BLOCKED', /debería RD\$ 1,200\.00 y su límite de crédito es RD\$ 1,000\.00.*Solo el administrador/));
   // Con abono inicial suficiente, lo que queda a crédito sí cabe.
   call('sales.create', { customer_id: cu, payment_type: 'credito', items: [{ product_id: p, qty: 1 }], payments: [{ method: 'efectivo', amount: 300 }] });
   as(api, 'admin');
@@ -165,7 +165,7 @@ test('2.4: límite de crédito y deuda vencida; el administrador autoriza', asyn
   call('customers.opening', { customer_id: luis, amount: 200, date: '2026-01-02', due_date: '2026-01-31' });
   assert.equal(call('customers.get', { id: luis }).overdue_balance, 200);
   as(api, 'vendedor');
-  assert.throws(() => call('sales.create', { customer_id: luis, payment_type: 'credito', items: [{ product_id: p, qty: 1 }] }), code('CREDIT_BLOCKED', /Luis tiene 200\.00 vencido/));
+  assert.throws(() => call('sales.create', { customer_id: luis, payment_type: 'credito', items: [{ product_id: p, qty: 1 }] }), code('CREDIT_BLOCKED', /Luis tiene RD\$ 200\.00 vencido/));
   as(api, 'admin');
   call('settings.save', { block_overdue_credit: '0' });
   as(api, 'vendedor');
@@ -199,8 +199,8 @@ test('2.7 y 2.8: costo 0 o muy distinto se confirma; categorías solo de la list
   call('cash.open', { amount: 0 });
   const p = call('products.save', { name: 'Gorra', cost: 300, price_retail: 900, initial_stock: 10 });
   const buy = (unit_cost, extra) => call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: p, qty: 5, unit_cost }], ...extra });
-  assert.throws(() => buy(0), code('COST_CONFIRM', /"Gorra" a costo 0 \(el actual es 300\.00\)/));
-  assert.throws(() => buy(1000), code('COST_CONFIRM', /a 1000\.00/));
+  assert.throws(() => buy(0), code('COST_CONFIRM', /"Gorra" a costo 0 \(el actual es RD\$ 300\.00\)/));
+  assert.throws(() => buy(1000), code('COST_CONFIRM', /a RD\$ 1,000\.00/));
   assert.throws(() => buy(100), code('COST_CONFIRM'));
   assert.equal(call('products.get', { id: p }).cost, 300, 'sin confirmar no cambia nada');
   buy(400); // dentro de la mitad y el doble: sin preguntar
