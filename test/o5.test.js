@@ -149,7 +149,7 @@ test('RF-NUE-06: recuperar la contraseña del administrador con el código', asy
 
   assert.throws(() => core.recover({ username: 'admin', code: 'AAAA-BBBB-CCCC-DDDD', password: 'nueva123' }), (e) => e.code === 'AUTH');
   assert.throws(() => core.recover({ username: 'vendedor', code, password: 'nueva123' }), (e) => e.code === 'AUTH', 'solo administradores');
-  assert.throws(() => core.recover({ username: 'admin', code, password: '123' }), /al menos 6/);
+  assert.throws(() => core.recover({ username: 'admin', code, password: 'corta12' }), /al menos 8/);
 
   // Minúsculas y sin guiones también sirven. La sesión abierta se cierra.
   core.recover({ username: 'admin', code: code.toLowerCase().replace(/-/g, ' '), password: 'nueva123' });

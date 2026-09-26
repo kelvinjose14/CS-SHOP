@@ -123,7 +123,7 @@ const App = {
           <form id="rec-form" autocomplete="off">
             <label class="field"><span>Usuario administrador</span><input name="username" required value="admin"></label>
             <label class="field"><span>Código de recuperación</span><input name="code" required placeholder="XXXX-XXXX-XXXX-XXXX" class="mono"></label>
-            <label class="field"><span>Nueva contraseña (mínimo 6)</span><input name="password" type="password" required minlength="6"></label>
+            <label class="field"><span>Nueva contraseña (mínimo 8)</span><input name="password" type="password" required minlength="8"></label>
             <label class="field"><span>Repetir nueva contraseña</span><input name="password2" type="password" required></label>
             <div class="login-error"></div>
             <button class="btn primary block" type="submit">Cambiar contraseña</button>
@@ -179,7 +179,7 @@ const App = {
           <p class="muted">Por seguridad, cambie su contraseña antes de continuar.</p>
           <form id="pw-form">
             <label class="field"><span>Contraseña actual</span><input name="current" type="password" required></label>
-            <label class="field"><span>Nueva contraseña (mínimo 6)</span><input name="password" type="password" required minlength="6"></label>
+            <label class="field"><span>Nueva contraseña (mínimo 8)</span><input name="password" type="password" required minlength="8"></label>
             <label class="field"><span>Repetir nueva contraseña</span><input name="password2" type="password" required></label>
             <div class="login-error"></div>
             <button class="btn primary block" type="submit">Guardar y continuar</button>

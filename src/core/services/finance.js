@@ -25,10 +25,13 @@ function makeEntry(table, kind) {
       const fields = {
         category: text(data.category, 'Categoría', { required: true, max: 60 }),
         description: text(data.description, 'Descripción', { max: 300 }),
-        date: date(data.date || today()),
+        date: date(data.date || today(), 'Fecha', { notFuture: true }),
         amount: money(data.amount, 'Monto', { allowZero: false }),
         method: method(data.method),
       };
+      // Solo las categorías de la lista de Configuración (auditoría 2.8): así los reportes por categoría cuadran.
+      const cats = JSON.parse(getSetting(ctx.db, kind === 'gasto' ? 'expense_categories' : 'income_categories') || '[]');
+      if (!cats.includes(fields.category)) throw new AppError(`La categoría "${fields.category}" no está en la lista. Agréguela en Configuración → Categorías.`);
       return ctx.db.tx(() => {
         const id = ctx.db.insert(table, { ...fields, user_id: ctx.user.id, created_at: now() });
         ledger(ctx, {
@@ -97,6 +100,7 @@ const CASH_LABELS = {
   anulacion_entrada: 'Entradas anuladas',
   anulacion_retiro: 'Retiros anulados',
   anulacion_deposito: 'Depósitos anulados',
+  deposito_no_recibido: 'Depósitos que no llegaron al banco',
 };
 
 // Movimientos que solo cambian el dinero de lugar (efectivo → banco, y su anulación): no son entradas
@@ -174,13 +178,99 @@ function cashStatus(ctx) {
   return out;
 }
 
-function cashOpen(ctx, { amount, note }) {
+// La caja se abre con lo que se contó en el último cierre de esa PC. Si el efectivo inicial es otro,
+// el dinero cambió mientras la caja estaba cerrada: se pide el motivo y queda la diferencia en la caja
+// y en el historial (auditoría 2.1).
+function cashOpen(ctx, { amount, note, reason }) {
   const opening = money(amount, 'Efectivo inicial');
+  const terminal = ctx.terminal ?? 1;
   return ctx.db.tx(() => {
-    if (openCashSession(ctx.db, ctx.terminal)) throw new AppError('Ya hay una caja abierta en esta computadora.');
-    const id = ctx.db.insert('cash_sessions', { opened_at: now(), opened_by: ctx.user.id, opening_amount: opening, note: text(note, 'Nota'), status: 'abierta', terminal_id: ctx.terminal ?? 1 });
-    audit(ctx, 'apertura_caja', 'caja', id, { efectivo_inicial: opening });
+    if (openCashSession(ctx.db, terminal)) throw new AppError('Ya hay una caja abierta en esta computadora.');
+    const last = ctx.db.get("SELECT counted_amount FROM cash_sessions WHERE status = 'cerrada' AND terminal_id = ? ORDER BY id DESC LIMIT 1", [terminal]);
+    const difference = last ? round2(opening - last.counted_amount) : null;
+    const why = text(reason, 'Motivo');
+    if (difference && !why) {
+      throw new AppError(`El efectivo inicial (${opening.toFixed(2)}) no es lo que se contó al cerrar la última caja de esta computadora (${last.counted_amount.toFixed(2)}). Escriba el motivo de la diferencia.`, 'OPENING_REASON');
+    }
+    const id = ctx.db.insert('cash_sessions', {
+      opened_at: now(), opened_by: ctx.user.id, opening_amount: opening, note: text(note, 'Nota'), status: 'abierta', terminal_id: terminal,
+      opening_difference: difference, opening_reason: difference ? why : null,
+    });
+    audit(ctx, 'apertura_caja', 'caja', id, difference ? { efectivo_inicial: opening, contado_al_cerrar: last.counted_amount, diferencia: difference, motivo: why } : { efectivo_inicial: opening });
     return id;
+  });
+}
+
+// ---------- Depósitos al banco por verificar (auditoría 4.2) ----------
+// El depósito lo puede registrar el vendedor y la caja cuadra aunque el dinero no llegue al banco. El
+// administrador revisa cada uno contra el estado de cuenta: "verificado" o "no llegó al banco". Si no
+// llegó, se quita del banco con un movimiento contrario: es dinero que salió del negocio.
+
+const DEPOSIT_STATUS = ['pendiente', 'verificado', 'no_recibido', 'anulado'];
+
+function deposits(ctx, { from, to, status } = {}) {
+  if (status && !DEPOSIT_STATUS.includes(status)) throw new AppError('Estado inválido.');
+  const where = ["m.method = 'efectivo'", "m.category = 'deposito_banco'", "m.direction = 'out'"];
+  const params = [];
+  if (from) { where.push('m.date >= ?'); params.push(from); }
+  if (to) { where.push('m.date <= ?'); params.push(to); }
+  const rows = ctx.db.all(
+    `SELECT m.id, m.date, m.created_at, m.amount, m.description, m.session_id, u.name AS user_name, t.name AS terminal_name,
+            dc.status AS check_status, dc.note AS check_note, dc.created_at AS checked_at, cu.name AS checked_by_name,
+            EXISTS (SELECT 1 FROM money_movements a WHERE a.ref_type = 'anulacion' AND a.ref_id = m.id) AS voided
+       FROM money_movements m
+       LEFT JOIN users u ON u.id = m.user_id
+       LEFT JOIN cash_sessions cs ON cs.id = m.session_id LEFT JOIN terminals t ON t.id = cs.terminal_id
+       LEFT JOIN deposit_checks dc ON dc.movement_id = m.id LEFT JOIN users cu ON cu.id = dc.user_id
+      WHERE ${where.join(' AND ')} ORDER BY m.id DESC`,
+    params
+  ).map((r) => ({ ...r, status: r.voided ? 'anulado' : r.check_status || 'pendiente' }));
+  return status ? rows.filter((r) => r.status === status) : rows;
+}
+
+function pendingDeposits(db) {
+  const r = db.get(
+    `SELECT COUNT(*) AS count, COALESCE(SUM(m.amount), 0) AS amount, MIN(m.date) AS oldest FROM money_movements m
+      WHERE m.method = 'efectivo' AND m.category = 'deposito_banco' AND m.direction = 'out'
+        AND NOT EXISTS (SELECT 1 FROM deposit_checks dc WHERE dc.movement_id = m.id)
+        AND NOT EXISTS (SELECT 1 FROM money_movements a WHERE a.ref_type = 'anulacion' AND a.ref_id = m.id)`
+  );
+  return { ...r, amount: round2(r.amount) };
+}
+
+function findDeposit(ctx, id) {
+  const d = deposits(ctx).find((x) => x.id === Number(id));
+  if (!d) throw new AppError('Depósito no encontrado.');
+  return d;
+}
+
+function checkDeposit(ctx, { movement_id, status, note }) {
+  if (!['verificado', 'no_recibido'].includes(status)) throw new AppError('Indique si el depósito está en el banco o no llegó.');
+  const why = status === 'no_recibido' ? text(note, 'Motivo', { required: true }) : text(note, 'Nota');
+  return ctx.db.tx(() => {
+    const d = findDeposit(ctx, movement_id);
+    if (d.status === 'anulado') throw new AppError('Ese depósito fue anulado.');
+    if (d.status !== 'pendiente') throw new AppError('Ese depósito ya se revisó.');
+    ctx.db.insert('deposit_checks', { movement_id: d.id, status, note: why, user_id: ctx.user.id, created_at: now() });
+    const details = { monto: d.amount, fecha: d.date, descripcion: d.description, registrado_por: d.user_name, nota: why };
+    if (status === 'no_recibido') {
+      ledger(ctx, { direction: 'out', amount: d.amount, method: 'transferencia', category: 'deposito_no_recibido', refType: 'deposito', refId: d.id, description: `Depósito del ${d.date} que no llegó al banco: ${why}` });
+      audit(ctx, 'deposito_no_recibido', 'caja', d.session_id, details);
+    } else {
+      audit(ctx, 'verificar_deposito', 'caja', d.session_id, details);
+    }
+    return true;
+  });
+}
+
+// Deshace un "verificado" marcado por error. "No llegó al banco" no se deshace: ya movió el dinero.
+function uncheckDeposit(ctx, { movement_id }) {
+  return ctx.db.tx(() => {
+    const d = findDeposit(ctx, movement_id);
+    if (d.status !== 'verificado') throw new AppError('Solo se puede desmarcar un depósito verificado.');
+    ctx.db.run('DELETE FROM deposit_checks WHERE movement_id = ?', [d.id]);
+    audit(ctx, 'desmarcar_deposito', 'caja', d.session_id, { monto: d.amount, fecha: d.date, descripcion: d.description });
+    return true;
   });
 }
 
@@ -227,6 +317,7 @@ function cashVoid(ctx, { movement_id, reason }) {
     if (ctx.db.get("SELECT id FROM money_movements WHERE ref_type = 'anulacion' AND ref_id = ?", [m.id])) throw new AppError('Ese movimiento ya está anulado.');
     const s = ctx.db.get('SELECT * FROM cash_sessions WHERE id = ?', [m.session_id]);
     if (!s || s.status !== 'abierta') throw new AppError('Esa caja ya se cerró: el error quedó en la diferencia de ese cierre.');
+    if (ctx.db.get('SELECT 1 FROM deposit_checks WHERE movement_id = ?', [m.id])) throw new AppError('Ese depósito ya se revisó contra el banco: no se puede anular.');
     const category = CASH_VOIDS[m.category];
     const description = `Anulación: ${m.description || CASH_LABELS[m.category]} (${why})`;
     const id = ledger(ctx, { direction: m.direction === 'in' ? 'out' : 'in', amount: m.amount, method: 'efectivo', category, refType: 'anulacion', refId: m.id, description, session: s.id });
@@ -256,7 +347,7 @@ const capital = {
   create(ctx, data) {
     const fields = {
       description: text(data.description, 'Descripción', { max: 300 }),
-      date: date(data.date || today()),
+      date: date(data.date || today(), 'Fecha', { notFuture: true }),
       amount: money(data.amount, 'Monto', { allowZero: false }),
       method: method(data.method),
     };
@@ -318,4 +409,7 @@ function cashSession(ctx, { id }) {
   return out;
 }
 
-module.exports = { expenses, incomes, capital, cashStatus, cashOpen, cashMovement, cashVoid, cashClose, cashHistory, cashSession, sessionSummary, CASH_LABELS, TRANSFERS };
+module.exports = {
+  expenses, incomes, capital, cashStatus, cashOpen, cashMovement, cashVoid, cashClose, cashHistory, cashSession, sessionSummary,
+  deposits, checkDeposit, uncheckDeposit, pendingDeposits, CASH_LABELS, TRANSFERS,
+};

@@ -192,7 +192,9 @@ function dashboard(ctx) {
     top_products: topProducts(ctx, { period: 'mes', limit: 10 }).rows,
     series: last30,
   };
-  if (!isAdmin(ctx)) {
+  if (isAdmin(ctx)) {
+    out.deposits_pending = finance.pendingDeposits(db); // depósitos al banco sin revisar (auditoría 4.2)
+  } else {
     // El vendedor sólo ve ventas e inventario, sin costos ni ganancias.
     for (const k of ['gross_profit_month', 'net_profit_month', 'expenses_month', 'purchases_month', 'payables', 'payables_overdue']) delete out[k];
     out.series = out.series.map(({ k, sales }) => ({ k, sales }));

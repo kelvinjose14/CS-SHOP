@@ -19,6 +19,13 @@ App.register({
         page.appendChild(w);
       }
     }
+    // Depósitos al banco que nadie ha comparado con el estado de cuenta (auditoría 4.2).
+    if (admin && d.deposits_pending && d.deposits_pending.count) {
+      const p = d.deposits_pending;
+      const w = el(html`<div class="warn-box" id="deposits-warning">${icon('alert')} ${p.count === 1 ? 'Hay 1 depósito al banco' : `Hay ${p.count} depósitos al banco`} por verificar (${Fmt.money(p.amount)}, desde el ${Fmt.date(p.oldest)}). Compárelos con el estado de cuenta. <a href="#">Ver depósitos</a></div>`);
+      $('a', w).onclick = (e) => { e.preventDefault(); App.go('deposits'); };
+      page.appendChild(w);
+    }
     page.appendChild(el(html`
       <div class="dash">
         <div class="stats">
@@ -31,7 +38,7 @@ App.register({
           ${statCard('Me deben (cuentas por cobrar)', Fmt.money(d.receivables), { iconName: 'inbox', tone: d.receivables_overdue ? 'warn' : '', sub: d.receivables_overdue ? `Vencido: ${Fmt.money(d.receivables_overdue)}` : '' })}
           ${admin ? statCard('Debo (cuentas por pagar)', Fmt.money(d.payables), { iconName: 'outbox', tone: d.payables_overdue ? 'warn' : '', sub: d.payables_overdue ? `Vencido: ${Fmt.money(d.payables_overdue)}` : '' }) : ''}
           ${statCard(d.cash_open ? 'Efectivo en caja' : 'Efectivo (último cierre)', Fmt.money(d.cash), { iconName: 'cash', sub: d.cash_open ? 'Caja abierta' : 'Caja cerrada' })}
-          ${admin ? statCard('Invertido en mercancía', Fmt.money(inv.value_cost), { iconName: 'box', tone: 'brand', sub: `${Fmt.num(inv.units)} unidades · a precio de venta ${Fmt.money(inv.value_retail)}` }) : statCard('Unidades en inventario', Fmt.num(inv.units), { iconName: 'box' })}
+          ${admin ? statCard('Invertido en mercancía', Fmt.money(inv.value_cost), { iconName: 'box', tone: 'brand', sub: `${Fmt.num(inv.units)} unidades · a precio de venta ${Fmt.money(inv.value_retail)}${inv.inactive_units ? ` · ${Fmt.num(inv.inactive_units)} de productos desactivados` : ''}` }) : statCard('Unidades en inventario', Fmt.num(inv.units), { iconName: 'box' })}
         </div>
         <div class="dash-grid">
           <div class="card span-2">

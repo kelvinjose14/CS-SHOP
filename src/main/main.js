@@ -1,6 +1,7 @@
 'use strict';
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, protocol } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const crypto = require('crypto');
 const { openDatabase } = require('../core/db');
@@ -10,6 +11,7 @@ const net = require('../net/server');
 const { createClient, discover } = require('../net/client');
 const config = require('./config');
 const printer = require('./printer');
+const region = require('./region');
 const importer = require('../core/importer');
 const { createLocal, createRemote } = require('./backend');
 const log = require('./log');
@@ -72,13 +74,30 @@ function createWindow() {
     win.maximize();
     win.show();
   });
-  win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  win.loadFile(APP_PAGE);
   // Los enlaces externos se abren en el navegador.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
 }
+
+// Ninguna ventana del programa puede ir a otra página (auditoría 4.5): si algo lograra navegar, esa página
+// recibiría el acceso al sistema que tiene la interfaz. Vale también para las ventanas de impresión.
+const APP_PAGE = path.join(__dirname, '../renderer/index.html');
+function lockNavigation(contents) {
+  const home = pathToFileURL(APP_PAGE).href;
+  const block = (e, url) => {
+    if (String(url).split('#')[0] === home) return;
+    e.preventDefault();
+    log.warn('seguridad', `Navegación bloqueada a ${String(url).slice(0, 200)}`);
+  };
+  contents.on('will-navigate', block);
+  contents.on('will-redirect', block);
+  contents.on('will-attach-webview', (e) => e.preventDefault());
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+}
+app.on('web-contents-created', (_e, contents) => lockNavigation(contents));
 
 function wrap(fn) {
   return async (_e, ...args) => {
@@ -202,6 +221,9 @@ function registerIpc() {
     return r.filePath;
   }));
 
+  // Separador y decimales del CSV: los de la región de Windows de esta PC, o los elegidos en Configuración.
+  ipcMain.handle('file:csvFormat', wrap((setting) => region.csvFormat(setting)));
+
   // Importar productos (RF-NUE-05): el archivo se lee en esta PC y las filas van al núcleo.
   ipcMain.handle('file:readProducts', wrap(async () => {
     const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Excel o CSV', extensions: ['xlsx', 'csv', 'txt'] }] });
@@ -261,18 +283,29 @@ function registerIpc() {
     return r.filePath;
   }));
 
-  ipcMain.handle('backup:restore', wrap(async () => {
+  // Una copia cifrada (.cifrado) pide su contraseña: la primera llamada elige el archivo y, si está
+  // cifrado, devuelve needsPassword; la interfaz pide la contraseña y vuelve a llamar con ella.
+  let pendingRestore = null;
+  ipcMain.handle('backup:restore', wrap(async ({ password } = {}) => {
     const b = needPrincipal();
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Respaldo CAPS Shop', extensions: ['db'] }] });
-    if (r.canceled || !r.filePaths.length) return null;
-    const file = r.filePaths[0];
-    if (!(await b.validate(file))) throw userError('El archivo no es un respaldo válido de CAPS Shop.');
+    let file = password ? pendingRestore : null;
+    if (!file) {
+      const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Respaldo CAPS Shop', extensions: ['db', 'cifrado'] }] });
+      if (r.canceled || !r.filePaths.length) return null;
+      file = r.filePaths[0];
+      if (b.isEncrypted(file)) {
+        pendingRestore = file;
+        return { needsPassword: true, name: path.basename(file) };
+      }
+    }
+    pendingRestore = null;
+    if (!(await b.validate(file, { password }))) throw userError('El archivo no es un respaldo válido de CAPS Shop.');
     const confirm = await dialog.showMessageBox(win, {
       type: 'warning', buttons: ['Cancelar', 'Restaurar'], defaultId: 0, cancelId: 0,
       message: 'Se reemplazarán todos los datos actuales por los del respaldo. Todas las computadoras deberán entrar de nuevo. ¿Continuar?',
     });
     if (confirm.response !== 1) return null;
-    await b.restore(file);
+    await b.restore(file, { password });
     return file;
   }));
 
@@ -321,6 +354,7 @@ function registerIpc() {
   }));
   ipcMain.handle('backup:clearExternal', wrap(() => needPrincipal().setExternalDir(null)));
   ipcMain.handle('backup:externalNow', wrap(() => needPrincipal().backupNow()));
+  ipcMain.handle('backup:externalPassword', wrap((password) => needPrincipal().setExternalPassword(password ?? null)));
 
   // ---------- Actualizaciones (con aviso; el administrador decide) ----------
   ipcMain.handle('update:status', wrap(() => updates.status()));

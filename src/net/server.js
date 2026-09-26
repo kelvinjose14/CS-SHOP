@@ -180,6 +180,8 @@ function createServer({ getApi, getKey, info, version, photosDir, log = consoleL
         return out;
       }
       case '/v1/foto': {
+        // Solo con sesión iniciada, como todo lo demás (auditoría 4.7).
+        if (!api.user(body.token)) throw new AppError('Debe iniciar sesión.', 'AUTH');
         const img = readPhoto(photosDir, body.name);
         return { ok: true, data: img ? { type: img.type, data: img.data.toString('base64') } : null };
       }

@@ -198,6 +198,9 @@ function productForm(p, onSaved) {
           delete f.__file;
           const data = { ...f, id: p.id };
           if (photoData) data.photo_data = photoData;
+          // Desactivar no saca la mercancía: sigue contando en el valor del inventario (auditoría 2.2).
+          if (!isNew && p.active && !f.active && p.stock > 0
+            && !(await confirmDialog(`Quedan ${p.stock} unidades de este producto. Al desactivarlo deja de aparecer en la venta, pero sigue contando en el valor del inventario. Si ya no están en la tienda, haga antes un ajuste de existencia.`, { title: 'Desactivar producto', okLabel: 'Desactivar' }))) return false;
           await api('products.save', data);
           toast('Producto guardado.');
           $$('.modal-back').forEach((x) => x.remove());

@@ -306,7 +306,56 @@ const MIGRATIONS = [
   );
   CREATE INDEX ix_capital_date ON capital(date);
   `,
+
+  // v5: controles de la auditoría (secciones 2 y 4).
+  // - Límite de crédito por cliente (0 = sin límite).
+  // - Apertura de caja con un monto distinto al del último cierre: diferencia y motivo (2.1).
+  // - Revisión de los depósitos al banco contra el estado de cuenta (4.2).
+  // - Reglas en la propia base, como segunda defensa si el núcleo dejara pasar un dato imposible (2.11).
+  `
+  ALTER TABLE customers ADD COLUMN credit_limit REAL NOT NULL DEFAULT 0;
+  ALTER TABLE cash_sessions ADD COLUMN opening_difference REAL;
+  ALTER TABLE cash_sessions ADD COLUMN opening_reason TEXT;
+
+  -- Depósitos por verificar y anulaciones de movimientos: sin estos índices, con 3 años de datos la lista
+  -- de depósitos tardaba 1.5 s (docs/tecnico/rendimiento.md).
+  CREATE INDEX ix_money_ref ON money_movements(ref_type, ref_id);
+  CREATE INDEX ix_money_category ON money_movements(category, method);
+
+  CREATE TABLE deposit_checks (
+    movement_id INTEGER PRIMARY KEY REFERENCES money_movements(id),
+    status TEXT NOT NULL CHECK (status IN ('verificado','no_recibido')),
+    note TEXT,
+    user_id INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  ${guards([
+    ['money_movements', 'NEW.amount > 0', 'un movimiento de dinero debe ser mayor que cero'],
+    ['sale_payments', 'NEW.amount > 0', 'un cobro debe ser mayor que cero'],
+    ['purchase_payments', 'NEW.amount > 0', 'un pago a proveedor debe ser mayor que cero'],
+    ['expenses', 'NEW.amount > 0', 'un gasto debe ser mayor que cero'],
+    ['incomes', 'NEW.amount > 0', 'un ingreso debe ser mayor que cero'],
+    ['capital', 'NEW.amount > 0', 'un aporte debe ser mayor que cero'],
+    ['sales', 'NEW.subtotal >= 0 AND NEW.discount >= 0 AND NEW.discount <= NEW.subtotal + 0.005 AND NEW.total >= 0 AND NEW.paid >= -0.005 AND NEW.balance >= -0.005 AND NEW.change_given >= 0 AND NEW.returned_total >= 0 AND NEW.returned_total <= NEW.total + 0.005', 'los importes de la venta no cuadran'],
+    ['sale_items', 'NEW.qty > 0 AND NEW.unit_price >= 0 AND NEW.line_discount >= 0 AND NEW.unit_cost >= 0 AND NEW.returned_qty >= 0 AND NEW.returned_qty <= NEW.qty', 'una línea de venta tiene cantidades o importes imposibles'],
+    ['purchases', 'NEW.total >= 0 AND NEW.paid >= -0.005 AND NEW.balance >= -0.005', 'los importes de la compra no cuadran'],
+    ['purchase_items', 'NEW.qty > 0 AND NEW.unit_cost >= 0', 'una línea de compra tiene cantidades o costos imposibles'],
+    ['returns', 'NEW.total >= 0 AND NEW.refund_amount >= 0 AND NEW.credit_applied >= 0', 'los importes de la devolución no cuadran'],
+    ['return_items', 'NEW.qty > 0', 'una línea de devolución debe tener cantidad'],
+    ['products', 'NEW.cost >= 0 AND NEW.price_retail >= 0 AND NEW.price_wholesale >= 0 AND NEW.min_stock >= 0', 'un producto no puede tener costo, precio ni mínimo negativos', 'cost, price_retail, price_wholesale, min_stock'],
+    ['inventory_movements', 'NEW.qty <> 0 AND NEW.stock_after = NEW.stock_before + NEW.qty', 'un movimiento de inventario no cuadra con la existencia'],
+    ['cash_sessions', 'NEW.opening_amount >= 0 AND (NEW.counted_amount IS NULL OR NEW.counted_amount >= 0)', 'el efectivo de una caja no puede ser negativo'],
+  ])}
+  `,
 ];
+
+// Reglas de la base (v5): cada una es un par de disparadores (al insertar y al modificar) que rechazan
+// la operación completa si la fila no cumple la condición.
+function guards(list) {
+  return list.map(([table, cond, message, columns]) => ['INSERT', `UPDATE${columns ? ` OF ${columns}` : ''}`].map((op) => `
+  CREATE TRIGGER chk_${table}_${op.slice(0, 3).toLowerCase()} BEFORE ${op} ON ${table} WHEN NOT (${cond})
+  BEGIN SELECT RAISE(ABORT, 'La base de datos rechazó el cambio: ${message}.'); END;`).join('')).join('\n');
+}
 
 // Aplica las migraciones que falten. Se llama dentro de una transacción: si una falla, no queda nada a medias.
 function migrate(db, migrations = MIGRATIONS) {

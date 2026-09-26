@@ -13,6 +13,10 @@ const DEFAULT_SETTINGS = {
   seller_can_receive_payments: '1',
   seller_can_discount: '1',
   seller_max_discount_pct: '10',
+  // Una venta a crédito a quien tiene deuda vencida la autoriza el administrador (auditoría 2.4).
+  block_overdue_credit: '1',
+  // Formato del CSV: auto (según la región de Windows de cada PC), coma o punto_y_coma (auditoría 2.10).
+  csv_format: 'auto',
   receipt_footer: '¡Gracias por su compra!',
   expense_categories: JSON.stringify(['Alquiler', 'Transporte', 'Publicidad', 'Nómina', 'Servicios', 'Internet', 'Delivery', 'Otros']),
   // Los aportes del dueño no van aquí: se registran aparte y no son ganancia (DT-21).

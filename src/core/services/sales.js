@@ -8,6 +8,7 @@ const CUSTOMER_TOTALS = `
   COALESCE((SELECT SUM(total - returned_total) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND payment_type = 'credito'), 0) AS credit_sold,
   COALESCE((SELECT SUM(paid) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND payment_type = 'credito'), 0) AS credit_paid,
   COALESCE((SELECT SUM(balance) FROM sales WHERE customer_id = c.id AND status <> 'anulada'), 0) AS balance,
+  COALESCE((SELECT SUM(balance) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND balance > 0 AND due_date < ?), 0) AS overdue_balance,
   COALESCE((SELECT SUM(total - returned_total) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND opening = 0), 0) AS total_bought,
   (SELECT MIN(due_date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND balance > 0) AS next_due,
   (SELECT MAX(date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND opening = 0) AS last_purchase`;
@@ -15,10 +16,11 @@ const CUSTOMER_TOTALS = `
 function customerList(ctx, { search = '', includeInactive = false, withBalance = false } = {}) {
   const where = [];
   const params = [];
-  if (!includeInactive) where.push('c.active = 1');
+  // Los que deben se ven siempre en cuentas por cobrar, aunque estén desactivados (datos de antes de la 1.3).
+  if (!includeInactive && !withBalance) where.push('c.active = 1');
   if (search) { where.push('(c.name LIKE ? OR c.phone LIKE ? OR c.document LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
-  const rows = ctx.db.all(`SELECT c.*, ${CUSTOMER_TOTALS} FROM customers c ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.name`, params);
   const t = today();
+  const rows = ctx.db.all(`SELECT c.*, ${CUSTOMER_TOTALS} FROM customers c ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.name`, [t, ...params]);
   return rows
     .map((c) => ({ ...c, account_status: accountStatus(c.credit_sold, c.credit_paid), overdue: c.balance > 0 && c.next_due && c.next_due < t ? 1 : 0 }))
     .filter((c) => !withBalance || c.balance > 0);
@@ -38,6 +40,8 @@ function customerGet(ctx, { id }) {
   return c;
 }
 
+// El vendedor registra y edita clientes, pero solo el administrador los desactiva o reactiva y les pone
+// límite de crédito. Un cliente que debe no se desactiva: dejaría de verse en la lista (auditoría 2.3).
 function customerSave(ctx, data) {
   const fields = {
     name: text(data.name, 'Nombre', { required: true, max: 120 }),
@@ -47,11 +51,24 @@ function customerSave(ctx, data) {
     document: text(data.document, 'Cédula/RNC', { max: 40 }),
     notes: text(data.notes, 'Notas', { max: 1000 }),
   };
-  if (data.active !== undefined) fields.active = data.active ? 1 : 0;
+  const admin = isAdmin(ctx);
+  if (data.credit_limit !== undefined && admin) fields.credit_limit = money(data.credit_limit === '' || data.credit_limit === null ? 0 : data.credit_limit, 'Límite de crédito');
   return ctx.db.tx(() => {
     if (data.id) {
+      const old = ctx.db.get('SELECT * FROM customers WHERE id = ?', [data.id]);
+      if (!old) throw new AppError('Cliente no encontrado.');
+      const active = data.active === undefined ? old.active : data.active ? 1 : 0;
+      if (active !== old.active) {
+        if (!admin) throw new AppError('Solo el administrador puede desactivar o reactivar clientes.', 'FORBIDDEN');
+        const balance = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada'", [data.id]));
+        if (!active && balance > 0) throw new AppError(`${old.name} debe ${balance.toFixed(2)}: no se puede desactivar hasta que salde su cuenta.`);
+        fields.active = active;
+      }
       ctx.db.update('customers', data.id, fields);
-      audit(ctx, 'editar_cliente', 'cliente', data.id, { nombre: fields.name });
+      const changes = { nombre: fields.name };
+      if (fields.active !== undefined) changes.activo = fields.active ? 'sí' : 'no';
+      if (fields.credit_limit !== undefined && Math.abs(fields.credit_limit - old.credit_limit) > 0.004) changes.limite_credito = { antes: old.credit_limit, despues: fields.credit_limit };
+      audit(ctx, 'editar_cliente', 'cliente', data.id, changes);
       return data.id;
     }
     const id = ctx.db.insert('customers', { ...fields, created_at: now() });
@@ -65,9 +82,10 @@ function customerSave(ctx, data) {
 function customerOpening(ctx, { customer_id, amount, date: d, due_date, note }) {
   const customer = ctx.db.get('SELECT * FROM customers WHERE id = ?', [customer_id]);
   if (!customer) throw new AppError('Cliente no encontrado.');
+  if (!customer.active) throw new AppError(`${customer.name} está desactivado.`);
   const total = money(amount, 'Saldo inicial', { allowZero: false });
-  const odate = date(d || today());
-  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento');
+  const odate = date(d || today(), 'Fecha de la deuda', { notFuture: true });
+  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento', { min: odate });
   return ctx.db.tx(() => {
     const id = ctx.db.insert('sales', {
       customer_id: customer.id, date: odate, sale_type: 'detalle', payment_type: 'credito', subtotal: total, discount: 0, total, cost_total: 0,
@@ -86,6 +104,7 @@ function create(ctx, data) {
   const paymentType = data.payment_type === 'credito' ? 'credito' : 'contado';
   const customer = data.customer_id ? ctx.db.get('SELECT * FROM customers WHERE id = ?', [data.customer_id]) : null;
   if (data.customer_id && !customer) throw new AppError('Cliente no encontrado.');
+  if (customer && !customer.active) throw new AppError(`${customer.name} está desactivado: no se le puede vender. El administrador puede reactivarlo en Clientes.`);
   if (paymentType === 'credito' && !customer) throw new AppError('Las ventas a crédito requieren un cliente.');
   if (!data.items || !data.items.length) throw new AppError('Agregue al menos un producto.');
 
@@ -144,10 +163,11 @@ function create(ctx, data) {
     paid = received;
   }
   const saleDate = today();
-  const dueDate = paymentType === 'credito' ? date(data.due_date || addDays(saleDate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento') : null;
+  const dueDate = paymentType === 'credito' ? date(data.due_date || addDays(saleDate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento', { min: saleDate }) : null;
   const costTotal = round2(lines.reduce((s, l) => s + l.qty * l.p.cost, 0));
 
   return ctx.db.tx(() => {
+    const credit = paymentType === 'credito' ? creditCheck(ctx, customer, round2(total - paid), data.authorize_credit) : null;
     const id = ctx.db.insert('sales', {
       customer_id: customer ? customer.id : null,
       date: saleDate,
@@ -188,9 +208,28 @@ function create(ctx, data) {
       });
       ledger(ctx, { direction: 'in', amount, method: p.method, category: 'venta', refType: 'venta', refId: id, description: `Venta #${id}${customer ? ' - ' + customer.name : ''}`, date: saleDate });
     }
-    audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts });
+    audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts, ...(credit ? { credito_autorizado: credit } : {}) });
     return id;
   });
+}
+
+// Control del crédito (auditoría 2.4). Una venta a crédito se detiene si el cliente tiene deuda vencida
+// (según Configuración) o si con esta venta pasaría su límite de crédito (0 = sin límite). El vendedor no
+// puede seguir; el administrador puede autorizarla (authorize_credit) y queda anotado en el historial.
+function creditCheck(ctx, customer, amount, authorize) {
+  const t = today();
+  const owed = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada'", [customer.id]));
+  const overdue = round2(ctx.db.value("SELECT COALESCE(SUM(balance), 0) FROM sales WHERE customer_id = ? AND status <> 'anulada' AND balance > 0 AND due_date < ?", [customer.id, t]));
+  const problems = [];
+  if (overdue > 0 && getSetting(ctx.db, 'block_overdue_credit') === '1') problems.push(`tiene ${overdue.toFixed(2)} vencido`);
+  if (customer.credit_limit > 0 && round2(owed + amount) > customer.credit_limit + 0.004) {
+    problems.push(`con esta venta debería ${round2(owed + amount).toFixed(2)} y su límite de crédito es ${customer.credit_limit.toFixed(2)}`);
+  }
+  if (!problems.length) return null;
+  const why = `${customer.name} ${problems.join(' y ')}.`;
+  if (!isAdmin(ctx)) throw new AppError(`${why} Solo el administrador puede autorizar otra venta a crédito.`, 'CREDIT_BLOCKED');
+  if (!authorize) throw new AppError(`${why} ¿Autoriza la venta a crédito de todas formas?`, 'CREDIT_CONFIRM');
+  return why;
 }
 
 function list(ctx, { from, to, customer_id, sale_type, payment_type, status, user_id } = {}) {

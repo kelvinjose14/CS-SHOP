@@ -63,7 +63,7 @@ function paymentDialog({ title, maxAmount, info, onSubmit, withDate = false }) {
       ${info ? html`<div class="info-box">${info}</div>` : ''}
       <label class="field"><span>Monto (pendiente: ${Fmt.money(maxAmount)})</span><input name="amount" type="number" min="0.01" step="0.01" value="${maxAmount}"></label>
       <label class="field"><span>Método de pago</span><select name="method">${methodOptions()}</select></label>
-      ${withDate ? html`<label class="field"><span>Fecha</span><input name="date" type="date" value="${todayStr()}"></label>` : ''}
+      ${withDate ? html`<label class="field"><span>Fecha</span><input name="date" type="date" value="${todayStr()}" max="${todayStr()}"></label>` : ''}
       <label class="field"><span>Nota</span><input name="note" placeholder="Opcional"></label>`,
     actions: [
       { label: 'Cancelar' },
@@ -89,7 +89,7 @@ function openingDialog({ title, who, withInvoice = false, onSubmit }) {
       <p class="muted">${who}. Se cobra o se paga con abonos, como cualquier otra deuda, pero <b>no cuenta como venta ni compra</b> del período.</p>
       <div class="grid-2">
         <label class="field"><span>Monto *</span><input name="amount" type="number" min="0.01" step="0.01"></label>
-        <label class="field"><span>Fecha de la deuda</span><input type="date" name="date" value="${todayStr()}"></label>
+        <label class="field"><span>Fecha de la deuda</span><input type="date" name="date" value="${todayStr()}" max="${todayStr()}"></label>
         <label class="field"><span>Vence</span><input type="date" name="due_date" value="${`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`}"></label>
         ${withInvoice ? html`<label class="field"><span>Factura</span><input name="invoice_ref" placeholder="Opcional"></label>` : ''}
         <label class="field span-2"><span>Nota</span><input name="note" placeholder="Ej. Saldo del cuaderno al 30/09"></label>

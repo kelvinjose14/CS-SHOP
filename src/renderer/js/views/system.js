@@ -84,7 +84,7 @@ function userForm(u, onSaved) {
       <label class="field"><span>Nombre *</span><input name="name" value="${u.name || ''}"></label>
       <label class="field"><span>Usuario (para entrar) *</span><input name="username" value="${u.username || ''}"></label>
       <label class="field"><span>Rol</span><select name="role">${options([['vendedor', 'Vendedor'], ['admin', 'Administrador']], u.role)}</select></label>
-      <label class="field"><span>${u.id ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña inicial *'}</span><input name="password" type="password"></label>
+      <label class="field"><span>${u.id ? 'Nueva contraseña (mínimo 8; vacío para no cambiarla)' : 'Contraseña inicial * (mínimo 8)'}</span><input name="password" type="password"></label>
       <label class="check"><input type="checkbox" name="active" ${u.active ? 'checked' : ''}> Usuario activo</label>
       <p class="muted small">Al asignar una contraseña, el usuario deberá cambiarla la próxima vez que entre.</p>`,
     actions: [
@@ -111,6 +111,11 @@ App.register({
             <label class="field"><span>Dirección</span><input name="business_address" value="${s.business_address}"></label>
             <label class="field"><span>Símbolo de moneda</span><input name="currency" value="${s.currency}"></label>
             <label class="field"><span>Mensaje al pie del recibo</span><input name="receipt_footer" value="${s.receipt_footer}"></label>
+            <label class="field"><span>Columnas del CSV para Excel</span><select name="csv_format">${options([
+              ['auto', 'Según la región de Windows de cada PC (recomendado)'],
+              ['coma', 'Coma (República Dominicana, EE. UU.)'],
+              ['punto_y_coma', 'Punto y coma, decimales con coma (España y otros)'],
+            ], s.csv_format)}</select></label>
           </div>
         </div>
         <div class="card">
@@ -122,6 +127,7 @@ App.register({
             <label class="check"><input type="checkbox" name="allow_negative_stock" ${s.allow_negative_stock === '1' ? 'checked' : ''}> Permitir vender sin existencia (inventario negativo)</label>
             <label class="check"><input type="checkbox" name="seller_can_receive_payments" ${s.seller_can_receive_payments === '1' ? 'checked' : ''}> El vendedor puede registrar abonos de clientes</label>
             <label class="check"><input type="checkbox" name="seller_can_discount" ${s.seller_can_discount === '1' ? 'checked' : ''}> El vendedor puede aplicar descuentos</label>
+            <label class="check"><input type="checkbox" name="block_overdue_credit" ${s.block_overdue_credit === '1' ? 'checked' : ''}> Vender a crédito a quien tiene deuda vencida solo con autorización del administrador</label>
           </div>
         </div>
         <div class="card">
@@ -173,6 +179,7 @@ App.register({
         allow_negative_stock: f.allow_negative_stock ? '1' : '0',
         seller_can_receive_payments: f.seller_can_receive_payments ? '1' : '0',
         seller_can_discount: f.seller_can_discount ? '1' : '0',
+        block_overdue_credit: f.block_overdue_credit ? '1' : '0',
         expense_categories: lines(f.expense_categories),
         income_categories: lines(f.income_categories),
       };
@@ -195,7 +202,12 @@ App.register({
     $('#bk-folder', form).onclick = () => window.capsApi.backupOpenFolder();
     $('#bk-restore', form).onclick = async () => {
       try {
-        const p = await window.capsApi.backupRestore();
+        let p = await window.capsApi.backupRestore();
+        if (p && p.needsPassword) {
+          const password = await promptDialog({ title: 'Copia protegida con contraseña', label: `Contraseña de la copia ${p.name}`, type: 'password' });
+          if (!password) return;
+          p = await window.capsApi.backupRestore({ password });
+        }
         if (p) { toast('Datos restaurados. Inicie sesión nuevamente.'); App.onLoggedOut(); }
       } catch (e) { toast(e.message, 'error'); }
     };
@@ -317,11 +329,15 @@ async function renderExternal(box) {
   const st = await window.capsApi.external.status();
   const last = st.last_at ? `${Fmt.datetime(st.last_at)}${st.days_since > 0 ? ` (hace ${st.days_since} ${st.days_since === 1 ? 'día' : 'días'})` : ''}` : 'Nunca';
   setHTML(box, html`
-    ${st.dir ? html`<p>Carpeta: <code>${st.dir}</code> · Última copia: <b class="${st.overdue ? 'text-danger' : 'text-ok'}">${last}</b></p>` : html`<div class="warn-box">${icon('alert')} Todavía no hay copia fuera de esta computadora. Si el disco se daña, se pierde todo.</div>`}
+    ${st.dir ? html`<p>Carpeta: <code>${st.dir}</code> · Última copia: <b class="${st.overdue ? 'text-danger' : 'text-ok'}">${last}</b></p>
+      <p>${st.encrypted ? html`${icon('lock')} <b>Protegida con contraseña.</b> Si se pierde la memoria, nadie puede leer los datos sin la contraseña.` : html`<span class="text-warn">Sin contraseña:</span> quien encuentre la memoria puede leer los clientes, las ventas y los costos.`}</p>` : html`<div class="warn-box">${icon('alert')} Todavía no hay copia fuera de esta computadora. Si el disco se daña, se pierde todo.</div>`}
     ${st.last_error ? html`<div class="error-box">${st.last_error}</div>` : ''}
     <div class="inline">
       <button class="btn" id="ext-choose">${st.dir ? 'Cambiar carpeta…' : 'Elegir carpeta…'}</button>
-      ${st.dir ? html`<button class="btn primary" id="ext-now">Copiar ahora</button><button class="btn" id="ext-clear">Quitar</button>` : ''}
+      ${st.dir ? html`<button class="btn primary" id="ext-now">Copiar ahora</button>
+        <button class="btn" id="ext-pass">${icon('lock')} ${st.encrypted ? 'Cambiar contraseña…' : 'Proteger con contraseña…'}</button>
+        ${st.encrypted ? html`<button class="btn" id="ext-nopass">Quitar contraseña</button>` : ''}
+        <button class="btn" id="ext-clear">Quitar</button>` : ''}
     </div>`);
   const run = (fn, ok) => async () => {
     try {
@@ -333,6 +349,37 @@ async function renderExternal(box) {
   $('#ext-choose', box).onclick = run(() => window.capsApi.external.choose(), 'Carpeta guardada y copia hecha.');
   const now = $('#ext-now', box);
   if (now) now.onclick = run(() => window.capsApi.external.now(), 'Copia hecha.');
+  // Contraseña de la copia externa (auditoría 4.3).
+  const pass = $('#ext-pass', box);
+  if (pass) pass.onclick = () => modal({
+    title: 'Proteger la copia externa con contraseña',
+    width: 500,
+    body: html`
+      <div class="warn-box">${icon('alert')} Si olvida esta contraseña, las copias de la memoria <b>no se podrán abrir</b>. Anótela y guárdela fuera de la tienda, junto al código de recuperación.</div>
+      <p class="muted small">Las copias sin contraseña que haya en esa carpeta se borran al hacer la primera copia protegida. ${st.encrypted ? 'Las copias anteriores se siguen abriendo con la contraseña anterior.' : ''}</p>
+      <label class="field"><span>Contraseña (mínimo 8)</span><input name="password" type="password" minlength="8"></label>
+      <label class="field"><span>Repetir contraseña</span><input name="password2" type="password"></label>`,
+    actions: [
+      { label: 'Cancelar' },
+      {
+        label: 'Guardar y copiar', primary: true,
+        onClick: async ({ body }) => {
+          const f = formData(body);
+          if (f.password !== f.password2) { toast('Las contraseñas no coinciden.', 'error'); return false; }
+          try {
+            await window.capsApi.external.password(f.password);
+          } catch (e) { toast(e.message, 'error'); return false; }
+          toast('Copia protegida con contraseña.');
+          renderExternal(box);
+        },
+      },
+    ],
+  });
+  const nopass = $('#ext-nopass', box);
+  if (nopass) nopass.onclick = async () => {
+    if (!(await confirmDialog('Las próximas copias irán sin contraseña: quien encuentre la memoria podrá leer los datos. ¿Continuar?', { danger: true, okLabel: 'Quitar contraseña' }))) return;
+    run(() => window.capsApi.external.password(null), 'Las copias siguientes van sin contraseña.')();
+  };
   const clear = $('#ext-clear', box);
   if (clear) clear.onclick = async () => {
     if (!(await confirmDialog('¿Dejar de hacer la copia fuera de esta computadora?', { danger: true, okLabel: 'Quitar' }))) return;

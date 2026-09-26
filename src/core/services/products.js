@@ -283,16 +283,20 @@ function movements(ctx, { product_id, from, to, type } = {}) {
   });
 }
 
+// Resumen del inventario. Las unidades y el valor cuentan también los productos desactivados que
+// todavía tienen existencia: la mercancía sigue en la tienda (auditoría 2.2).
 function summary(ctx) {
   const s = ctx.db.get(`
-    SELECT COUNT(*) AS products,
+    SELECT COALESCE(SUM(active), 0) AS products,
            COALESCE(SUM(CASE WHEN stock > 0 THEN stock ELSE 0 END), 0) AS units,
            COALESCE(SUM(CASE WHEN stock > 0 THEN stock * cost ELSE 0 END), 0) AS value_cost,
            COALESCE(SUM(CASE WHEN stock > 0 THEN stock * price_retail ELSE 0 END), 0) AS value_retail,
            COALESCE(SUM(CASE WHEN stock > 0 THEN stock * price_wholesale ELSE 0 END), 0) AS value_wholesale,
-           COALESCE(SUM(CASE WHEN stock <= 0 THEN 1 ELSE 0 END), 0) AS out_of_stock,
-           COALESCE(SUM(CASE WHEN stock > 0 AND stock <= min_stock THEN 1 ELSE 0 END), 0) AS low_stock
-      FROM products WHERE active = 1`);
+           COALESCE(SUM(CASE WHEN active = 1 AND stock <= 0 THEN 1 ELSE 0 END), 0) AS out_of_stock,
+           COALESCE(SUM(CASE WHEN active = 1 AND stock > 0 AND stock <= min_stock THEN 1 ELSE 0 END), 0) AS low_stock,
+           COALESCE(SUM(CASE WHEN active = 0 AND stock > 0 THEN 1 ELSE 0 END), 0) AS inactive_with_stock,
+           COALESCE(SUM(CASE WHEN active = 0 AND stock > 0 THEN stock ELSE 0 END), 0) AS inactive_units
+      FROM products`);
   const out = {
     ...s,
     value_cost: round2(s.value_cost),

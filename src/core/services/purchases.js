@@ -61,8 +61,8 @@ function supplierOpening(ctx, { supplier_id, amount, date: d, due_date, invoice_
   const supplier = ctx.db.get('SELECT * FROM suppliers WHERE id = ?', [supplier_id]);
   if (!supplier) throw new AppError('Proveedor no encontrado.');
   const total = money(amount, 'Saldo inicial', { allowZero: false });
-  const odate = date(d || today());
-  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento');
+  const odate = date(d || today(), 'Fecha de la deuda', { notFuture: true });
+  const due = date(due_date || addDays(odate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento', { min: odate });
   return ctx.db.tx(() => {
     const id = ctx.db.insert('purchases', {
       supplier_id: supplier.id, date: odate, due_date: due, invoice_ref: text(invoice_ref, 'Factura', { max: 60 }), payment_type: 'credito', payment_method: null,
@@ -78,7 +78,7 @@ function supplierOpening(ctx, { supplier_id, amount, date: d, due_date, invoice_
 function create(ctx, data) {
   const supplier = ctx.db.get('SELECT * FROM suppliers WHERE id = ?', [data.supplier_id]);
   if (!supplier) throw new AppError('Seleccione un proveedor.');
-  const pdate = date(data.date || today());
+  const pdate = date(data.date || today(), 'Fecha de la compra', { notFuture: true });
   const paymentType = data.payment_type === 'credito' ? 'credito' : 'contado';
   const items = (data.items || []).map((it, i) => ({
     product_id: it.product_id,
@@ -99,7 +99,18 @@ function create(ctx, data) {
     if (paid > total) throw new AppError('El monto pagado no puede ser mayor que el total.');
     if (paid > 0) payMethod = method(data.payment_method);
   }
-  const dueDate = paymentType === 'credito' ? date(data.due_date || addDays(pdate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento') : null;
+  const dueDate = paymentType === 'credito' ? date(data.due_date || addDays(pdate, Number(getSetting(ctx.db, 'credit_days')) || 30), 'Fecha de vencimiento', { min: pdate }) : null;
+
+  // Un costo 0 o muy distinto del actual (menos de la mitad o más del doble) cambia el costo promedio y
+  // la ganancia: si es un error de tecleo, se nota tarde. Se pide confirmarlo (auditoría 2.7).
+  const suspicious = [];
+  for (const it of items) {
+    const p = ctx.db.get('SELECT name, cost FROM products WHERE id = ?', [it.product_id]);
+    if (!p) throw new AppError('Producto no encontrado en la compra.');
+    if (it.unit_cost === 0) suspicious.push(`"${p.name}" a costo 0 (el actual es ${p.cost.toFixed(2)})`);
+    else if (p.cost > 0 && (it.unit_cost < p.cost / 2 || it.unit_cost > p.cost * 2)) suspicious.push(`"${p.name}" a ${it.unit_cost.toFixed(2)} (el actual es ${p.cost.toFixed(2)})`);
+  }
+  if (suspicious.length && !data.confirm_costs) throw new AppError(`Revise ${suspicious.length === 1 ? 'este costo' : 'estos costos'}: ${suspicious.join('; ')}. Cambiará el costo promedio. ¿Es correcto?`, 'COST_CONFIRM');
 
   return ctx.db.tx(() => {
     const id = ctx.db.insert('purchases', {
@@ -139,7 +150,7 @@ function create(ctx, data) {
       ctx.db.insert('purchase_payments', { purchase_id: id, supplier_id: supplier.id, date: pdate, amount: paid, method: payMethod, note: 'Pago inicial', user_id: ctx.user.id, created_at: now() });
       ledger(ctx, { direction: 'out', amount: paid, method: payMethod, category: 'compra', refType: 'compra', refId: id, description: `Compra #${id} - ${supplier.name}`, date: pdate });
     }
-    audit(ctx, 'registrar_compra', 'compra', id, { proveedor: supplier.name, total, pagado: paid, tipo: paymentType });
+    audit(ctx, 'registrar_compra', 'compra', id, { proveedor: supplier.name, total, pagado: paid, tipo: paymentType, ...(suspicious.length ? { costos_confirmados: suspicious } : {}) });
     return id;
   });
 }
@@ -193,7 +204,7 @@ function applyPayment(ctx, purchase, amount, payMethod, pdate, note) {
 function pay(ctx, { purchase_id, supplier_id, amount, method: m, date: d, note }) {
   amount = money(amount, 'Monto', { allowZero: false });
   const payMethod = method(m);
-  const pdate = date(d || today());
+  const pdate = date(d || today(), 'Fecha del pago', { notFuture: true });
   const n = text(note, 'Nota');
   return ctx.db.tx(() => {
     let targets;

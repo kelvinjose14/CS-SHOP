@@ -392,3 +392,17 @@ input.invalid { border-color: var(--danger); background: var(--danger-soft); }
 /* Tablas grandes: aviso de filas ocultas (no sale al imprimir: se despliegan antes) */
 .table tr.table-more td { background: var(--info-soft); color: var(--ink-2); font-size: 12.5px; text-align: center; }
 body.printing .table tr.table-more { display: none; }
+
+/* Pantallas angostas (ventana mínima de 1100 px, auditoría 2.9). Las columnas de las cuadrículas pueden
+   achicarse: una tabla ancha se desplaza dentro de su tarjeta en vez de empujar toda la pantalla. Por debajo
+   de 1300 px, el panel lateral de Gastos y el resumen de Caja pasan debajo de la tabla. */
+.split > *, .cash-grid > *, .dash-grid > *, .pos > * { min-width: 0; }
+@media (max-width: 1300px) {
+  .split, .cash-grid { grid-template-columns: 1fr; }
+  .table th { white-space: normal; }
+  .table th, .table td { padding-left: 6px; padding-right: 6px; }
+}
+.cs-note { font-size: 12.5px; color: var(--danger); padding: 4px 4px 8px; border-bottom: 1px solid #f0f0f3; }
+.open-form { flex-wrap: wrap; }
+.open-form .field.wide { width: 360px; }
+.inline.nowrap { flex-wrap: nowrap; }

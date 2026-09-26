@@ -138,7 +138,7 @@ App.register({
               <div class="inline"><select name="supplier_id">${options(suppliers.map((s) => [s.id, s.name]), '', { empty: 'Seleccione…' })}</select>
               <button class="btn" id="add-sup" title="Nuevo proveedor">${icon('plus')}</button></div>
             </label>
-            <label class="field"><span>Fecha</span><input type="date" name="date" value="${todayStr()}"></label>
+            <label class="field"><span>Fecha</span><input type="date" name="date" value="${todayStr()}" max="${todayStr()}"></label>
             <label class="field"><span>No. factura del proveedor</span><input name="invoice_ref"></label>
           </div>
         </div>
@@ -253,7 +253,8 @@ App.register({
       };
       btn.disabled = true;
       try {
-        const id = await api('purchases.create', data);
+        // Costo 0 o muy distinto del actual: se confirma antes de cambiar el costo promedio (auditoría 2.7).
+        const id = await apiConfirm('purchases.create', data, { code: 'COST_CONFIRM', extra: { confirm_costs: true }, title: 'Revisar costos', okLabel: 'Sí, son correctos' });
         toast(`Compra ${Fmt.purchaseNo(id)} registrada. Inventario actualizado.`);
         App.go('purchases');
       } catch { /* mensaje ya mostrado */ } finally {

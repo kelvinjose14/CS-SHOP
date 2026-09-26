@@ -143,3 +143,41 @@ test('la copia externa se considera vencida después de 7 días', async (t) => {
   assert.ok(st.days_since >= 7);
   assert.equal(st.overdue, true);
 });
+
+test('copia externa con contraseña: la memoria no tiene nada legible y se restaura con la contraseña', async (t) => {
+  const { b, dataDir } = await principal(t);
+  await b.call('customers.save', { name: 'Cliente Secreto', phone: '809-555-1234' });
+  const usb = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-usb-'));
+  const target = path.join(usb, 'CAPS Shop respaldos');
+  b.setExternalDir(usb);
+  assert.ok(fs.existsSync(path.join(target, `capsshop-${today()}.db`)), 'antes, sin contraseña');
+  assert.throws(() => b.setExternalPassword('corta'), /al menos 8/);
+
+  const st = b.setExternalPassword('clave-de-la-usb');
+  assert.equal(st.encrypted, true);
+  const file = path.join(target, `capsshop-${today()}.cifrado`);
+  const raw = fs.readFileSync(file);
+  assert.equal(raw.subarray(0, 8).toString(), 'CAPSCIF1');
+  for (const secret of ['SQLite format', 'Cliente Secreto', '809-555-1234', 'admin']) assert.ok(!raw.includes(secret), `no aparece "${secret}"`);
+  assert.deepEqual(fs.readdirSync(target).filter((f) => f.endsWith('.db')), [], 'la copia sin contraseña se borró');
+  assert.ok(!fs.readdirSync(dataDir).some((f) => f.endsWith('.tmp')), 'no quedan archivos temporales');
+
+  // Restaurar: sin contraseña o con otra, no; con la correcta, sí.
+  await b.call('customers.save', { name: 'Después de la copia' });
+  assert.equal(b.isEncrypted(file), true);
+  await assert.rejects(b.validate(file, { password: 'otra-clave' }), (e) => e.code === 'BACKUP_PASSWORD');
+  await assert.rejects(b.restore(file, {}), (e) => e.code === 'BACKUP_PASSWORD');
+  assert.equal(await b.validate(file, { password: 'clave-de-la-usb' }), true);
+  await b.restore(file, { password: 'clave-de-la-usb' });
+  await b.login('admin', 'admin123');
+  const customers = (await b.call('customers.list')).map((c) => c.name);
+  assert.ok(customers.includes('Cliente Secreto'));
+  assert.ok(!customers.includes('Después de la copia'));
+  assert.ok(!fs.readdirSync(dataDir).some((f) => f.endsWith('.tmp')));
+
+  // Otra carpeta conserva la contraseña; quitarla vuelve a las copias normales.
+  const usb2 = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-usb-'));
+  assert.equal(b.setExternalDir(usb2).encrypted, true);
+  assert.equal(b.setExternalPassword(null).encrypted, false);
+  assert.ok(fs.existsSync(path.join(usb2, 'CAPS Shop respaldos', `capsshop-${today()}.db`)));
+});

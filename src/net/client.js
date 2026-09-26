@@ -180,8 +180,8 @@ function createClient({ host, port = PORT, key, version, serverId, onMoved, disc
     logout: (token) => request('POST', '/v1/logout', { token }, { retries: 0 }),
     // El mismo request_id en cada reintento: la principal no repite la operación.
     call: (token, name, params) => request('POST', '/v1/call', { token, name, params, request_id: crypto.randomUUID() }),
-    async photo(name) {
-      const img = await request('POST', '/v1/foto', { name }, { retries: 0 });
+    async photo(name, token) {
+      const img = await request('POST', '/v1/foto', { name, token }, { retries: 0 });
       return img ? { type: img.type, data: Buffer.from(img.data, 'base64') } : null;
     },
   };

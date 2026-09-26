@@ -42,8 +42,11 @@ function login(ctx, { username, password }) {
   return publicUser(u);
 }
 
+// Mínimo 8 caracteres (auditoría 4.7). Las contraseñas que ya existen siguen sirviendo; la regla se
+// aplica al ponerlas o cambiarlas.
+const MIN_PASSWORD = 8;
 function validatePassword(p) {
-  if (!p || String(p).length < 6) throw new AppError('La contraseña debe tener al menos 6 caracteres.');
+  if (!p || String(p).length < MIN_PASSWORD) throw new AppError(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`);
 }
 
 function changeOwnPassword(ctx, { current, password }) {
@@ -156,13 +159,16 @@ const SETTING_LABELS = {
   seller_can_receive_payments: 'Vendedor cobra abonos',
   seller_can_discount: 'Vendedor aplica descuentos',
   seller_max_discount_pct: 'Descuento máximo del vendedor (%)',
+  block_overdue_credit: 'Crédito con deuda vencida solo con autorización',
+  csv_format: 'Formato del CSV',
   receipt_footer: 'Pie del recibo',
   expense_categories: 'Categorías de gastos',
   income_categories: 'Categorías de otros ingresos',
 };
 
 function settingValue(key, v) {
-  if (['require_open_cash', 'allow_negative_stock', 'seller_can_receive_payments', 'seller_can_discount'].includes(key)) return String(v) === '1' ? 'sí' : 'no';
+  if (['require_open_cash', 'allow_negative_stock', 'seller_can_receive_payments', 'seller_can_discount', 'block_overdue_credit'].includes(key)) return String(v) === '1' ? 'sí' : 'no';
+  if (key === 'csv_format') return { auto: 'según la región de Windows', coma: 'coma', punto_y_coma: 'punto y coma' }[v] || String(v);
   if (key.endsWith('_categories')) {
     try { return JSON.parse(v).join(', '); } catch { return String(v); }
   }
@@ -175,6 +181,7 @@ function settingsSave(ctx, values) {
     const changes = {};
     for (const [k, v] of Object.entries(values || {})) {
       if (!(k in DEFAULT_SETTINGS)) continue;
+      if (k === 'csv_format' && !['auto', 'coma', 'punto_y_coma'].includes(v)) throw new AppError('Formato del CSV inválido.');
       setSetting(ctx.db, k, v);
       if (String(before[k] ?? '') !== String(v ?? '')) changes[SETTING_LABELS[k] || k] = { antes: settingValue(k, before[k]), despues: settingValue(k, v) };
     }

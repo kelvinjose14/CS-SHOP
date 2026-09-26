@@ -41,7 +41,7 @@ async function main() {
   const customer = db.get("SELECT customer_id AS id FROM sales WHERE customer_id IS NOT NULL GROUP BY customer_id ORDER BY COUNT(*) DESC LIMIT 1").id;
   const product = db.get('SELECT product_id AS id FROM sale_items GROUP BY product_id ORDER BY COUNT(*) DESC LIMIT 1').id;
   const session = db.value('SELECT MAX(id) FROM cash_sessions');
-  A('cash.open', { amount: 1000 });
+  A('cash.open', { amount: 1000, reason: 'Medición' });
 
   const cases = [
     ['Inicio (administrador)', () => A('reports.dashboard')],
@@ -57,6 +57,8 @@ async function main() {
     ['Clientes', () => A('customers.list', {})],
     ['Cliente con más compras', () => A('customers.get', { id: customer })],
     ['Cuentas por cobrar', () => A('receivables.list', {})],
+    ['Depósitos al banco (todos)', () => A('deposits.list', {})],
+    ['Depósitos por verificar', () => A('deposits.list', { status: 'pendiente' })],
     ['Compras (año)', () => A('purchases.list', { from: year.from, to: year.to })],
     ['Proveedores', () => A('suppliers.list', {})],
     ['Cuentas por pagar', () => A('payables.list', {})],

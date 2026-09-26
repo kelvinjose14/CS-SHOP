@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('capsApi', {
     newKey: () => unwrap(ipcRenderer.invoke('net:newKey')),
   },
   saveText: (opts) => unwrap(ipcRenderer.invoke('file:saveText', opts)),
+  csvFormat: (setting) => unwrap(ipcRenderer.invoke('file:csvFormat', setting)),
   readProducts: () => unwrap(ipcRenderer.invoke('file:readProducts')),
   productTemplate: () => unwrap(ipcRenderer.invoke('file:productTemplate')),
   savePdf: (opts) => unwrap(ipcRenderer.invoke('file:savePdf', opts)),
@@ -38,7 +39,7 @@ contextBridge.exposeInMainWorld('capsApi', {
     set: (p) => unwrap(ipcRenderer.invoke('print:set', p)),
   },
   backupCreate: () => unwrap(ipcRenderer.invoke('backup:create')),
-  backupRestore: () => unwrap(ipcRenderer.invoke('backup:restore')),
+  backupRestore: (opts) => unwrap(ipcRenderer.invoke('backup:restore', opts)),
   backupOpenFolder: () => unwrap(ipcRenderer.invoke('backup:openFolder')),
   updates: {
     status: () => unwrap(ipcRenderer.invoke('update:status')),
@@ -50,6 +51,7 @@ contextBridge.exposeInMainWorld('capsApi', {
     choose: () => unwrap(ipcRenderer.invoke('backup:chooseExternal')),
     clear: () => unwrap(ipcRenderer.invoke('backup:clearExternal')),
     now: () => unwrap(ipcRenderer.invoke('backup:externalNow')),
+    password: (password) => unwrap(ipcRenderer.invoke('backup:externalPassword', password)),
   },
   logError: (message) => ipcRenderer.invoke('log:renderer', message).catch(() => {}),
   support: {

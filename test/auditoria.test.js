@@ -63,7 +63,7 @@ test('3.2: las listas y reportes devuelven todas las filas, sin tope', async () 
 
 test('3.3: anular una compra devuelve el costo promedio', async () => {
   const { call, sup } = await setup();
-  const buy = (product, qty, unit_cost) => call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: product, qty, unit_cost }] });
+  const buy = (product, qty, unit_cost) => call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: product, qty, unit_cost }], confirm_costs: true });
   const cost = (id) => call('products.get', { id }).cost;
   // Sin ventas en el medio: vuelve exacto.
   const a = call('products.save', { name: 'A', cost: 100, price_retail: 300, initial_stock: 10 });
@@ -86,7 +86,7 @@ test('3.3: anular una compra devuelve el costo promedio', async () => {
   assert.equal(cost(c), 200); // quedan 10 a 100 y 10 a 300
   // El mismo producto dos veces en una compra.
   const d = call('products.save', { name: 'D', cost: 100, price_retail: 300, initial_stock: 10 });
-  const pd = call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: d, qty: 10, unit_cost: 300 }, { product_id: d, qty: 20, unit_cost: 500 }] });
+  const pd = call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: d, qty: 10, unit_cost: 300 }, { product_id: d, qty: 20, unit_cost: 500 }], confirm_costs: true });
   assert.equal(cost(d), 350); // (10 × 100 + 10 × 300) / 20 = 200; (20 × 200 + 20 × 500) / 40 = 350
   call('purchases.void', { id: pd, reason: 'error' });
   assert.equal(cost(d), 100);

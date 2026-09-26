@@ -97,6 +97,21 @@ async function api(name, params, { silent = false } = {}) {
   }
 }
 
+// Operaciones que el núcleo detiene para pedir confirmación (código code): se pregunta con su mensaje
+// y, si se acepta, se repite con extra (por ejemplo, autorizar un crédito o confirmar un costo).
+async function apiConfirm(name, params, { code, extra, title = 'Confirmar', okLabel = 'Aceptar' }) {
+  try {
+    return await api(name, params, { silent: true });
+  } catch (err) {
+    if (err.code !== code) {
+      if (!SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') toast(err.message, 'error');
+      throw err;
+    }
+    if (!(await confirmDialog(err.message, { title, okLabel }))) throw Object.assign(new Error('Cancelado.'), { code: 'CANCELLED' });
+    return api(name, { ...params, ...extra });
+  }
+}
+
 /* ---------- Avisos y diálogos ---------- */
 function toast(message, type = 'ok') {
   let box = $('#toasts');
@@ -171,13 +186,13 @@ function confirmDialog(message, { title = 'Confirmar', okLabel = 'Aceptar', dang
   });
 }
 
-function promptDialog({ title, label, placeholder = '', required = true, textarea = false }) {
+function promptDialog({ title, label, placeholder = '', required = true, textarea = false, type = 'text' }) {
   return new Promise((resolve) => {
     let answered = false;
     modal({
       title,
       width: 460,
-      body: html`<label class="field"><span>${label}</span>${textarea ? html`<textarea name="v" rows="3" placeholder="${placeholder}"></textarea>` : html`<input name="v" placeholder="${placeholder}">`}</label>`,
+      body: html`<label class="field"><span>${label}</span>${textarea ? html`<textarea name="v" rows="3" placeholder="${placeholder}"></textarea>` : html`<input name="v" type="${type}" placeholder="${placeholder}">`}</label>`,
       onClose: () => { if (!answered) resolve(null); },
       actions: [
         { label: 'Cancelar' },
@@ -297,17 +312,26 @@ function onRowButton(root, selector, rows, fn) {
 }
 
 /* ---------- Exportar ---------- */
-function toCsv(columns, rows) {
+// sep y dec: separador de columnas y de decimales que usa Excel en esa PC (auditoría 2.10).
+function toCsv(columns, rows, { sep = ',', dec = '.' } = {}) {
   const q = (v) => {
-    const s = String(v ?? '');
-    return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    let s = String(v ?? '');
+    // Un texto que empieza con = + - @ Excel lo ejecuta como fórmula (auditoría 4.6): se le antepone un
+    // apóstrofo. Los números negativos no, porque no son texto.
+    if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = `'${s}`;
+    return /["\n\r]/.test(s) || s.includes(sep) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const value = (c, r) => (c.csv ? c.csv(r) : c.money ? (Number(r[c.key]) || 0).toFixed(2) : c.date ? Fmt.date(r[c.key]) : c.datetime ? Fmt.datetime(r[c.key]) : r[c.key]);
-  return [columns.map((c) => q(c.label)).join(','), ...rows.map((r) => columns.map((c) => q(value(c, r))).join(','))].join('\r\n');
+  const num = (n) => (Number(n) || 0).toFixed(2).replace('.', dec);
+  const value = (c, r) => {
+    const v = c.csv ? c.csv(r) : c.money ? num(r[c.key]) : c.date ? Fmt.date(r[c.key]) : c.datetime ? Fmt.datetime(r[c.key]) : r[c.key];
+    return typeof v === 'number' ? String(v).replace('.', dec) : v;
+  };
+  return [columns.map((c) => q(c.label)).join(sep), ...rows.map((r) => columns.map((c) => q(value(c, r))).join(sep))].join('\r\n');
 }
 async function exportCsv(name, columns, rows) {
   const cols = columns.filter((c) => c.label && c.csv !== false);
-  const path = await window.capsApi.saveText({ defaultName: `${name}-${todayStr()}.csv`, content: toCsv(cols, rows) });
+  const format = await window.capsApi.csvFormat(App.settings.csv_format).catch(() => ({ sep: ',', dec: '.' }));
+  const path = await window.capsApi.saveText({ defaultName: `${name}-${todayStr()}.csv`, content: toCsv(cols, rows, format) });
   if (path) toast('Archivo exportado.');
 }
 async function exportPdf(name, { landscape = false } = {}) {
