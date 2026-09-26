@@ -14,7 +14,7 @@ function repo(version, changelog) {
   return dir;
 }
 
-const CHANGELOG = '# Cambios\n\n## Sin publicar\n\n## [1.2.0] - 2026-10-01\n\n### Agregado\n- Conteo.\n\n## [1.1.0] - 2026-09-26\n\n- Piloto.\n\n[1.2.0]: https://x\n[1.1.0]: https://y\n';
+const CHANGELOG = '# Cambios\n\n## Sin publicar\n\n## [1.2.0] - 2026-10-01\n\n### Agregado\n- Conteo.\n- [Manual](docs/manual/04-inventario.md#49-conteo) y [web](https://ejemplo.com).\n\n## [1.1.0] - 2026-09-26\n\n- Piloto.\n\n[1.2.0]: https://x\n[1.1.0]: https://y\n';
 
 test('toma solo la sección de la versión y agrega cómo instalar', () => {
   const root = repo('1.2.0', CHANGELOG);
@@ -22,6 +22,8 @@ test('toma solo la sección de la versión y agrega cómo instalar', () => {
   assert.match(text, /^### Agregado\n- Conteo\./);
   assert.doesNotMatch(text, /Piloto|https:\/\/x/);
   assert.match(text, /CAPS-Shop-Setup-1\.2\.0\.exe/);
+  assert.match(text, /\[Manual\]\(https:\/\/github\.com\/kelvinjose14\/CS-SHOP\/blob\/v1\.2\.0\/docs\/manual\/04-inventario\.md#49-conteo\)/, 'enlace relativo → archivo de esa versión');
+  assert.match(text, /\[web\]\(https:\/\/ejemplo\.com\)/);
   assert.match(notes('v1.1.0', { root: repo('1.1.0', CHANGELOG) }), /^- Piloto\.\n\n\*\*Instalar/);
 });
 
