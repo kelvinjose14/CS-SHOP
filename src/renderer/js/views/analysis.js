@@ -42,7 +42,7 @@ App.register({
         </div>
         <div class="dash-grid">
           <div class="card span-2">
-            <div class="card-head"><h3>Últimos 30 días</h3></div>
+            <div class="card-head"><h3>Últimos 30 días</h3>${admin ? html`<button class="link" data-go="executive">Dashboard ejecutivo</button>` : ''}</div>
             ${admin
               ? barChart(d.series, { keys: ['sales', 'gross_profit', 'expenses'], labels: ['Ventas', 'Ganancia bruta', 'Gastos'], colors: ['var(--brand)', 'var(--ok)', 'var(--chart-3)'], formatX: shortDate })
               : barChart(d.series, { keys: ['sales'], labels: ['Ventas'], colors: ['var(--brand)'], formatX: shortDate })}
@@ -77,6 +77,156 @@ App.register({
         </div>
       </div>`));
     $$('[data-go]', page).forEach((a) => (a.onclick = (e) => { e.preventDefault(); App.go(a.dataset.go); }));
+  },
+});
+
+/* ---------- Dashboard ejecutivo (1.4) ---------- */
+
+const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const monthName = (d, year = false) => `${MONTH_NAMES[Number(d.slice(5, 7)) - 1]}${year ? ` ${d.slice(0, 4)}` : ''}`;
+const rangeText = (r) => (r.from === r.to ? Fmt.date(r.from) : `${Fmt.date(r.from)} – ${Fmt.date(r.to)}`);
+
+// "▲ 12.3% vs el mes anterior". El margen cambia en puntos. En gastos, subir es malo (invert).
+function deltaLine(c, label, { points = false, invert = false } = {}) {
+  if (!c) return '';
+  if (c.change === null) return html`<div class="delta flat">Sin datos en ${label}</div>`;
+  const good = invert ? c.change < 0 : c.change > 0;
+  const cls = c.change === 0 ? 'flat' : good ? 'up' : 'down';
+  const arrow = c.change > 0 ? '▲' : c.change < 0 ? '▼' : '=';
+  const amount = points ? `${Math.abs(c.change).toFixed(1)} pts` : Fmt.pct(Math.abs(c.change));
+  return html`<div class="delta ${cls}" title="Antes: ${c.value === null ? '—' : c.value}">${arrow} ${amount} vs ${label}</div>`;
+}
+
+function kpiCard(r, key, label, value, { points, invert, tone = '' } = {}) {
+  // Sin ícono: con cuatro tarjetas por fila a 1280 px, el monto y las comparaciones necesitan el ancho.
+  return html`<div class="stat kpi ${tone}" data-kpi="${key}">
+    <div><div class="stat-label">${label}</div><div class="stat-value">${value}</div>
+    ${deltaLine(r.prev[key], r.prev.label, { points, invert })}
+    ${r.yoy ? deltaLine(r.yoy[key], 'el año anterior', { points, invert }) : ''}</div></div>`;
+}
+
+const BREAKDOWNS = [
+  { id: 'by_product', label: 'Producto', name: 'Producto' },
+  { id: 'by_brand', label: 'Marca', name: 'Marca' },
+  { id: 'by_category', label: 'Categoría', name: 'Categoría' },
+  { id: 'by_seller', label: 'Vendedor', name: 'Vendedor' },
+];
+
+function breakdownColumns(id) {
+  const b = BREAKDOWNS.find((x) => x.id === id);
+  return [
+    { key: 'name', label: b.name, cls: id === 'by_product' ? 'col-product' : '' },
+    ...(id === 'by_product' ? [{ key: 'category', label: 'Categoría' }] : []),
+    ...(id === 'by_seller' ? [{ key: 'tickets', label: 'Ventas', num: true, total: true }] : []),
+    { key: 'units', label: 'Unidades', num: true, total: true },
+    { key: 'revenue', label: 'Ventas netas', money: true, total: true },
+    { key: 'cost', label: 'Costo', money: true, total: true },
+    { key: 'profit', label: 'Utilidad', money: true, total: true },
+    { key: 'margin', label: 'Margen', align: 'right', pct: true, render: (x) => (x.margin === null ? '—' : Fmt.pct(x.margin)), csv: (x) => (x.margin === null ? '' : x.margin),
+      total: (rows) => { const v = rows.reduce((s, x) => s + x.revenue, 0); return v ? (rows.reduce((s, x) => s + x.profit, 0) / v) * 100 : 0; } },
+    ...(id === 'by_seller' ? [{ key: 'avg_ticket', label: 'Ticket promedio', money: true }] : []),
+    ...(id === 'by_product' ? [{ key: 'stock', label: 'Existencia', num: true }] : []),
+  ];
+}
+
+const STAGNANT_COLUMNS = [
+  { key: 'name', label: 'Producto', cls: 'col-product', render: (p) => productLabel(p), csv: (p) => productLabel(p) },
+  { key: 'category', label: 'Categoría' },
+  { key: 'stock', label: 'Existencia', num: true, total: true },
+  { key: 'value', label: 'Dinero parado (costo)', money: true, total: true },
+  { key: 'last_sale', label: 'Última venta', render: (p) => (p.last_sale ? Fmt.date(p.last_sale) : 'Nunca'), csv: (p) => p.last_sale || 'Nunca' },
+  { key: 'days_without_sale', label: 'Días sin vender', num: true },
+];
+
+App.register({
+  id: 'executive', title: 'Dashboard ejecutivo', icon: 'trend', group: 'Análisis', roles: ['admin'],
+  async render(page) {
+    const state = { tab: 'by_product', stagnant_days: 60, range: null, data: null };
+    const tb = toolbar(page, {
+      right: html`<button class="btn" id="ex-csv">${icon('download')} Exportar tabla</button><button class="btn" id="ex-pdf">${icon('download')} PDF</button>`,
+    });
+    const pp = el(html`<div></div>`);
+    tb.after(pp);
+    const box = el(html`<div class="report-area executive"></div>`);
+    page.appendChild(box);
+
+    const renderTable = () => {
+      const r = state.data;
+      // Por producto se ven las 25 que más dejan; el resto con "Mostrar todas" (el CSV y los totales llevan todas).
+      setHTML($('#ex-table', box), table({ columns: breakdownColumns(state.tab), rows: r[state.tab], limit: state.tab === 'by_product' ? 25 : TABLE_LIMIT, empty: 'Sin ventas en el período.' }));
+      $$('#ex-tabs [data-t]', box).forEach((b) => b.classList.toggle('active', b.dataset.t === state.tab));
+    };
+
+    const load = async () => {
+      const r = await api('reports.executive', { ...state.range, stagnant_days: state.stagnant_days });
+      state.data = r;
+      const c = r.current;
+      const f = r.forecast;
+      const inv = r.inventory;
+      const progress = f.forecast > 0 ? Math.min(100, (f.sales_so_far / f.forecast) * 100) : 0;
+      const cmpText = html`Comparado ${r.compared_to < r.to ? html`hasta el <b>${Fmt.date(r.compared_to)}</b> ` : ''}con ${r.prev.label} (${rangeText(r.prev)})${r.yoy ? html` y con el año anterior (${rangeText(r.yoy)})` : ''}.`;
+      setHTML(box, html`
+        ${reportHeader('Dashboard ejecutivo', r)}
+        <p class="muted small ex-compare">${cmpText}</p>
+        <div class="stats kpis">
+          ${kpiCard(r, 'sales', 'Ventas netas', Fmt.money(c.sales), { tone: 'brand' })}
+          ${kpiCard(r, 'gross_profit', 'Utilidad bruta', Fmt.money(c.gross_profit), { tone: 'ok' })}
+          ${kpiCard(r, 'margin', 'Margen bruto', c.margin === null ? '—' : Fmt.pct(c.margin), { points: true })}
+          ${kpiCard(r, 'net_profit', 'Utilidad neta', Fmt.money(c.net_profit), { tone: c.net_profit < 0 ? 'danger' : '' })}
+          ${kpiCard(r, 'avg_ticket', 'Ticket promedio', Fmt.money(c.avg_ticket))}
+          ${kpiCard(r, 'tickets', 'Cantidad de ventas', Fmt.num(c.tickets))}
+          ${kpiCard(r, 'units_per_ticket', 'Unidades por venta', c.units_per_ticket.toFixed(2))}
+          ${kpiCard(r, 'units', 'Unidades vendidas', Fmt.num(c.units))}
+        </div>
+        <div class="dash-grid">
+          <div class="card forecast" id="ex-forecast">
+            <div class="card-head"><h3>${icon('trend')} Pronóstico de cierre de ${monthName(f.month.from)}</h3></div>
+            <div class="fc-value">${Fmt.money(f.forecast)}</div>
+            <div class="muted small">Utilidad bruta estimada ${Fmt.money(f.forecast_profit)} (margen ${Fmt.pct(f.margin)})</div>
+            <div class="progress" title="${Fmt.pct(progress)} del pronóstico"><i style="width:${progress.toFixed(1)}%"></i></div>
+            <div class="small">Vendido: <b>${Fmt.money(f.sales_so_far)}</b> en ${f.days_elapsed} ${f.days_elapsed === 1 ? 'día' : 'días'} · ${f.days_left ? `faltan ${f.days_left} ${f.days_left === 1 ? 'día' : 'días'}` : 'último día del mes'}</div>
+            <div class="fc-compare">
+              <div><span>${monthName(f.previous_month.from, true)}</span><b>${Fmt.money(f.previous_month.sales)}</b>${deltaLine({ change: f.previous_month.change, value: f.previous_month.sales }, 'ese mes')}</div>
+              <div><span>${monthName(f.last_year.from, true)}</span><b>${Fmt.money(f.last_year.sales)}</b>${deltaLine({ change: f.last_year.change, value: f.last_year.sales }, 'ese mes')}</div>
+            </div>
+            <p class="muted small">${f.method === 'dia_semana'
+              ? `Lo vendido hasta hoy más lo que normalmente se vende cada día de la semana que falta (promedio de las últimas ${Math.round(f.history_days / 7)} semanas).`
+              : 'Todavía hay poca historia: se usa lo vendido por día en lo que va de mes.'}</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Ventas ${r.series.granularity === 'mes' ? 'mes a mes' : 'día a día'}</h3></div>
+            ${barChart(r.series.points, { keys: ['current', 'previous'], labels: ['Este período', `Período anterior (${r.prev.label.replace(/^el |^la /, '')})`], colors: ['var(--brand)', 'var(--chart-3)'], formatX: shortDate })}
+          </div>
+          <div class="card span-2" id="ex-inventory">
+            <div class="card-head"><h3>${icon('box')} Salud del inventario <small class="muted">últimos ${inv.window_days} días</small></h3>
+              <label class="inline-field">Estancado si no se vende en
+                <select id="ex-stagnant">${options([[30, '30 días'], [60, '60 días'], [90, '90 días'], [180, '180 días']], state.stagnant_days)}</select></label></div>
+            <div class="stats">
+              ${statCard('Rotación del inventario', inv.turnover === null ? '—' : `${inv.turnover.toFixed(1)} veces al año`, { iconName: 'swap', sub: 'Cuántas veces se vende el inventario en un año a este ritmo' })}
+              ${statCard('Días de inventario', inv.days_of_inventory === null ? 'Sin ventas' : `${Fmt.num(inv.days_of_inventory)} días`, { iconName: 'history', tone: inv.days_of_inventory > 180 ? 'warn' : '', sub: 'Lo que dura la mercancía de hoy si se sigue vendiendo igual' })}
+              ${statCard('Productos estancados', Fmt.num(inv.stagnant_count), { iconName: 'alert', tone: inv.stagnant_count ? 'warn' : 'ok', sub: `${Fmt.num(inv.stagnant_units)} unidades sin venderse en ${inv.stagnant_days} días` })}
+              ${statCard('Dinero parado', Fmt.money(inv.stagnant_value), { iconName: 'wallet', tone: inv.stagnant_value ? 'danger' : 'ok', sub: `De ${Fmt.money(inv.value_now)} invertidos en mercancía` })}
+            </div>
+            <div id="ex-stagnant-list">${table({ columns: STAGNANT_COLUMNS, rows: inv.stagnant, clickable: true, limit: 10, empty: `Ninguna gorra lleva ${inv.stagnant_days} días sin venderse.` })}</div>
+          </div>
+          <div class="card span-2">
+            <div class="card-head"><h3>Utilidad por…</h3>
+              <div class="seg" id="ex-tabs">${BREAKDOWNS.map((b) => html`<button data-t="${b.id}">${b.label}</button>`)}</div></div>
+            <div id="ex-table"></div>
+          </div>
+        </div>`);
+      renderTable();
+      $$('#ex-tabs [data-t]', box).forEach((b) => (b.onclick = () => { state.tab = b.dataset.t; renderTable(); }));
+      $('#ex-stagnant', box).onchange = (e) => { state.stagnant_days = Number(e.target.value); load(); };
+      onRowClick($('#ex-stagnant-list', box), inv.stagnant, (p) => productDetail(p.id, load));
+    };
+    $('#ex-csv', tb).onclick = () => {
+      if (!state.data) return;
+      const b = BREAKDOWNS.find((x) => x.id === state.tab);
+      exportCsv(`utilidad-por-${b.label.toLowerCase()}`, breakdownColumns(state.tab), state.data[state.tab]);
+    };
+    $('#ex-pdf', tb).onclick = () => exportPdf('dashboard-ejecutivo', { landscape: true });
+    periodPicker(pp, (range) => { state.range = { period: range.period, from: range.from, to: range.to }; load(); }, { initial: 'mes' });
   },
 });
 

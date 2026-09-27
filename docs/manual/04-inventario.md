@@ -43,6 +43,7 @@ Cree una ficha por cada combinación que se vende por separado: modelo, color y 
 |---|:---:|---|
 | **Nombre** | ✔ | Ej. "Gorra NY Yankees 59FIFTY" |
 | **Marca**, **Modelo**, **Color**, **Talla** | | Ayudan a buscar y salen en el recibo |
+| **Categoría** | | El estilo: Snapback, Trucker, Fitted… Al escribir, sugiere las que ya existen. Sirve para ver ventas y utilidad por categoría en el [dashboard ejecutivo](09-contabilidad-y-reportes.md#91-dashboard-ejecutivo) |
 | **Código / SKU** | | Si lo deja vacío, el sistema asigna uno: `CS-00001`, `CS-00002`… No se puede repetir |
 | **Código de barras** | | Escanéelo con el lector. No se puede repetir |
 | **Costo de compra** | | Luego se actualiza solo con cada compra ([costo promedio](../producto/reglas-de-negocio.md#1-costo-de-cada-gorra-costo-promedio)) |
@@ -116,7 +117,7 @@ Para cargar muchos productos de una vez, por ejemplo al empezar.
 2. Si no tiene una lista, pulse **Descargar plantilla**: es un archivo CSV que se abre en Excel, con los títulos y un ejemplo.
 3. Prepare la lista en Excel. La **primera fila** lleva los títulos:
    - obligatorios: **Nombre** y **Precio detalle**;
-   - opcionales: **Marca**, **Modelo**, **Color**, **Talla**, **SKU**, **Código de barras**, **Costo**, **Precio por mayor**, **Existencia**, **Mínimo** y **Notas**. Otras columnas se ignoran.
+   - opcionales: **Marca**, **Modelo**, **Categoría**, **Color**, **Talla**, **SKU**, **Código de barras**, **Costo**, **Precio por mayor**, **Existencia**, **Mínimo** y **Notas**. Otras columnas se ignoran.
 4. Guárdela como **Libro de Excel (.xlsx)** o **CSV**. Los archivos `.xls` viejos no se leen: guárdelos de nuevo como `.xlsx`.
 5. **Elegir archivo…** muestra una **vista previa**: cuántos productos son nuevos, cuántos se actualizan y cuáles tienen error, con la **fila** de Excel y el motivo. Todavía no se guardó nada.
 6. Corrija los errores en Excel y vuelva a elegir el archivo, o pulse **Importar** para cargar solo las filas correctas.

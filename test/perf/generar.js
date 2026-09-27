@@ -58,7 +58,7 @@ async function generate(file = DEFAULT_FILE, { log = console.log } = {}) {
     for (let i = 1; i <= 150; i++) {
       const cost = between(250, 900);
       const id = call('products.save', {
-        name: `Gorra modelo ${i}`, brand: pick(['New Era', 'Nike', 'Jordan', 'Adidas', 'Puma']), color: pick(['Negro', 'Rojo', 'Azul', 'Blanco']),
+        name: `Gorra modelo ${i}`, brand: pick(['New Era', 'Nike', 'Jordan', 'Adidas', 'Puma']), category: pick(['Fitted', 'Snapback', 'Trucker', 'Dad hat']), color: pick(['Negro', 'Rojo', 'Azul', 'Blanco']),
         size: pick(['7', '7 1/4', '7 1/2', 'Ajustable']), barcode: `7990${String(i).padStart(8, '0')}`,
         cost, price_retail: Math.round(cost * 2.1), price_wholesale: Math.round(cost * 1.6), min_stock: 5,
       });

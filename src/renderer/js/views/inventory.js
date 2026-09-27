@@ -10,9 +10,10 @@ function productColumns() {
   const admin = App.isAdmin();
   return [
     { label: '', render: (p) => productThumb(p, 38), csv: false, cls: 'w-thumb' },
-    { key: 'name', label: 'Producto', cls: 'col-product', render: (p) => html`<strong>${p.name}</strong><div class="muted small">${[p.brand, p.model].filter(Boolean).join(' · ')}</div>`, csv: (p) => p.name },
+    { key: 'name', label: 'Producto', cls: 'col-product', render: (p) => html`<strong>${p.name}</strong><div class="muted small">${[p.brand, p.model, p.category].filter(Boolean).join(' · ')}</div>`, csv: (p) => p.name },
     { key: 'brand', label: 'Marca', hide: true },
     { key: 'model', label: 'Modelo', hide: true },
+    { key: 'category', label: 'Categoría', hide: true },
     { key: 'color', label: 'Color' },
     { key: 'size', label: 'Talla' },
     { key: 'sku', label: 'SKU', render: (p) => html`<code>${p.sku}</code>` , csv: (p) => p.sku },
@@ -37,7 +38,7 @@ App.register({
     page.appendChild(summaryBox);
     const tb = toolbar(page, {
       left: html`
-        <div class="search">${icon('search')}<input id="p-search" placeholder="Buscar por nombre, marca, color, talla, SKU o código…"></div>
+        <div class="search">${icon('search')}<input id="p-search" placeholder="Buscar por nombre, marca, categoría, color, talla, SKU o código…"></div>
         <div class="seg" id="p-status">
           <button data-s="todos" class="active">Todos</button><button data-s="bajo">Stock bajo</button><button data-s="agotado">Agotados</button><button data-s="reponer">Reponer</button>
         </div>
@@ -101,6 +102,7 @@ async function productDetail(id, onChange) {
           <div class="kv">
             <div><span>Marca</span><b>${p.brand || '—'}</b></div>
             <div><span>Modelo</span><b>${p.model || '—'}</b></div>
+            <div><span>Categoría</span><b>${p.category || '—'}</b></div>
             <div><span>Color</span><b>${p.color || '—'}</b></div>
             <div><span>Talla</span><b>${p.size || '—'}</b></div>
             <div><span>SKU</span><b>${p.sku}</b></div>
@@ -143,8 +145,10 @@ async function productDetail(id, onChange) {
   return m;
 }
 
-function productForm(p, onSaved) {
+async function productForm(p, onSaved) {
   const isNew = !p;
+  // Marcas y categorías ya usadas: se sugieren al escribir para no terminar con "Snapback" y "snapback".
+  const facets = await api('products.facets').catch(() => ({ brands: [], categories: [] }));
   p = p || { min_stock: 2 };
   let photoData = null;
   const body = el(html`
@@ -157,6 +161,7 @@ function productForm(p, onSaved) {
         <label class="field span-2"><span>Nombre *</span><input name="name" value="${p.name || ''}" placeholder="Ej. Gorra New York Yankees 59FIFTY"></label>
         <label class="field"><span>Marca</span><input name="brand" value="${p.brand || ''}" list="dl-brands"></label>
         <label class="field"><span>Modelo</span><input name="model" value="${p.model || ''}"></label>
+        <label class="field"><span>Categoría</span><input name="category" value="${p.category || ''}" list="dl-categories" placeholder="Ej. Snapback, Trucker, Fitted"></label>
         <label class="field"><span>Color</span><input name="color" value="${p.color || ''}"></label>
         <label class="field"><span>Talla</span><input name="size" value="${p.size || ''}" placeholder="Ej. 7 1/4, Ajustable, S/M"></label>
         <label class="field"><span>Código / SKU</span><input name="sku" value="${p.sku || ''}" placeholder="Automático si se deja vacío"></label>
@@ -169,6 +174,8 @@ function productForm(p, onSaved) {
         ${isNew ? '' : html`<label class="check"><input type="checkbox" name="active" ${p.active ? 'checked' : ''}> Producto activo</label>`}
         <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${p.notes || ''}</textarea></label>
       </div>
+      <datalist id="dl-brands">${facets.brands.map((b) => html`<option value="${b}">`)}</datalist>
+      <datalist id="dl-categories">${facets.categories.map((b) => html`<option value="${b}">`)}</datalist>
     </form>`);
   $('[name=__file]', body).onchange = async (e) => {
     const f = e.target.files[0];

@@ -7,14 +7,14 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.3.0)
+## Estado actual (versión 1.4.0)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 82 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación y las correcciones y controles de la auditoría;
-  - 17 de interfaz con la app real;
+  - 85 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo y las correcciones y controles de la auditoría;
+  - 19 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -22,6 +22,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - Guía de soporte y recuperación ([manual 14](../manual/14-soporte-y-recuperacion.md)).
 - Todos los hallazgos de la [auditoría de producción](../tecnico/auditoria.md) corregidos (1.2.0 y 1.3.0), salvo la firma del instalador, que depende del dueño.
 - Instalador de Windows generado y publicado automáticamente en GitHub.
+- **Dashboard ejecutivo** con comparaciones, pronóstico de cierre de mes, salud del inventario y utilidad por producto, marca, categoría y vendedor (1.4.0, [O7](#o7-gestión-avanzada)).
 
 **Lo que NO está listo para producción:**
 
@@ -47,6 +48,7 @@ flowchart LR
   O3 --> O4[O4 Instalación y operación]
   O5 --> O6[O6 Piloto y aceptación]
   O4 --> O6
+  O6 --> O7[O7 Gestión avanzada]
 ```
 
 O2 va primero porque cambia la base de todo el sistema. Hacer O3, O4 u O5 antes obligaría a rehacer parte del trabajo.
@@ -235,7 +237,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | Plan del piloto: instalación, carga de datos, semana de uso y criterios | [Plan del piloto](../piloto/README.md) | Hecho |
 | Capacitación del dueño y del vendedor, con ejercicios comprobados | [Capacitación](../piloto/capacitacion.md) (los números los verifica `test/o6.test.js`) | Hecho |
 | Revisión diaria y registro de problemas | [Bitácora](../piloto/bitacora.md) | Hecho |
-| Lista de aceptación con todos los requisitos (131) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
+| Lista de aceptación con todos los requisitos (132) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
 | **Instalación en las PCs reales y carga de los datos reales** | [Plan, Día 0](../piloto/README.md#día-0-instalación-y-carga-de-datos) | **Pendiente (en la tienda)** |
 | **Capacitación** | [Capacitación](../piloto/capacitacion.md) | **Pendiente (en la tienda)** |
 | **Una semana de uso real** con revisión diaria | [Bitácora](../piloto/bitacora.md) | **Pendiente (en la tienda)** |
@@ -244,3 +246,24 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 **Terminado cuando:** el cliente firma la aceptación, y el sistema pasa a producción como versión 2.0.0.
 
 **Depende de:** O2, O3, O4 y O5.
+
+---
+
+### O7. Gestión avanzada
+
+**Estado:** en curso. Pedido del dueño el 27/09/2026 (DT-36). Una versión por parte; cada una se prueba en la tienda antes de seguir.
+
+**Meta:** que el sistema no solo registre, sino que ayude a decidir: cómo va el negocio contra antes, qué mercancía sobra o falta, quiénes son los mejores clientes y cuánto comprar.
+
+| Versión | Parte | Qué trae | Estado |
+|---|---|---|---|
+| **1.4.0** | Dashboard ejecutivo (RF-NUE-15, DT-37) | Indicadores comparados con el período anterior y el año anterior (ventas, utilidad, margen, ticket promedio, unidades por venta), pronóstico de cierre de mes, rotación, días de inventario, productos estancados, utilidad por producto, marca, categoría y vendedor. **Categoría** en el producto ([manual 9.1](../manual/09-contabilidad-y-reportes.md#91-dashboard-ejecutivo)) | En revisión |
+| 1.5.0 | Inventario avanzado | Modelos con variantes de color y talla (se crean en una cuadrícula; los productos actuales se agrupan solos), apartados con **stock físico** y **stock disponible**, conteos cíclicos sugeridos. Sin lotes (DT-36) | Pendiente |
+| 1.6.0 | CRM de clientes | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad | Pendiente |
+| 1.7.0 | Compras inteligentes | Tiempo de reposición por proveedor, sugerencia "Compra N" por gorra con su explicación (velocidad de venta, stock disponible, mínimo, lo ya pedido) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
+
+Pruebas de la 1.4.0: `test/ejecutivo.test.js`, `test/ui/ejecutivo.test.js` y la [medición de rendimiento](../tecnico/rendimiento.md#resultados-de-la-140-27092026).
+
+**Terminado cuando:** las cuatro versiones están publicadas, cada una con sus pruebas, el manual y la aprobación del dueño en la tienda.
+
+**Depende de:** nada de O6 para programarse; conviene que el piloto avance en paralelo.

@@ -188,7 +188,7 @@ test('4.1: ninguna respuesta al vendedor trae costos ni ganancias', async () => 
   const sale = call('sales.create', { customer_id: cu, payment_type: 'credito', items: [{ product_id: p, qty: 1 }] });
   asSeller(api);
   const calls = {
-    'products.list': {}, 'products.get': { id: p }, 'products.findByCode': { code: call('products.get', { id: p }).sku }, 'products.summary': {},
+    'products.list': {}, 'products.get': { id: p }, 'products.findByCode': { code: call('products.get', { id: p }).sku }, 'products.summary': {}, 'products.facets': {},
     'products.movements': { product_id: p }, 'customers.list': {}, 'customers.get': { id: cu }, 'sales.list': {}, 'sales.get': { id: sale },
     'receivables.list': {}, 'cash.status': {}, 'reports.dashboard': {}, 'settings.get': {},
   };

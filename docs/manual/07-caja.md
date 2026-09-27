@@ -13,7 +13,7 @@
 | Ver el historial de cierres y las cajas abiertas en otras computadoras | ✘ | ✔ |
 | Revisar los depósitos al banco contra el estado de cuenta | ✘ | ✔ |
 
-> Solo el **efectivo** pasa por la caja. Los cobros y pagos con tarjeta o transferencia no cambian la caja; se ven en [Flujo de dinero](09-contabilidad-y-reportes.md#92-flujo-de-dinero).
+> Solo el **efectivo** pasa por la caja. Los cobros y pagos con tarjeta o transferencia no cambian la caja; se ven en [Flujo de dinero](09-contabilidad-y-reportes.md#93-flujo-de-dinero).
 
 ## 7.1 Abrir la caja
 

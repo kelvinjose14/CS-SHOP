@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.3.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales) lo preparado para el piloto (O6) y los controles de la [auditoría de producción](../tecnico/auditoria.md). Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.4.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) y el dashboard ejecutivo (O7). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -18,7 +18,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 102 | 1 | 0 |
 | No funcionales | 14 | 12 | 1 | 1 |
-| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31 y DT-35) | 14 | 14 | 0 | 0 |
+| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31, DT-35 y DT-36) | 15 | 15 | 0 | 0 |
 
 
 > Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
@@ -223,12 +223,12 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 82 pruebas de lógica, 17 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 85 pruebas de lógica, 19 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md).
+Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md). RF-NUE-15 lo pidió el dueño (DT-36, [O7](objetivos.md#o7-gestión-avanzada)).
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
@@ -246,6 +246,7 @@ Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicier
 | RF-NUE-12 | Revisar los depósitos al banco contra el estado de cuenta (auditoría 4.2, DT-30) | Cada depósito queda por verificar; el administrador lo marca **En el banco** o **No llegó** (se descuenta del banco y queda como salida del negocio). El Inicio avisa mientras haya pendientes | Cumple (1.3.0) | Caja → **Depósitos por verificar** |
 | RF-NUE-13 | Límite de crédito y deuda vencida (auditoría 2.3 y 2.4, DT-31) | Límite por cliente (0 = sin límite); una venta a crédito que lo pasa, o a quien tiene deuda vencida, la detiene el sistema: el vendedor no sigue y el administrador la autoriza. Solo el administrador desactiva clientes, y no si deben | Cumple (1.3.0) | Clientes, Nueva venta, Configuración |
 | RF-NUE-14 | Copia externa protegida con contraseña (auditoría 4.3, DT-35) | Opcional. Con contraseña, la copia de la memoria va cifrada, las copias sin cifrar se borran y restaurar pide la contraseña | Cumple (1.3.0) | Configuración → Copias de seguridad |
+| RF-NUE-15 | Dashboard ejecutivo (DT-36, DT-37) | Ventas, utilidad, margen, ticket promedio, cantidad de ventas y unidades por venta comparados con el período anterior y con el año anterior; pronóstico de cierre de mes; rotación, días de inventario y productos estancados; utilidad por producto, marca, categoría y vendedor. Solo el administrador | Cumple (1.4.0) | Análisis → **Dashboard ejecutivo** |
 
 ## 4. Fuera de alcance
 
