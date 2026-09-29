@@ -20,8 +20,8 @@ Versión documentada: **1.3.1** (26/09/2026, para el piloto en la tienda). Los c
 |---|---|---|
 | 1 | [Primeros pasos](manual/01-primeros-pasos.md) | Instalar, entrar, cambiar contraseñas, configurar y cargar los datos iniciales |
 | 2 | [Rutina diaria](manual/02-rutina-diaria.md) | Lo que se hace cada día, de la apertura al cierre |
-| 3 | [Ventas](manual/03-ventas.md) | Cobrar, recibo, historial, devoluciones y anulaciones |
-| 4 | [Inventario](manual/04-inventario.md) | Productos, fotos, códigos, ajustes, importar desde Excel, etiquetas, conteo de inventario y qué reponer |
+| 3 | [Ventas](manual/03-ventas.md) | Cobrar, recibo, historial, devoluciones, anulaciones y apartados |
+| 4 | [Inventario](manual/04-inventario.md) | Productos, modelos con colores y tallas, fotos, códigos, ajustes, importar desde Excel, etiquetas, conteo (y conteo sugerido) y qué reponer |
 | 5 | [Compras y proveedores](manual/05-compras-y-proveedores.md) | Registrar compras, pagar a proveedores y cuentas por pagar |
 | 6 | [Clientes y cobros](manual/06-clientes-y-cobros.md) | Ventas a crédito, abonos y cuentas por cobrar |
 | 7 | [Caja](manual/07-caja.md) | Abrir, entradas, depósitos al banco, retiros y cierre |

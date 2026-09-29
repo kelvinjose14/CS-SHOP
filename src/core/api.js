@@ -11,6 +11,7 @@ const sales = require('./services/sales');
 const finance = require('./services/finance');
 const reports = require('./services/reports');
 const executive = require('./services/executive');
+const reservations = require('./services/reservations');
 const terminals = require('./services/terminals');
 
 const ALL = ['admin', 'vendedor'];
@@ -35,6 +36,17 @@ const METHODS = {
   'products.import': [ADMIN, products.importRows],
   'products.adjust': [ADMIN, products.adjust],
   'products.count': [ADMIN, products.count],
+  'products.models': [ALL, products.models],
+  'products.modelGet': [ALL, products.modelGet],
+  'products.createModel': [ADMIN, products.createModel],
+  'products.addVariants': [ADMIN, products.addVariants],
+  'products.updateModel': [ADMIN, products.updateModel],
+  'products.cycleCount': [ADMIN, products.cycleCount],
+  'reservations.list': [ALL, reservations.list],
+  'reservations.get': [ALL, reservations.get],
+  'reservations.create': [ALL, reservations.create],
+  'reservations.extend': [ALL, reservations.extend],
+  'reservations.cancel': [ALL, reservations.cancel],
 
   'suppliers.list': [ADMIN, purchases.supplierList],
   'suppliers.get': [ADMIN, purchases.supplierGet],

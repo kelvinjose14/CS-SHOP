@@ -42,7 +42,7 @@ Cree una ficha por cada combinación que se vende por separado: modelo, color y 
 | Campo | Obligatorio | Nota |
 |---|:---:|---|
 | **Nombre** | ✔ | Ej. "Gorra NY Yankees 59FIFTY" |
-| **Marca**, **Modelo**, **Color**, **Talla** | | Ayudan a buscar y salen en el recibo |
+| **Marca**, **Modelo**, **Color**, **Talla** | | Ayudan a buscar y salen en el recibo. Las gorras con el mismo nombre, marca y modelo forman un **modelo** ([4.10](#410-modelos-con-colores-y-tallas-administrador)) |
 | **Categoría** | | El estilo: Snapback, Trucker, Fitted… Al escribir, sugiere las que ya existen. Sirve para ver ventas y utilidad por categoría en el [dashboard ejecutivo](09-contabilidad-y-reportes.md#91-dashboard-ejecutivo) |
 | **Código / SKU** | | Si lo deja vacío, el sistema asigna uno: `CS-00001`, `CS-00002`… No se puede repetir |
 | **Código de barras** | | Escanéelo con el lector. No se puede repetir |
@@ -158,7 +158,46 @@ Para contar muchas gorras de una vez y corregir todas las diferencias juntas: al
 - Si se vendió o compró una gorra **mientras se contaba**, esa gorra no se ajusta y el resumen pide volver a contarla. Las demás sí se aplican.
 - Cada diferencia queda en **Movimientos de inventario** como **Conteo de inventario**, y el conteo completo en el **Historial de movimientos**.
 
-## 4.10 Errores comunes
+### Conteo sugerido de la semana (conteo cíclico)
+
+![Conteo sugerido](img/conteo-sugerido.jpg)
+
+En vez de contar toda la tienda de una vez, cada semana se cuenta una parte. **Conteo sugerido** deja en la lista solo lo que toca contar esta semana (20 gorras; se cambia en **Configuración** → **Gorras por conteo cíclico**). Cada gorra lleva su letra:
+
+| Letra | Qué gorras son | Se cuenta |
+|---|---|---|
+| **A** | Las que más venden: juntas hacen el 80% de lo vendido en los últimos 90 días | Cada 7 días |
+| **B** | El 15% siguiente | Cada 30 días |
+| **C** | El resto, y las que tienen existencia pero no se venden | Cada 90 días |
+
+Primero salen las A y, dentro de cada letra, las que más tiempo llevan sin contarse. Al lado dice cuándo se contó por última vez. Cuente y aplique como siempre: **las que cuente salen de la lista aunque coincidan**, y vuelven cuando les toque. **Ver todas** quita el filtro.
+
+## 4.10 Modelos con colores y tallas (administrador)
+
+Una gorra que se vende en varios colores y tallas es un **modelo**; cada combinación (Negro 7 1/4, Rojo 7…) es una **variante** con su propio SKU, código de barras y existencia. Se venden, compran y cuentan por variante, como cualquier producto.
+
+**Crear un modelo con todas sus variantes:**
+
+![Modelo con variantes](img/producto-variantes.jpg)
+
+1. **Inventario** → **Nuevo producto** → **Varios colores y tallas**.
+2. Escriba el nombre, la marca, el modelo, la categoría, el costo y los precios: son iguales para todas las variantes.
+3. En **Colores** y **Tallas**, escríbalos separados por coma. Aparece una cuadrícula con cada combinación.
+4. En cada casilla escriba las unidades que ya tiene de esa combinación (0 si todavía no llegan).
+5. **Guardar**. Se crean todas las combinaciones, cada una con su SKU. Las que no vende las puede desactivar después.
+
+**Ver un modelo:** en **Inventario**, **Modelos** agrupa las variantes (colores, tallas, existencia total y apartadas). Al abrir un modelo, o **Ver modelo** desde una variante, se ve la cuadrícula:
+
+![Detalle del modelo](img/modelo.jpg)
+
+- cada casilla es la existencia de esa combinación: **rojo** agotada, **amarillo** stock bajo, **gris** desactivada, y **−2** son unidades apartadas;
+- un clic en una casilla abre esa variante (para ajustar, editar o imprimir su etiqueta);
+- **Agregar colores o tallas** crea solo las combinaciones que faltan, con los mismos precios y costo;
+- **Editar modelo** cambia el nombre, la marca, el modelo o la categoría de todas las variantes, y, si se marca, el precio de todas.
+
+> El sistema arma los modelos solo: dos productos con el mismo nombre, marca y modelo (sin importar mayúsculas) son del mismo modelo. Al actualizar a la versión 1.5, los productos que ya tenía se agrupan así. Si a una variante se le cambia el nombre, pasa al modelo que corresponde.
+
+## 4.11 Errores comunes
 
 | Mensaje | Qué hacer |
 |---|---|
@@ -172,3 +211,5 @@ Para contar muchas gorras de una vez y corregir todas las diferencias juntas: al
 | **La existencia no cambia con este ajuste.** | El conteo es igual a la existencia actual: no hace falta ajustar |
 | **Existencia insuficiente de "…" (disponible: N).** | Una **Salida** no puede dejar la existencia en negativo |
 | **Motivo es obligatorio.** | Escriba el motivo del ajuste |
+| **La variante … está repetida.** | En la cuadrícula se escribió dos veces el mismo color o talla. Quite uno |
+| **Ya existe la variante … de "…". Agregue solo las que faltan.** | Ese modelo ya tiene esa combinación. Use **Agregar colores o tallas** desde el modelo |

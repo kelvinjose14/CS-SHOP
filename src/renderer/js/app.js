@@ -2,7 +2,7 @@
 /* Estructura principal: inicio de sesión, menú lateral y navegación entre pantallas. */
 
 const NAV_ORDER = [
-  'dashboard', 'pos', 'sales',
+  'dashboard', 'pos', 'sales', 'reservations',
   'products', 'movements', 'purchases', 'suppliers',
   'customers', 'receivables', 'payables', 'expenses', 'cash',
   'executive', 'accounting', 'cashflow', 'reports', 'audit',

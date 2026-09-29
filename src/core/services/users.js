@@ -161,6 +161,8 @@ const SETTING_LABELS = {
   seller_max_discount_pct: 'Descuento máximo del vendedor (%)',
   block_overdue_credit: 'Crédito con deuda vencida solo con autorización',
   csv_format: 'Formato del CSV',
+  reservation_days: 'Días de un apartado',
+  cycle_count_size: 'Gorras por conteo cíclico',
   receipt_footer: 'Pie del recibo',
   expense_categories: 'Categorías de gastos',
   income_categories: 'Categorías de otros ingresos',
@@ -182,6 +184,8 @@ function settingsSave(ctx, values) {
     for (const [k, v] of Object.entries(values || {})) {
       if (!(k in DEFAULT_SETTINGS)) continue;
       if (k === 'csv_format' && !['auto', 'coma', 'punto_y_coma'].includes(v)) throw new AppError('Formato del CSV inválido.');
+      if (k === 'reservation_days' && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 180)) throw new AppError('Los días de un apartado deben ser un número entre 1 y 180.');
+      if (k === 'cycle_count_size' && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 500)) throw new AppError('Las gorras por conteo cíclico deben ser un número entre 1 y 500.');
       setSetting(ctx.db, k, v);
       if (String(before[k] ?? '') !== String(v ?? '')) changes[SETTING_LABELS[k] || k] = { antes: settingValue(k, before[k]), despues: settingValue(k, v) };
     }

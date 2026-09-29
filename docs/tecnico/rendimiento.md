@@ -87,6 +87,23 @@ Con la migración 6. La base de prueba reparte las gorras en 4 categorías. El d
 
 Lo que más pesa del dashboard es la salud del inventario (unos 90 ms: última venta y primera entrada de cada producto) y la utilidad por producto de 3 años (unos 75 ms). Está muy por debajo del segundo; si la tienda llega a miles de productos, la última venta de cada uno se puede guardar en el producto.
 
+## Resultados de la 1.5.0 (29/09/2026)
+
+Con la migración 7. Medido en un equipo más lento que el de la 1.4.0: pantallas que no cambiaron tardan cerca del doble (Ventas del año: 20 → 44 ms), así que se comparan entre sí.
+
+| Pantalla u operación | ms |
+|---|---:|
+| Inicio (administrador / vendedor) | 22.7 / 16.6 |
+| Inventario (con lo apartado de cada gorra) | 2.6 |
+| **Inventario por modelo** | **3.8** |
+| **Detalle de un modelo** | **1.4** |
+| **Conteo sugerido (cíclico)** | **15.7** |
+| **Apartados** | **0.6** |
+| Dashboard ejecutivo (mes / año / 3 años) | 33.4 / 149.1 / 557.3 |
+| Registrar una venta (revisa lo apartado) | 5.0 |
+
+**Hallazgo:** en este equipo, el dashboard ejecutivo tardaba 690 ms con 3 años. La salud del inventario buscaba la última venta de cada producto recorriendo las ventas de 3 años (190 ms). Ahora descarta primero lo vendido desde la fecha de corte, con el índice por fecha, y busca la última venta solo de lo que queda: 10 ms. El mes pasó de 264 a 33 ms.
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.

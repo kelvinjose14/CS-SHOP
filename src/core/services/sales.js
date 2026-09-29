@@ -1,6 +1,8 @@
 'use strict';
 const { AppError, now, today, addDays, round2, money, int, text, date, method, accountStatus } = require('../util');
 const { audit, ledger, changeStock, getSetting, isAdmin, fmtMoney } = require('./common');
+const { reservedQty } = require('./products');
+const reservations = require('./reservations');
 
 // ---------- Clientes ----------
 
@@ -102,8 +104,14 @@ function customerOpening(ctx, { customer_id, amount, date: d, due_date, note }) 
 function create(ctx, data) {
   const saleType = data.sale_type === 'mayor' ? 'mayor' : 'detalle';
   const paymentType = data.payment_type === 'credito' ? 'credito' : 'contado';
-  const customer = data.customer_id ? ctx.db.get('SELECT * FROM customers WHERE id = ?', [data.customer_id]) : null;
-  if (data.customer_id && !customer) throw new AppError('Cliente no encontrado.');
+  // Venta de un apartado (1.5): es a nombre del cliente del apartado, y sus gorras no cuentan como apartadas.
+  const reservation = data.reservation_id ? reservations.active(ctx, data.reservation_id) : null;
+  if (reservation && data.customer_id && Number(data.customer_id) !== reservation.customer_id) {
+    throw new AppError('La venta de un apartado es a nombre del cliente que apartó.');
+  }
+  const customerId = reservation ? reservation.customer_id : data.customer_id;
+  const customer = customerId ? ctx.db.get('SELECT * FROM customers WHERE id = ?', [customerId]) : null;
+  if (customerId && !customer) throw new AppError('Cliente no encontrado.');
   if (customer && !customer.active) throw new AppError(`${customer.name} está desactivado: no se le puede vender. El administrador puede reactivarlo en Clientes.`);
   if (paymentType === 'credito' && !customer) throw new AppError('Las ventas a crédito requieren un cliente.');
   if (!data.items || !data.items.length) throw new AppError('Agregue al menos un producto.');
@@ -167,6 +175,16 @@ function create(ctx, data) {
   const costTotal = round2(lines.reduce((s, l) => s + l.qty * l.p.cost, 0));
 
   return ctx.db.tx(() => {
+    // Lo apartado para otros clientes no se vende (1.5).
+    const perProduct = new Map();
+    for (const l of lines) perProduct.set(l.p.id, { p: l.p, qty: (perProduct.get(l.p.id)?.qty || 0) + l.qty });
+    for (const { p, qty } of perProduct.values()) {
+      const held = reservedQty(ctx.db, p.id, { exclude: reservation ? reservation.id : 0 });
+      if (held > 0 && qty > p.stock - held) {
+        const free = Math.max(p.stock - held, 0);
+        throw new AppError(`De "${[p.name, p.color, p.size].filter(Boolean).join(' · ')}" ${free === 1 ? 'queda 1 disponible' : `quedan ${free} disponibles`}: ${held === 1 ? 'la otra está apartada' : `${held} están apartadas`} para otro cliente.`, 'RESERVED');
+      }
+    }
     const credit = paymentType === 'credito' ? creditCheck(ctx, customer, round2(total - paid), data.authorize_credit) : null;
     const id = ctx.db.insert('sales', {
       customer_id: customer ? customer.id : null,
@@ -208,7 +226,8 @@ function create(ctx, data) {
       });
       ledger(ctx, { direction: 'in', amount, method: p.method, category: 'venta', refType: 'venta', refId: id, description: `Venta #${id}${customer ? ' - ' + customer.name : ''}`, date: saleDate });
     }
-    audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts, ...(credit ? { credito_autorizado: credit } : {}) });
+    if (reservation) reservations.markSold(ctx, reservation.id, id);
+    audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts, ...(credit ? { credito_autorizado: credit } : {}), ...(reservation ? { apartado: reservation.id } : {}) });
     return id;
   });
 }
@@ -266,6 +285,7 @@ function get(ctx, { id }) {
   s.items = ctx.db.all('SELECT si.*, p.sku, p.barcode FROM sale_items si JOIN products p ON p.id = si.product_id WHERE sale_id = ? ORDER BY si.id', [id]);
   s.payments = ctx.db.all('SELECT sp.*, u.name AS user_name FROM sale_payments sp LEFT JOIN users u ON u.id = sp.user_id WHERE sale_id = ? ORDER BY sp.id', [id]);
   s.returns = ctx.db.all('SELECT r.*, u.name AS user_name FROM returns r LEFT JOIN users u ON u.id = r.user_id WHERE sale_id = ? ORDER BY r.id', [id]);
+  s.reservation_id = ctx.db.value('SELECT id FROM reservations WHERE sale_id = ?', [id]) || null;
   if (!isAdmin(ctx)) {
     delete s.cost_total;
     s.items.forEach((i) => delete i.unit_cost);

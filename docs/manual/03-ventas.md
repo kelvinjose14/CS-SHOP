@@ -104,7 +104,32 @@ Estados de una venta: **Pagado**, **Parcial** (abonada en parte), **Pendiente** 
 ### Corregir un pago de la venta (administrador)
 En el detalle de una venta **a crédito**, **Pagos** → **Anular** en un abono registrado por error ([Clientes, 6.4](06-clientes-y-cobros.md#anular-un-abono-registrado-por-error-administrador)).
 
-## 3.5 Errores comunes
+## 3.5 Apartados
+
+Menú **Principal** → **Apartados**. El vendedor y el administrador pueden usarlos.
+
+![Apartados](img/apartados.jpg)
+
+Un apartado reserva gorras para un cliente hasta una fecha. Mientras está activo, **esas unidades no se le pueden vender a otro cliente**: en el inventario y en la venta se ven como **Disp.** (disponibles) y **apart.** (apartadas).
+
+**Apartar:**
+1. **Nuevo apartado**.
+2. Elija el **Cliente** (si es nuevo, créelo antes en **Clientes**).
+3. Busque o escanee cada gorra; ajuste la cantidad.
+4. **Apartado hasta**: la fecha límite. Por defecto son 15 días; se cambia en **Configuración** → **Días que dura un apartado** (máximo 180).
+5. **Apartar**. Si no alcanzan las disponibles, el sistema dice cuántas quedan.
+
+**Cuando el cliente viene:** abra el apartado → **Vender**. Se abre **Nueva venta** con el cliente y las gorras ya puestas, y un aviso azul con el número del apartado. Cobre como siempre (contado o crédito). El apartado queda **Vendido** y la venta lo muestra en su detalle.
+
+**Si no viene:**
+- **Dar más días**: nueva fecha límite. Si ya había vencido, el sistema revisa que las gorras sigan disponibles.
+- **Cancelar apartado**, con el motivo. Las gorras vuelven a estar disponibles.
+
+**Vencidos:** desde el día siguiente a la fecha límite, las gorras ya no están reservadas y se pueden vender a cualquiera. El apartado aparece en **Vencidos**, y el **Inicio** avisa para que se llame al cliente y se cancele o se le den más días.
+
+> Un apartado **no cobra dinero ni mueve el inventario**: la existencia baja cuando se hace la venta. Si el cliente deja un adelanto, regístrelo al vender (por ejemplo, una venta a crédito con abono inicial).
+
+## 3.6 Errores comunes
 
 | Mensaje | Qué pasa | Qué hacer |
 |---|---|---|
@@ -112,6 +137,8 @@ En el detalle de una venta **a crédito**, **Pagos** → **Anular** en un abono 
 | **La caja está cerrada. Abra la caja antes de registrar movimientos en efectivo.** | Se intentó cobrar en efectivo sin caja abierta | Ir a **Caja** → **Abrir caja**, o cobrar con otro método |
 | **Existencia insuficiente de "…" (disponible: N).** | Se quiere vender más de lo que hay | Revisar la cantidad; si el inventario está mal, el administrador lo ajusta ([Inventario](04-inventario.md)) |
 | **"…" está agotado.** | El producto tiene existencia 0 | Igual que el anterior |
+| **De "…" quedan N disponibles: M están apartadas para otro cliente.** / **"…" está apartado para otro cliente.** | Esas gorras están reservadas en un apartado | Vender solo las disponibles, o vender desde el apartado si es ese cliente ([3.5](#35-apartados)) |
+| **La venta de un apartado es a nombre del cliente que apartó.** | Se cambió el cliente al vender un apartado | Vender a ese cliente, o cancelar el apartado primero |
 | **Las ventas a crédito requieren un cliente.** | Crédito con "Cliente general" | Elegir o crear el cliente |
 | **… tiene … vencido …** / **… su límite de crédito es …** | Control de crédito del cliente | Cobrar de contado, pedir un abono inicial mayor o que el administrador autorice |
 | **… está desactivado: no se le puede vender.** | El cliente se dio de baja | Venderle como cliente general, o que el administrador lo reactive |

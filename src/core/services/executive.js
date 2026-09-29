@@ -203,17 +203,20 @@ function inventoryHealth(db, t, stagnantDays) {
   // Estancados: tienen existencia, no se venden hace stagnantDays días y llevan al menos ese tiempo en
   // la tienda (una gorra que llegó ayer no está estancada).
   const since = addDays(t, -stagnantDays);
+  // Primero se descarta lo que se vendió desde esa fecha (pocas ventas, con el índice por fecha); la
+  // última venta y la primera entrada se buscan solo para lo que queda. Recorrer 3 años de ventas por
+  // producto tardaba 190 ms.
   const stagnant = db.all(
-    `SELECT p.id, p.name, p.color, p.size, p.sku, p.brand, p.category, p.stock, p.cost, p.price_retail, p.stock * p.cost AS value,
-            ls.last_sale, fi.first_in
+    `SELECT p.id, p.name, p.color, p.size, p.sku, p.brand, p.category, p.stock, p.cost, p.price_retail, p.stock * p.cost AS value, date(p.created_at) AS created_on,
+            (SELECT MAX(s.date) FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = p.id AND s.status <> 'anulada') AS last_sale,
+            (SELECT MIN(date(m.created_at)) FROM inventory_movements m WHERE m.product_id = p.id AND m.qty > 0) AS first_in
        FROM products p
-       LEFT JOIN (SELECT si.product_id, MAX(s.date) AS last_sale FROM sale_items si JOIN sales s ON s.id = si.sale_id
-                   WHERE s.status <> 'anulada' GROUP BY si.product_id) ls ON ls.product_id = p.id
-       LEFT JOIN (SELECT product_id, MIN(date(created_at)) AS first_in FROM inventory_movements WHERE qty > 0 GROUP BY product_id) fi ON fi.product_id = p.id
-      WHERE p.stock > 0 AND (ls.last_sale IS NULL OR ls.last_sale < ?) AND COALESCE(fi.first_in, date(p.created_at)) <= ?
+      WHERE p.stock > 0
+        AND p.id NOT IN (SELECT si.product_id FROM sales s JOIN sale_items si ON si.sale_id = s.id WHERE s.status <> 'anulada' AND s.date >= ?)
       ORDER BY value DESC`,
-    [since, since]
-  ).map((p) => ({ ...p, value: round2(p.value), days_without_sale: days(p.last_sale || p.first_in || t, t) - 1 }));
+    [since]
+  ).filter((p) => (p.first_in || p.created_on) <= since)
+    .map(({ created_on, ...p }) => ({ ...p, value: round2(p.value), days_without_sale: days(p.last_sale || p.first_in || t, t) - 1 }));
 
   return {
     window_days: HEALTH_DAYS,

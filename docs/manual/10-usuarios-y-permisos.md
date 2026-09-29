@@ -10,12 +10,13 @@
 |---|:---:|:---:|
 | Inicio (resumen) | Reducido: ventas, lo que deben los clientes, caja e inventario en unidades | Completo |
 | Nueva venta | ✔ | ✔ |
+| Apartados: crear, vender, dar más días y cancelar | ✔ | ✔ |
 | Descuentos | Hasta el máximo configurado, si está permitido | Sin límite |
 | Cambiar precio en la venta | ✘ | ✔ |
 | Historial de ventas | ✔ sin costos | ✔ |
 | Devoluciones y anulaciones de ventas | ✘ | ✔ |
 | Inventario y movimientos (consultar) | ✔ sin costos | ✔ |
-| Crear o editar productos, ajustar existencias | ✘ | ✔ |
+| Crear o editar productos y modelos, ajustar existencias, conteos | ✘ | ✔ |
 | Compras, proveedores y cuentas por pagar | ✘ | ✔ |
 | Clientes (registrar y editar) | ✔ | ✔ |
 | Cuentas por cobrar (ver) | ✔ | ✔ |
@@ -26,7 +27,7 @@
 | Gastos, otros ingresos y aportes del dueño | ✘ | ✔ |
 | Saldos iniciales, importar productos | ✘ | ✔ |
 | Imprimir etiquetas | ✔ | ✔ |
-| Contabilidad, flujo de dinero y reportes | ✘ | ✔ |
+| Dashboard ejecutivo, contabilidad, flujo de dinero y reportes | ✘ | ✔ |
 | Historial de movimientos | ✘ | ✔ |
 | Usuarios y configuración | ✘ | ✔ |
 
