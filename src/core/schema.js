@@ -407,6 +407,22 @@ const MIGRATIONS = [
     db.exec(`UPDATE products SET last_counted_at = (SELECT MAX(created_at) FROM inventory_movements m
                WHERE m.product_id = products.id AND m.type IN ('conteo', 'ajuste'))`);
   },
+
+  // v8: CRM de clientes (versión 1.6). Cumpleaños (mes y día, "MM-DD"), etiquetas (lista en JSON), VIP
+  // manual (auto = según lo que gasta) y notas de seguimiento con fecha y usuario.
+  `
+  ALTER TABLE customers ADD COLUMN birthday TEXT;
+  ALTER TABLE customers ADD COLUMN tags TEXT;
+  ALTER TABLE customers ADD COLUMN vip_mode TEXT NOT NULL DEFAULT 'auto' CHECK (vip_mode IN ('auto', 'si', 'no'));
+  CREATE TABLE customer_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    text TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX ix_customer_notes ON customer_notes(customer_id, id);
+  `,
 ];
 
 // Reglas de la base (v5): cada una es un par de disparadores (al insertar y al modificar) que rechazan

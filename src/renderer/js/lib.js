@@ -38,10 +38,14 @@ const Fmt = {
   saleNo(id) { return `V-${String(id).padStart(6, '0')}`; },
   purchaseNo(id) { return `C-${String(id).padStart(6, '0')}`; },
   resNo(id) { return `A-${String(id).padStart(6, '0')}`; },
+  // Cumpleaños "MM-DD" → "15/08"; y cuánto falta: hoy, mañana, en N días.
+  bday(b) { return b ? `${b.slice(3, 5)}/${b.slice(0, 2)}` : ''; },
+  bdayIn(n) { return n === 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`; },
+  ago(n) { return n === null || n === undefined ? '' : n === 0 ? 'hoy' : n === 1 ? 'ayer' : `hace ${n} días`; },
 };
 const METHOD_LABELS = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', otro: 'Otro' };
-const STATUS_LABELS = { activo: 'Activo', vendido: 'Vendido', cancelado: 'Cancelado', pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada', ok: 'Normal', bajo: 'Stock bajo', agotado: 'Agotado', vencido: 'Vencido' };
-const STATUS_CLASS = { activo: 'info', vendido: 'ok', cancelado: 'muted', pendiente: 'warn', parcial: 'info', pagado: 'ok', anulada: 'muted', abierta: 'ok', cerrada: 'muted', ok: 'ok', bajo: 'warn', agotado: 'danger', vencido: 'danger' };
+const STATUS_LABELS = { nuevo: 'Nuevo', frecuente: 'Frecuente', ocasional: 'Ocasional', en_riesgo: 'En riesgo', perdido: 'Perdido', sin_compras: 'Sin compras', activo: 'Activo', vendido: 'Vendido', cancelado: 'Cancelado', pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada', ok: 'Normal', bajo: 'Stock bajo', agotado: 'Agotado', vencido: 'Vencido' };
+const STATUS_CLASS = { nuevo: 'info', frecuente: 'ok', ocasional: 'muted', en_riesgo: 'warn', perdido: 'danger', sin_compras: 'muted', activo: 'info', vendido: 'ok', cancelado: 'muted', pendiente: 'warn', parcial: 'info', pagado: 'ok', anulada: 'muted', abierta: 'ok', cerrada: 'muted', ok: 'ok', bajo: 'warn', agotado: 'danger', vencido: 'danger' };
 const badge = (status, label) => html`<span class="badge ${STATUS_CLASS[status] || ''}">${label || STATUS_LABELS[status] || status}</span>`;
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -81,6 +85,9 @@ const ICONS = {
   tag: '<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8c-2-4-6-4-6-1.5S9 8 12 8zm0 0c2-4 6-4 6-1.5S15 8 12 8z"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`);

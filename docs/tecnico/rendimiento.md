@@ -104,6 +104,18 @@ Con la migración 7. Medido en un equipo más lento que el de la 1.4.0: pantalla
 
 **Hallazgo:** en este equipo, el dashboard ejecutivo tardaba 690 ms con 3 años. La salud del inventario buscaba la última venta de cada producto recorriendo las ventas de 3 años (190 ms). Ahora descarta primero lo vendido desde la fecha de corte, con el índice por fecha, y busca la última venta solo de lo que queda: 10 ms. El mes pasó de 264 a 33 ms.
 
+## Resultados de la 1.6.0 (29/09/2026)
+
+Con la migración 8. Las métricas del CRM de todos los clientes salen de una sola consulta agrupada por cliente.
+
+| Pantalla u operación | ms |
+|---|---:|
+| Clientes (con segmento, gasto, frecuencia y VIP de 400 clientes) | 38.9 |
+| Clientes, filtro VIP | 41.3 |
+| Ficha del cliente con más compras | 14.2 |
+| Cumpleaños de los próximos 30 días | 8.3 |
+| Inicio (administrador / vendedor), con los cumpleaños de la semana | 27.5 / 20.7 |
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.

@@ -1,6 +1,6 @@
 # Lista de aceptación
 
-Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **135 requisitos**. Generada el 29/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
+Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **138 requisitos**. Generada el 29/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
 
 **Cómo se llena:**
 1. Imprímala (desde GitHub: botón **Raw** y luego imprimir, o abra el archivo en el navegador).
@@ -231,10 +231,13 @@ Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y 
 | RF-NUE-16 | Modelos con variantes de color y talla (DT-36, DT-38) | Un modelo se crea con todas sus combinaciones desde una cuadrícula; cada variante tiene su SKU, código y existencia; el inventario se ve por variante o por modelo, con la cuadrícula color × talla; se agregan colores o tallas y se editan juntos nombre, categoría y precios. Los productos existentes se agrupan solos. Dónde: Inventario → Nuevo producto → Varios colores y tallas; Modelos | ☐ | ☐ | |
 | RF-NUE-17 | Apartados con stock disponible (DT-36, DT-39) | Reservar gorras para un cliente hasta una fecha; se ven existencia, apartadas y disponible; la venta a otro cliente no toca lo apartado; se vende, se extiende o se cancela con motivo; al vencer las gorras vuelven a estar disponibles y el Inicio avisa. Dónde: Apartados; Nueva venta | ☐ | ☐ | |
 | RF-NUE-18 | Conteo cíclico sugerido (DT-36, DT-40) | Cada semana el sistema propone qué contar: lo que más se vende más seguido (A cada 7 días, B cada 30, C cada 90); lo contado sale de la lista aunque coincida. Dónde: Inventario → Conteo → Conteo sugerido | ☐ | ☐ | |
+| RF-NUE-19 | Ficha del cliente (CRM) (DT-36, DT-41) | Compras, gasto total y de 12 meses, ticket promedio, primera y última compra, cada cuántos días compra, lo que debe, lo que más compra (categorías, marcas, tallas, gorras), apartados activos y notas de seguimiento con fecha y usuario. El vendedor la ve sin costos ni utilidad. Dónde: Clientes → un cliente | ☐ | ☐ | |
+| RF-NUE-20 | Segmentos y cliente VIP (DT-41, DT-42) | Cada cliente es nuevo, frecuente, ocasional, en riesgo, perdido o sin compras; VIP automático por lo comprado en 12 meses, o a mano (solo el administrador); etiquetas libres; se filtra por segmento, VIP y etiqueta. Dónde: Clientes | ☐ | ☐ | |
+| RF-NUE-21 | Cumpleaños y listas para contactar (DT-42) | Cumpleaños (día y mes) en la ficha; cumpleaños de los próximos 30 días y de la semana en el Inicio; copiar los teléfonos de la lista filtrada. Dónde: Clientes → Cumpleaños, Copiar teléfonos; Inicio | ☐ | ☐ | |
 
 ## Acta de aceptación
 
-Requisitos verificados: ______ de 135. Con observaciones pendientes: ______.
+Requisitos verificados: ______ de 138. Con observaciones pendientes: ______.
 
 Con esta firma, el cliente declara que usó CAPS Shop en la tienda con datos reales durante el piloto, que los requisitos marcados **Sí** funcionan como se describe, y acepta el sistema para uso en producción. Las observaciones pendientes quedan anotadas arriba y en la bitácora, con su compromiso de corrección.
 

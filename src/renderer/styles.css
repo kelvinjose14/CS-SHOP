@@ -301,6 +301,26 @@ body.login-page { background: #000; }
 
 /* ---------- Modelos con variantes y apartados (1.5) ---------- */
 .text-info { color: var(--info); }
+/* CRM (1.6) */
+.seg.seg-wrap { flex-wrap: wrap; margin-bottom: 6px; }
+.seg button small { color: var(--muted); font-weight: 650; margin-left: 3px; font-size: 11.5px; }
+.seg button.active small { color: var(--brand); }
+.badge .icon { width: 12px; height: 12px; vertical-align: -2px; }
+.vip { color: #d4a017; display: inline-flex; vertical-align: -2px; }
+.vip .icon { width: 15px; height: 15px; fill: currentColor; }
+.tag-chip { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 99px; background: #ececf0; color: var(--ink-2); margin: 2px 4px 0 0; font-weight: 550; }
+.crm-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.fav-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.fav-grid > div { background: #fafafb; border: 1px solid #f0f0f3; border-radius: 8px; padding: 10px 12px; }
+.fav-grid h5 { margin: 0 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.fav-grid ol { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.fav-grid small { color: var(--muted); }
+.notes-log { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.notes-log li { background: #fafafb; border: 1px solid #f0f0f3; border-radius: 8px; padding: 8px 12px; }
+.notes-log small { color: var(--muted); display: block; margin-bottom: 2px; }
+.note-add { display: flex; gap: 8px; align-items: flex-start; }
+.note-add textarea { flex: 1; }
+@media (max-width: 1300px) { .fav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .table td.nowrap { white-space: nowrap; }
 #ct-cycle-info:not(.hidden) { display: flex; gap: 10px; align-items: flex-start; }
 #ct-cycle-info .icon { flex: none; margin-top: 2px; }

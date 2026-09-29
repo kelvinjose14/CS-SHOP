@@ -187,15 +187,17 @@ test('4.1: ninguna respuesta al vendedor trae costos ni ganancias', async () => 
   const cu = call('customers.save', { name: 'Ana' });
   const sale = call('sales.create', { customer_id: cu, payment_type: 'credito', items: [{ product_id: p, qty: 1 }] });
   const res = call('reservations.create', { customer_id: cu, items: [{ product_id: p, qty: 1 }] });
+  call('customers.save', { id: cu, name: 'Ana', birthday: '15/08', tags: 'VIP, NY' });
+  call('customers.addNote', { customer_id: cu, text: 'Le gustan las fitted' });
   asSeller(api);
   const calls = {
     'products.list': {}, 'products.get': { id: p }, 'products.findByCode': { code: call('products.get', { id: p }).sku }, 'products.summary': {}, 'products.facets': {},
     'products.movements': { product_id: p }, 'customers.list': {}, 'customers.get': { id: cu }, 'sales.list': {}, 'sales.get': { id: sale },
     'receivables.list': {}, 'cash.status': {}, 'reports.dashboard': {}, 'settings.get': {},
-    'products.models': {}, 'products.modelGet': { id: call('products.get', { id: p }).model_id }, 'reservations.list': {}, 'reservations.get': { id: res },
+    'products.models': {}, 'products.modelGet': { id: call('products.get', { id: p }).model_id }, 'reservations.list': {}, 'reservations.get': { id: res }, 'customers.birthdays': { days: 366 },
   };
   // Todas las operaciones de lectura del vendedor están aquí (si se agrega una, hay que sumarla).
-  const reads = Object.entries(METHODS).filter(([n, [roles]]) => roles.includes('vendedor') && !/save|create|pay|open|close|movement|change|range|extend|cancel/i.test(n)).map(([n]) => n);
+  const reads = Object.entries(METHODS).filter(([n, [roles]]) => roles.includes('vendedor') && !/save|create|pay|open|close|movement|change|range|extend|cancel|addNote/i.test(n)).map(([n]) => n);
   assert.deepEqual(reads.filter((n) => !(n in calls)), []);
   const leaks = [];
   const walk = (o, where) => {

@@ -12,6 +12,7 @@ const finance = require('./services/finance');
 const reports = require('./services/reports');
 const executive = require('./services/executive');
 const reservations = require('./services/reservations');
+const crm = require('./services/crm');
 const terminals = require('./services/terminals');
 
 const ALL = ['admin', 'vendedor'];
@@ -65,6 +66,8 @@ const METHODS = {
   'customers.get': [ALL, sales.customerGet],
   'customers.save': [ALL, sales.customerSave],
   'customers.opening': [ADMIN, sales.customerOpening],
+  'customers.addNote': [ALL, crm.addNote],
+  'customers.birthdays': [ALL, crm.birthdays],
   'sales.create': [ALL, sales.create],
   'sales.list': [ALL, sales.list],
   'sales.get': [ALL, sales.get],

@@ -4,14 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
-### Agregado
+### Agregado (1.6)
+- **CRM de clientes**: la lista de Clientes muestra el segmento de cada cliente (nuevo, frecuente, ocasional, en riesgo, perdido o sin compras), cuántas compras hizo, el gasto total, el ticket promedio, la última compra y su cumpleaños, y se filtra por segmento, VIP y etiqueta.
+- **Ficha del cliente**: gasto de 12 meses, cada cuántos días compra, lo que más compra (categorías, marcas, tallas y gorras), apartados activos y **notas de seguimiento** con fecha y usuario. El vendedor la ve sin costos ni utilidad.
+- **Cliente VIP** automático por lo comprado en 12 meses (Configuración → Cliente VIP) o a mano (administrador). **Etiquetas** libres y **cumpleaños**.
+- **Cumpleaños** de los próximos 30 días y **Copiar teléfonos** de la lista filtrada, para escribirles. El Inicio muestra los cumpleaños de la semana.
+- La base pasa a la versión 8 al abrir.
+
+### Agregado (1.5)
 - **Modelos con colores y tallas**: "Nuevo producto" → **Varios colores y tallas** crea todas las combinaciones desde una cuadrícula, cada una con su SKU y su existencia inicial. **Inventario → Modelos** agrupa las variantes; el detalle muestra la existencia por color y talla, y permite agregar colores o tallas y editar el modelo completo (nombre, categoría y, si se quiere, precios). Los productos que ya tenía se agrupan solos por nombre, marca y modelo.
 - **Apartados** (Principal → Apartados): reservar gorras para un cliente hasta una fecha. Lo apartado no se le vende a otro cliente; en el inventario y en la venta se ve la existencia, lo apartado y lo disponible. Desde el apartado se vende (con el cliente y las gorras ya puestos), se dan más días o se cancela con motivo. El Inicio avisa de los apartados vencidos. El vendedor también puede usarlos.
 - **Conteo sugerido** (Inventario → Conteo): cada semana, la lista de lo que toca contar, primero lo que más se vende (A cada 7 días, B cada 30, C cada 90).
 - Configuración: **Días que dura un apartado** y **Gorras por conteo cíclico**.
 - La base pasa a la versión 7 al abrir.
 
-### Cambiado
+### Cambiado (1.5)
 - El dashboard ejecutivo calcula los productos estancados mucho más rápido (el mes, de 264 a 33 ms con 3 años de datos).
 
 ## [1.4.0] - 2026-09-29

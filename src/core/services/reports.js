@@ -6,6 +6,7 @@ const { CASH_LABELS, TRANSFERS } = require('./finance');
 const finance = require('./finance');
 const products = require('./products');
 const reservations = require('./reservations');
+const crm = require('./crm');
 
 function r2(obj) {
   for (const k of Object.keys(obj)) if (typeof obj[k] === 'number') obj[k] = round2(obj[k]);
@@ -198,6 +199,8 @@ function dashboard(ctx) {
     top_products: topProducts(ctx, { period: 'mes', limit: 10 }).rows,
     series: last30,
     reservations_expired: reservations.expiredCount(db),
+    // Cumpleaños de esta semana (1.6), para felicitar o mandar una oferta.
+    birthdays: crm.birthdays(ctx, { days: 7 }).map(({ id, name, phone, birthday, birthday_in, vip }) => ({ id, name, phone, birthday, birthday_in, vip })),
   };
   if (isAdmin(ctx)) {
     out.deposits_pending = finance.pendingDeposits(db); // depósitos al banco sin revisar (auditoría 4.2)

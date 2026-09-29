@@ -3,6 +3,7 @@ const { AppError, now, today, addDays, round2, money, int, text, date, method, a
 const { audit, ledger, changeStock, getSetting, isAdmin, fmtMoney } = require('./common');
 const { reservedQty } = require('./products');
 const reservations = require('./reservations');
+const crm = require('./crm');
 
 // ---------- Clientes ----------
 
@@ -15,22 +16,30 @@ const CUSTOMER_TOTALS = `
   (SELECT MIN(due_date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND balance > 0) AS next_due,
   (SELECT MAX(date) FROM sales WHERE customer_id = c.id AND status <> 'anulada' AND opening = 0) AS last_purchase`;
 
-function customerList(ctx, { search = '', includeInactive = false, withBalance = false } = {}) {
+function customerList(ctx, { search = '', includeInactive = false, withBalance = false, segment = '', tag = '' } = {}) {
   const where = [];
   const params = [];
   // Los que deben se ven siempre en cuentas por cobrar, aunque estén desactivados (datos de antes de la 1.3).
   if (!includeInactive && !withBalance) where.push('c.active = 1');
-  if (search) { where.push('(c.name LIKE ? OR c.phone LIKE ? OR c.document LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+  if (search) { where.push('(c.name LIKE ? OR c.phone LIKE ? OR c.document LIKE ? OR c.tags LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
   const t = today();
   const rows = ctx.db.all(`SELECT c.*, ${CUSTOMER_TOTALS} FROM customers c ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.name`, [t, ...params]);
-  return rows
+  // CRM (1.6): compras, frecuencia, segmento, VIP, etiquetas y cumpleaños.
+  return crm.enrich(ctx, rows)
     .map((c) => ({ ...c, account_status: accountStatus(c.credit_sold, c.credit_paid), overdue: c.balance > 0 && c.next_due && c.next_due < t ? 1 : 0 }))
-    .filter((c) => !withBalance || c.balance > 0);
+    .filter((c) => !withBalance || c.balance > 0)
+    .filter((c) => !segment || (segment === 'vip' ? c.vip : c.segment === segment))
+    .filter((c) => !tag || c.tags.some((x) => x.toLowerCase() === String(tag).toLowerCase()));
 }
 
 function customerGet(ctx, { id }) {
-  const c = customerList(ctx, { includeInactive: true }).find((x) => x.id === id);
-  if (!c) throw new AppError('Cliente no encontrado.');
+  const row = ctx.db.get(`SELECT c.*, ${CUSTOMER_TOTALS} FROM customers c WHERE c.id = ?`, [today(), id]);
+  if (!row) throw new AppError('Cliente no encontrado.');
+  const t = today();
+  const c = { ...crm.enrich(ctx, [row])[0], account_status: accountStatus(row.credit_sold, row.credit_paid), overdue: row.balance > 0 && row.next_due && row.next_due < t ? 1 : 0 };
+  c.favorites = crm.favorites(ctx.db, id);
+  c.notes_log = crm.notes(ctx.db, id);
+  c.reservations = reservations.list(ctx, { customer_id: id, status: 'activo' });
   c.sales = ctx.db.all('SELECT * FROM sales WHERE customer_id = ? ORDER BY date DESC, id DESC', [id]);
   if (!isAdmin(ctx)) c.sales = c.sales.map(({ cost_total, ...s }) => s); // el vendedor no ve costos (RF-USR-04)
   c.payments = ctx.db.all(
@@ -53,7 +62,14 @@ function customerSave(ctx, data) {
     document: text(data.document, 'Cédula/RNC', { max: 40 }),
     notes: text(data.notes, 'Notas', { max: 1000 }),
   };
+  // CRM (1.6): cumpleaños y etiquetas los pone cualquiera; el VIP a mano, solo el administrador.
+  if (data.birthday !== undefined) fields.birthday = crm.cleanBirthday(data.birthday);
+  if (data.tags !== undefined) fields.tags = crm.cleanTags(data.tags);
   const admin = isAdmin(ctx);
+  if (data.vip_mode !== undefined && admin) {
+    if (!['auto', 'si', 'no'].includes(data.vip_mode)) throw new AppError('VIP: elija automático, sí o no.');
+    fields.vip_mode = data.vip_mode;
+  }
   if (data.credit_limit !== undefined && admin) fields.credit_limit = money(data.credit_limit === '' || data.credit_limit === null ? 0 : data.credit_limit, 'Límite de crédito');
   return ctx.db.tx(() => {
     if (data.id) {
@@ -70,6 +86,7 @@ function customerSave(ctx, data) {
       const changes = { nombre: fields.name };
       if (fields.active !== undefined) changes.activo = fields.active ? 'sí' : 'no';
       if (fields.credit_limit !== undefined && Math.abs(fields.credit_limit - old.credit_limit) > 0.004) changes.limite_credito = { antes: old.credit_limit, despues: fields.credit_limit };
+      if (fields.vip_mode !== undefined && fields.vip_mode !== old.vip_mode) changes.vip = { antes: old.vip_mode, despues: fields.vip_mode };
       audit(ctx, 'editar_cliente', 'cliente', data.id, changes);
       return data.id;
     }
