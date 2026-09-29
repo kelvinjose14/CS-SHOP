@@ -47,6 +47,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/auditoria.test.js` | 7 | Correcciones de la [auditoría](auditoria.md): venta sin precio, listas sin tope, costo al anular una compra, anular abonos, pagos y movimientos de caja, y que ninguna respuesta al vendedor traiga costos |
 | `test/o6.test.js` | 5 | Conteo de inventario (vista previa, aplicar, ventas durante el conteo, permisos), la lista de aceptación igual a los requisitos y los números de los ejercicios de la capacitación |
 | `test/controles.test.js` | 10 | Controles de la [auditoría](auditoria.md), secciones 2 y 4: motivo al abrir la caja, depósitos por verificar, inventario con productos desactivados, clientes desactivados, límite de crédito y deuda vencida, fechas y textos largos, costos sospechosos y categorías, reglas de la base, contraseñas de 8 y separador del CSV según la región |
+| `test/xlsx.test.js` | 4 | Excel con formato: ZIP y CRC, fechas de Excel, montos y porcentajes como números, textos que nunca son fórmulas, filtros, títulos fijos, impresión, y la plantilla y un inventario exportado que se vuelven a importar |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -62,6 +63,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `auditoria.test.js` | Tablas de más de 1,000 filas (aviso, totales y "Mostrar todas"), anular un movimiento de caja y un abono, y un producto sin precio en la venta |
 | `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
 | `controles.test.js` | Motivo al abrir la caja, depósitos por verificar desde el aviso del Inicio, crédito autorizado por el administrador, compra a costo 0 confirmada, cliente con deuda que no se desactiva, CSV sin fórmulas, ninguna pantalla desbordada a 1,100 px, navegación bloqueada, y copia externa con contraseña y su restauración |
+| `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

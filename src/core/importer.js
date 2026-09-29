@@ -4,6 +4,7 @@
 // sistema, a partir de los títulos de la primera fila, escritos como los escribiría el dueño.
 const zlib = require('zlib');
 const { AppError } = require('./util');
+const { buildXlsx } = require('./xlsx');
 
 // Títulos aceptados para cada campo (sin acentos, en minúsculas y sin signos).
 const HEADERS = {
@@ -170,12 +171,15 @@ function parseXlsx(buf) {
 
 /* ---------- Filas → productos ---------- */
 
-// Convierte la tabla (primera fila con títulos) en filas con los campos del sistema.
+// Convierte la tabla (primera fila con títulos) en filas con los campos del sistema. Si arriba hay un
+// encabezado, como la franja de los Excel que exporta el sistema, los títulos son la primera fila que
+// trae la columna del nombre; la fila "Totales" del final no es un producto.
 function toRecords(table) {
   const nonEmpty = table.filter((r) => r.some((c) => String(c ?? '').trim() !== ''));
   if (!nonEmpty.length) throw new AppError('El archivo está vacío.');
-  const headerRow = table.indexOf(nonEmpty[0]);
-  const headers = nonEmpty[0].map((h) => String(h ?? '').trim());
+  const found = nonEmpty.slice(0, 10).find((r) => r.some((h) => fieldFor(h) === 'name'));
+  const headerRow = table.indexOf(found || nonEmpty[0]);
+  const headers = table[headerRow].map((h) => String(h ?? '').trim());
   const fields = headers.map(fieldFor);
   const used = new Set();
   fields.forEach((f, i) => { if (f && used.has(f)) fields[i] = null; else if (f) used.add(f); }); // si se repite un título, vale el primero
@@ -184,6 +188,7 @@ function toRecords(table) {
   for (let i = headerRow + 1; i < table.length; i++) {
     const r = table[i];
     if (!r.some((c) => String(c ?? '').trim() !== '')) continue;
+    if (String(r[0] ?? '').trim() === 'Totales' && !table.slice(i + 1).some((x) => x.some((c) => String(c ?? '').trim() !== ''))) break;
     const rec = { _line: i + 1 };
     fields.forEach((f, j) => {
       if (!f) return;
@@ -203,10 +208,21 @@ function readProducts(buf, fileName = '') {
   return toRecords(table);
 }
 
-// Plantilla CSV con los títulos que se reconocen.
+// Plantilla con los títulos que se reconocen, en CSV o en Excel (con los títulos en rojo y la fila de
+// ejemplo; los códigos van como texto para que Excel no los convierta en 7.5E+12).
 const TEMPLATE = [
   'Nombre;Marca;Modelo;Categoría;Color;Talla;SKU;Código de barras;Costo;Precio detalle;Precio por mayor;Existencia;Mínimo;Notas',
   'Gorra New York;New Era;59FIFTY;Fitted;Negro;7 1/4;;;850;1500;1200;10;3;',
 ].join('\r\n');
 
-module.exports = { HEADERS, fieldFor, parseNumber, parseCsv, parseXlsx, toRecords, readProducts, TEMPLATE };
+function templateXlsx() {
+  const [head, example] = TEMPLATE.split('\r\n').map((l) => l.split(';'));
+  const numeric = head.map((h) => NUMERIC.includes(fieldFor(h)));
+  return buildXlsx({
+    title: 'Productos', banner: false,
+    columns: head.map((label, i) => ({ label, type: numeric[i] ? 'num' : 'text' })),
+    rows: [example.map((v, i) => (numeric[i] && v !== '' ? Number(v) : v))],
+  });
+}
+
+module.exports = { HEADERS, fieldFor, parseNumber, parseCsv, parseXlsx, toRecords, readProducts, TEMPLATE, templateXlsx };

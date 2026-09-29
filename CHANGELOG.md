@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Cambiado
+- **Exportar guarda un Excel con formato** (.xlsx) en lugar de un CSV, en todas las listas, los reportes y el dashboard ejecutivo ([manual 9.6](docs/manual/09-contabilidad-y-reportes.md#96-exportar-a-excel), DT-43):
+  - arriba, el nombre de la tienda, el título, el período, cuántos registros son y quién lo generó;
+  - títulos de columnas en rojo, fijos al bajar y con filtros; filas alternadas;
+  - montos con RD$ (negativos en rojo), fechas y porcentajes como números de Excel, y la fila de totales como en pantalla;
+  - "Crédito" o "Por mayor" en vez de los códigos internos, y los SKU y códigos de barras sin perder ceros ni volverse 7.5E+12;
+  - al imprimir, una hoja de ancho, títulos en cada página y número de página.
+- En la ventana de guardar se puede elegir **CSV** como antes. En Configuración, la opción se llama ahora **Separador al guardar en CSV**.
+- **Descargar plantilla** (Importar productos) da un Excel con los títulos y un ejemplo.
+- **Importar** acepta un inventario exportado en Excel tal cual: se salta la franja del título y la fila de totales.
+
 ## [1.6.0] - 2026-09-29
 
 Gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)): dashboard ejecutivo, inventario con colores, tallas y apartados, y CRM de clientes. Trae juntas las partes preparadas como 1.4 y 1.5, que no se publicaron por separado. La base pasa a la versión 8 al abrir: todas las PCs deben tener la 1.6.0 (actualice primero la PC principal).

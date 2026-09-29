@@ -182,7 +182,7 @@ Criterio de aceptación: todos visibles en **Inicio** para el administrador.
 | RF-REP-14 | Proveedores | Cumple |
 | RF-REP-15 | Productos más vendidos | Cumple |
 
-Criterio de aceptación: cada reporte se genera por período cuando aplica, y se exporta a CSV y PDF o se imprime.
+Criterio de aceptación: cada reporte se genera por período cuando aplica, y se exporta a Excel (con formato, o CSV si se elige) y PDF, o se imprime.
 
 ### Usuarios (RF-USR)
 
@@ -223,7 +223,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 91 pruebas de lógica, 24 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 95 pruebas de lógica, 25 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados

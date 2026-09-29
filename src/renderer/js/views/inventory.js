@@ -268,7 +268,7 @@ App.register({
       $('#p-count', tb).onclick = () => App.go('count');
     }
     $('#p-labels', tb).onclick = () => labelsDialog(rows.filter((p) => p.active));
-    $('#p-export', tb).onclick = () => exportCsv('inventario', productColumns(), rows);
+    $('#p-export', tb).onclick = () => exportExcel('inventario', productColumns(), rows);
     await load();
     $('#p-search', tb).focus();
   },
@@ -517,7 +517,7 @@ App.register({
     };
     $('#m-type', tb).onchange = (e) => { filters.type = e.target.value; load(); };
     $('#m-search', tb).oninput = debounce(render, 150);
-    $('#m-export', tb).onclick = () => exportCsv('movimientos-inventario', cols, render());
+    $('#m-export', tb).onclick = () => exportExcel('movimientos-inventario', cols, render());
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'mes' });
   },
 });

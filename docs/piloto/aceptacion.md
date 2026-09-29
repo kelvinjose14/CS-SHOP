@@ -147,7 +147,7 @@ Cómo se verifica (todos): todos visibles en Inicio para el administrador.
 
 ## Reportes (RF-REP)
 
-Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y se exporta a CSV y PDF o se imprime.
+Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y se exporta a Excel (con formato, o CSV si se elige) y PDF, o se imprime.
 
 | ID | Requisito | Cómo se verifica | Sí | No | Observaciones |
 |---|---|---|:-:|:-:|---|

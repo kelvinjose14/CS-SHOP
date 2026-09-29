@@ -46,7 +46,7 @@ App.register({
     };
     $('#pu-status', tb).onchange = (e) => { status = e.target.value; load(); };
     $('#pu-new', tb).onclick = () => App.go('purchase-new');
-    $('#pu-export', tb).onclick = () => exportCsv('compras', PURCHASE_COLUMNS, rows);
+    $('#pu-export', tb).onclick = () => exportExcel('compras', PURCHASE_COLUMNS, rows);
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'mes' });
   },
 });
@@ -320,7 +320,7 @@ App.register({
     };
     $('#s-search', tb).oninput = debounce((e) => { search = e.target.value; load(); });
     $('#s-new', tb).onclick = () => supplierForm(null, load);
-    $('#s-export', tb).onclick = () => exportCsv('proveedores', cols, rows);
+    $('#s-export', tb).onclick = () => exportExcel('proveedores', cols, rows);
     await load();
   },
 });
@@ -423,7 +423,7 @@ App.register({
         title: `Pago a ${r.supplier_name} · ${Fmt.purchaseNo(r.id)}`, maxAmount: r.balance, withDate: true,
         onSubmit: async (f) => { await api('purchases.pay', { purchase_id: r.id, ...f }); toast('Pago registrado.'); load(); },
       }));
-      $('#ap-export', tb).onclick = () => exportCsv('cuentas-por-pagar', cols, rows);
+      $('#ap-export', tb).onclick = () => exportExcel('cuentas-por-pagar', cols, rows);
     };
     await load();
   },

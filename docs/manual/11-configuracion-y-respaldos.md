@@ -14,7 +14,7 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 | **Nombre del negocio**, **Eslogan**, **Teléfono**, **Dirección** | CAPS._.SHOP / Tienda de Gorras | Salen en el recibo y en los reportes en PDF |
 | **Símbolo de moneda** | RD$ | Cómo se muestran los montos |
 | **Mensaje al pie del recibo** | ¡Gracias por su compra! | Última línea del recibo |
-| **Columnas del CSV para Excel** | Según la región de Windows de cada PC | Cómo separa las columnas el CSV que se exporta. Así Excel lo abre en columnas: con Windows de República Dominicana usa la coma; con la región de España u otras, el punto y coma y los decimales con coma. Si Excel muestra todo en una columna, elija aquí la otra opción |
+| **Separador al guardar en CSV** | Según la región de Windows de cada PC | Solo si al exportar se elige **CSV** en lugar de Excel: cómo separa las columnas. Así Excel lo abre en columnas: con Windows de República Dominicana usa la coma; con la región de España u otras, el punto y coma y los decimales con coma. Si Excel muestra todo en una columna, elija aquí la otra opción |
 | **Días de crédito por defecto** | 30 | Fecha de vencimiento propuesta en ventas y compras a crédito |
 | **Descuento máximo del vendedor (%)** | 10 | Tope de descuento para el vendedor. Se cuenta sobre el subtotal antes de descuentos |
 | **Exigir caja abierta para movimientos en efectivo** | Activado | Sin caja abierta no se puede cobrar, pagar ni abonar en efectivo. Se recomienda dejarlo activado |

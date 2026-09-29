@@ -63,6 +63,7 @@ Diseño en `src/net/secure.js`. Decisión: DT-17 en [Decisiones](../producto/dec
 - **Importar productos:** el archivo se lee en el proceso principal (sin bibliotecas externas, máximo 20 MB) y solo pasan filas de texto al núcleo, que valida cada una como si se escribiera a mano.
 - **Navegación bloqueada** (1.3.0): ninguna ventana del programa, tampoco las de impresión, puede ir a otra página, abrir otra ventana ni insertar un `webview` (`lockNavigation` en `main.js`). Un intento queda en el registro.
 - **CSV sin fórmulas** (1.3.0): a los textos que empiezan con `=`, `+`, `-` o `@` se les antepone `'`, para que Excel no los ejecute. Los números negativos no se tocan.
+- **Excel sin fórmulas** (DT-43): en el .xlsx cada texto va como celda de texto, nunca como fórmula, así que un nombre que empieza con `=` se ve tal cual. El archivo no lleva macros ni vínculos.
 
 ## Fotos por la red
 

@@ -233,7 +233,7 @@ App.register({
     $('#ex-csv', tb).onclick = () => {
       if (!state.data) return;
       const b = BREAKDOWNS.find((x) => x.id === state.tab);
-      exportCsv(`utilidad-por-${b.label.toLowerCase()}`, breakdownColumns(state.tab), state.data[state.tab]);
+      exportExcel(`utilidad-por-${b.label.toLowerCase()}`, breakdownColumns(state.tab), state.data[state.tab], { title: `Utilidad por ${b.label.toLowerCase()}` });
     };
     $('#ex-pdf', tb).onclick = () => exportPdf('dashboard-ejecutivo', { landscape: true });
     periodPicker(pp, (range) => { state.range = { period: range.period, from: range.from, to: range.to }; load(); }, { initial: 'mes' });
@@ -356,7 +356,7 @@ App.register({
           <div class="card span-2"><h3>Detalle de movimientos</h3>${table({ columns: mcols, rows: movements, empty: 'Sin movimientos.' })}</div>
         </div>`);
     };
-    $('#cf-csv', tb).onclick = () => exportCsv('flujo-de-dinero', mcols, movements);
+    $('#cf-csv', tb).onclick = () => exportExcel('flujo-de-dinero', mcols, movements);
     $('#cf-pdf', tb).onclick = () => exportPdf('flujo-de-dinero');
     periodPicker(pp, load, { initial: 'mes' });
   },
@@ -484,7 +484,7 @@ App.register({
     $('#page-title').textContent = `Reportes · ${rep.title}`;
     const tb = toolbar(page, {
       left: html`<button class="btn" id="r-back">← Todos los reportes</button>`,
-      right: html`<button class="btn" id="r-csv">${icon('download')} Excel (CSV)</button><button class="btn" id="r-pdf">${icon('download')} PDF</button><button class="btn" id="r-print">${icon('print')} Imprimir</button>`,
+      right: html`<button class="btn" id="r-csv">${icon('download')} Excel</button><button class="btn" id="r-pdf">${icon('download')} PDF</button><button class="btn" id="r-print">${icon('print')} Imprimir</button>`,
     });
     const pp = el(html`<div></div>`);
     tb.after(pp);
@@ -498,7 +498,7 @@ App.register({
       setHTML(box, html`${reportHeader(rep.title, range || {})}<div class="card">${table({ columns: res.columns.filter((c) => !c.hide), rows, empty: 'Sin datos para este reporte.' })}</div><p class="muted small">${rows.length} registros</p>`);
     };
     $('#r-back', tb).onclick = () => App.go('reports');
-    $('#r-csv', tb).onclick = () => exportCsv(rep.id, current.columns, current.rows);
+    $('#r-csv', tb).onclick = () => exportExcel(rep.id, current.columns, current.rows, { title: rep.title });
     $('#r-pdf', tb).onclick = () => exportPdf(`reporte-${rep.id}`, { landscape: current.columns.length > 7 });
     $('#r-print', tb).onclick = async () => { expandTables(); document.body.classList.add('printing'); try { await window.capsApi.printPage(); } finally { document.body.classList.remove('printing'); } };
     if (rep.noPeriod) await load();
@@ -583,7 +583,7 @@ App.register({
       setHTML(box, table({ columns: cols, rows, empty: 'Sin registros.' }));
     };
     $$('[data-f]', tb).forEach((i) => (i[i.tagName === 'INPUT' ? 'oninput' : 'onchange'] = debounce(() => { f[i.dataset.f] = i.value; load(); }, 200)));
-    $('#au-export', tb).onclick = () => exportCsv('historial', cols, rows);
+    $('#au-export', tb).onclick = () => exportExcel('historial', cols, rows);
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'semana' });
   },
 });

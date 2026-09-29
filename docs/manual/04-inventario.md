@@ -28,7 +28,7 @@ Menú **Inventario** → **Inventario**.
   - **Agotados**: existencia 0.
   - **Reponer**: los dos anteriores juntos.
 - **Ver inactivos** muestra los productos dados de baja.
-- **Exportar** guarda la lista en CSV (Excel). El archivo incluye el stock mínimo y el valor al costo de cada producto.
+- **Exportar** guarda la lista en Excel, con formato ([9.6](09-contabilidad-y-reportes.md#96-exportar-a-excel)). El archivo incluye el stock mínimo, lo apartado, lo disponible y el valor al costo de cada producto. Se puede volver a importar tal cual.
 - **Estado de cada producto:** **Normal**, **Stock bajo** o **Agotado**. Debajo de la existencia se ve el mínimo.
 
 ## 4.2 Crear un producto (administrador)
@@ -114,7 +114,7 @@ Menú **Inventario** → **Movimientos de inventario**. Muestra todas las entrad
 Para cargar muchos productos de una vez, por ejemplo al empezar.
 
 1. **Inventario** → **Importar**.
-2. Si no tiene una lista, pulse **Descargar plantilla**: es un archivo CSV que se abre en Excel, con los títulos y un ejemplo.
+2. Si no tiene una lista, pulse **Descargar plantilla**: es un libro de Excel con los títulos y un ejemplo. Si prefiere CSV, elíjalo en **Tipo** al guardar.
 3. Prepare la lista en Excel. La **primera fila** lleva los títulos:
    - obligatorios: **Nombre** y **Precio detalle**;
    - opcionales: **Marca**, **Modelo**, **Categoría**, **Color**, **Talla**, **SKU**, **Código de barras**, **Costo**, **Precio por mayor**, **Existencia**, **Mínimo** y **Notas**. Otras columnas se ignoran.

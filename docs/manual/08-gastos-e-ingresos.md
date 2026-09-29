@@ -29,7 +29,7 @@ Menú **Finanzas** → **Gastos**.
 ## 8.2 Consultar y anular
 
 - La lista muestra los gastos del período con fecha, categoría, descripción, método, monto, quién lo registró y cuándo. A la derecha está el total por categoría.
-- Filtre por período y por categoría. **Exportar** guarda la lista en CSV.
+- Filtre por período y por categoría. **Exportar** guarda la lista en Excel.
 - **Anular:** pulse el ícono de papelera de la fila y escriba el motivo. El gasto deja de contar y su dinero se registra como entrada ("Gastos anulados"). No se borra: queda en el historial.
 
 ## 8.3 Otros ingresos

@@ -13,6 +13,7 @@ const config = require('./config');
 const printer = require('./printer');
 const region = require('./region');
 const importer = require('../core/importer');
+const { buildXlsx } = require('../core/xlsx');
 const { createLocal, createRemote } = require('./backend');
 const log = require('./log');
 const { createUpdates } = require('./updates');
@@ -214,11 +215,28 @@ function registerIpc() {
   }));
 
   // ---------- Archivos e impresión (siempre en esta PC) ----------
-  ipcMain.handle('file:saveText', wrap(async ({ defaultName, content, filters }) => {
-    const r = await dialog.showSaveDialog(win, { defaultPath: defaultName, filters: filters || [{ name: 'CSV', extensions: ['csv'] }] });
+  // Exportar una tabla: Excel con formato (DT-43), o CSV si se elige ese tipo en la ventana de guardar.
+  const EXPORT_FILTERS = [{ name: 'Libro de Excel', extensions: ['xlsx'] }, { name: 'CSV (texto separado por comas)', extensions: ['csv'] }];
+  // Volver a exportar con el mismo nombre mientras el archivo sigue abierto en Excel: Windows no deja
+  // reemplazarlo, y el mensaje lo explica.
+  const writeChosen = (file, data) => {
+    try {
+      fs.writeFileSync(file, data);
+    } catch (err) {
+      if (['EBUSY', 'EPERM', 'EACCES', 'EISDIR'].includes(err.code)) throw userError(`No se pudo guardar "${path.basename(file)}": está abierto en Excel o en otro programa, o no se puede escribir ahí. Ciérrelo o guárdelo con otro nombre.`);
+      throw err;
+    }
+  };
+  ipcMain.handle('file:saveExport', wrap(async ({ defaultName, sheet, csv }) => {
+    const r = await dialog.showSaveDialog(win, { defaultPath: `${defaultName}.xlsx`, filters: EXPORT_FILTERS });
     if (r.canceled || !r.filePath) return null;
-    fs.writeFileSync(r.filePath, '﻿' + content, 'utf8'); // BOM para que Excel respete los acentos
-    return r.filePath;
+    if (/\.csv$/i.test(r.filePath)) {
+      writeChosen(r.filePath, '﻿' + csv); // BOM para que Excel respete los acentos
+      return r.filePath;
+    }
+    const file = /\.xlsx$/i.test(r.filePath) ? r.filePath : `${r.filePath}.xlsx`;
+    writeChosen(file, buildXlsx(sheet));
+    return file;
   }));
 
   // Separador y decimales del CSV: los de la región de Windows de esta PC, o los elegidos en Configuración.
@@ -234,11 +252,16 @@ function registerIpc() {
   }));
 
   ipcMain.handle('file:productTemplate', wrap(async () => {
-    const r = await dialog.showSaveDialog(win, { defaultPath: 'plantilla-productos.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] });
+    const r = await dialog.showSaveDialog(win, { defaultPath: 'plantilla-productos.xlsx', filters: EXPORT_FILTERS });
     if (r.canceled || !r.filePath) return null;
-    fs.writeFileSync(r.filePath, '\uFEFF' + importer.TEMPLATE, 'utf8');
-    shell.openPath(r.filePath);
-    return r.filePath;
+    let file = r.filePath;
+    if (/\.csv$/i.test(file)) writeChosen(file, '\uFEFF' + importer.TEMPLATE);
+    else {
+      if (!/\.xlsx$/i.test(file)) file += '.xlsx';
+      writeChosen(file, importer.templateXlsx());
+    }
+    shell.openPath(file);
+    return file;
   }));
 
   ipcMain.handle('file:savePdf', wrap(async ({ defaultName, landscape }) => {

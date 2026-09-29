@@ -111,7 +111,7 @@ App.register({
             <label class="field"><span>Dirección</span><input name="business_address" value="${s.business_address}"></label>
             <label class="field"><span>Símbolo de moneda</span><input name="currency" value="${s.currency}"></label>
             <label class="field"><span>Mensaje al pie del recibo</span><input name="receipt_footer" value="${s.receipt_footer}"></label>
-            <label class="field"><span>Columnas del CSV para Excel</span><select name="csv_format">${options([
+            <label class="field"><span>Separador al guardar en CSV</span><select name="csv_format">${options([
               ['auto', 'Según la región de Windows de cada PC (recomendado)'],
               ['coma', 'Coma (República Dominicana, EE. UU.)'],
               ['punto_y_coma', 'Punto y coma, decimales con coma (España y otros)'],

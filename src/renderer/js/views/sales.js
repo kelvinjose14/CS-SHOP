@@ -358,7 +358,7 @@ App.register({
     $$('[data-f]', tb).forEach((s) => (s.onchange = () => { filters[s.dataset.f] = s.value; load(); }));
     $('#sl-search', tb).oninput = debounce(render, 150);
     $('#sl-new', tb).onclick = () => App.go('pos');
-    $('#sl-export', tb).onclick = () => exportCsv('ventas', cols, render());
+    $('#sl-export', tb).onclick = () => exportExcel('ventas', cols, render());
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'dia' });
   },
 });
@@ -649,7 +649,7 @@ App.register({
     $('#c-new', tb).onclick = () => customerForm(null, load);
     $('#c-bdays', tb).onclick = birthdaysDialog;
     $('#c-phones', tb).onclick = () => copyPhones(rows);
-    $('#c-export', tb).onclick = () => exportCsv('clientes', csvCols, rows);
+    $('#c-export', tb).onclick = () => exportExcel('clientes', csvCols, rows);
     await load();
   },
 });
@@ -816,7 +816,7 @@ App.register({
           load();
         },
       }));
-      $('#ar-export', tb).onclick = () => exportCsv('cuentas-por-cobrar', cols, rows);
+      $('#ar-export', tb).onclick = () => exportExcel('cuentas-por-cobrar', cols, rows);
     };
     $$('#ar-view [data-v]', tb).forEach((b) => (b.onclick = () => {
       view = b.dataset.v;
