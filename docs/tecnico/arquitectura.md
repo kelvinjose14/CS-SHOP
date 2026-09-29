@@ -108,6 +108,7 @@ Carpeta de datos: `%APPDATA%\CAPS Shop\data`. En pruebas se cambia con la variab
 - **Caché en memoria (`api()`):** los datos que cambian poco (`catalog.list`, `customers.options`) se guardan 60 s. Cualquier operación del mismo módulo que cambia datos los descarta.
 - **Navegación:** cada pantalla se dibuja en una página nueva. Si se cambia rápido de pantalla, lo que termina de cargar una anterior no se mezcla. Si una pantalla tarda más de 120 ms, se ve un esqueleto con su forma; al terminar entra con un fundido corto. Un error muestra el mensaje y "Intentar de nuevo" en la página, sin trabar el menú.
 - **Punto de venta:** el carrito es una fila por línea. Agregar, cambiar la cantidad o quitar toca solo esa fila, y todo se calcula en la pantalla hasta cobrar. La lista de clientes sale de `customers.options`: una consulta agrupada, 5 veces más rápida que `customers.list`.
+- **Modo oscuro (DT-49):** `Theme` en `lib.js` pone `data-theme` en `<html>` antes de dibujar. `styles.css` redefine las variables bajo `:root[data-theme="dark"]` y fuerza los colores claros al imprimir.
 - **Formatos:** `Intl.NumberFormat` se crea una sola vez. Las fotos de los productos cargan al aparecer (`loading="lazy"`).
 
 ## Seguridad

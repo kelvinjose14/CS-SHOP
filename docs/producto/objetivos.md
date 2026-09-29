@@ -14,7 +14,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
   - 108 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel, catálogos de productos y las correcciones y controles de la auditoría;
-  - 32 de interfaz con la app real;
+  - 33 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -266,7 +266,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | **1.6.0** | CRM de clientes (RF-NUE-19 a 21, DT-41 y DT-42) | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad ([manual 6.1](../manual/06-clientes-y-cobros.md#61-clientes)) | Publicada (29/09/2026) |
 | **1.7.0** | Productos con catálogos (RF-NUE-16 y 22, DT-45, DT-46) | Formulario simple: marca, modelo y categoría de listas cortas con "+ Crear…", tallas con un clic y existencia por talla, sin colores; montos con 2 decimales como máximo y la rueda del mouse ya no cambia los números; editar agregando o quitando tallas; al vender, elegir la talla con lo disponible. Catálogo en Configuración ([manual 4.2](../manual/04-inventario.md#42-crear-un-producto-administrador)) | Publicada (29/09/2026) |
 | **1.8.0** | Interfaz más rápida y profesional (DT-47) | Sistema de diseño, menú contraíble, animaciones cortas, tablas por partes, venta por línea, producto por secciones, esqueletos de carga y estados vacíos ([arquitectura](../tecnico/arquitectura.md#interfaz-diseño-y-rendimiento-18-dt-47)) | En revisión |
-| **1.9.0** | Vender y reponer más rápido (RF-NUE-23 a 26, DT-48) | Ventas en espera y varios carritos, buscador global con Ctrl + K, reposición según el ritmo de venta con "Crear compra", mercancía sin movimiento (30, 60 y 90 días) y la campanita de alertas ([manual 3.1](../manual/03-ventas.md#31-hacer-una-venta), [4.6](../manual/04-inventario.md#46-reposición-qué-comprar-y-qué-no-se-mueve-administrador), [2.2](../manual/02-rutina-diaria.md#22-la-pantalla-de-inicio)) | En revisión |
+| **1.9.0** | Vender y reponer más rápido (RF-NUE-23 a 26, DT-48) | Ventas en espera y varios carritos, buscador global con Ctrl + K, reposición según el ritmo de venta con "Crear compra", mercancía sin movimiento (30, 60 y 90 días), la campanita de alertas y el modo oscuro (DT-49) ([manual 3.1](../manual/03-ventas.md#31-hacer-una-venta), [4.6](../manual/04-inventario.md#46-reposición-qué-comprar-y-qué-no-se-mueve-administrador), [2.2](../manual/02-rutina-diaria.md#22-la-pantalla-de-inicio)) | En revisión |
 | 1.10.0 | Mayoristas | Cotizaciones que pasan a venta, precio especial por cliente, favoritos y más atajos en la venta, factura PDF carta | Pendiente |
 | Futuro | Compras inteligentes | Tiempo de reposición por proveedor, lo ya pedido en la sugerencia (la sugerencia por ritmo de venta llegó en la 1.9) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
 

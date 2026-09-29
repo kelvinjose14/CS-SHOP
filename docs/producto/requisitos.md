@@ -223,7 +223,7 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón, en silencio: ahora (se cierra y vuelve a abrir solo) o al cerrar el programa (DT-19, DT-44). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 108 pruebas de lógica, 32 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 108 pruebas de lógica, 33 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados

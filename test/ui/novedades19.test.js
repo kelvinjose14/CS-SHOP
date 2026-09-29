@@ -107,3 +107,30 @@ test('campanita: cuenta las alertas nuevas, lleva a la pantalla y se apaga al ve
   await win.waitForSelector('#p-status [data-s=agotado].active');
   assert.deepEqual(errors, []);
 });
+
+test('modo oscuro: el botón de la barra lo cambia, Configuración ofrece claro, oscuro o igual que Windows, y la PC lo recuerda', async (t) => {
+  const dir = dataDir({ demo: true });
+  const first = await launch(t, dir, { width: 1280, height: 800 });
+  const win = first.win;
+  await login(win, 'admin', 'admin123');
+  await go(win, 'dashboard');
+  const theme = () => win.evaluate(() => document.documentElement.dataset.theme);
+  assert.equal(await theme(), 'light', 'empieza en claro');
+  await win.click('#theme-btn');
+  assert.equal(await theme(), 'dark');
+  await win.waitForTimeout(450); // el fundido del cambio de tema
+  const bg = await win.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  assert.equal(bg, 'rgb(13, 13, 16)', 'el fondo cambia');
+  await go(win, 'settings');
+  await win.waitForSelector('#theme-choice .theme-opt.on[data-t=oscuro]');
+  await win.click('#theme-choice [data-t=claro]');
+  assert.equal(await theme(), 'light');
+  await win.click('#theme-choice [data-t=oscuro]');
+  assert.deepEqual(first.errors, []);
+  await first.close();
+  // Al volver a abrir, la PC sigue en oscuro desde la pantalla de entrada.
+  const again = await launch(t, dir, { width: 1280, height: 800 });
+  await again.win.waitForSelector('#login-form');
+  assert.equal(await again.win.evaluate(() => document.documentElement.dataset.theme), 'dark');
+  assert.deepEqual(again.errors, []);
+});

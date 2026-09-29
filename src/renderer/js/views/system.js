@@ -161,6 +161,7 @@ App.register({
           <h3>Copias de seguridad</h3>
           <p class="muted">Las copias se hacen en la PC principal: ahí están todos los datos.</p>
         </div>`}
+        <div class="card" id="theme-card"></div>
         <div class="card" id="cat-card"></div>
         <div class="card" id="upd-card"></div>
         <div class="card">
@@ -193,6 +194,7 @@ App.register({
     };
     renderPrinter($('#prn-card', form));
     renderNetwork($('#net-card', form));
+    renderTheme($('#theme-card', form));
     renderCatalog($('#cat-card', form));
     renderUpdates($('#upd-card', form));
     if (App.info.mode === 'principal') renderExternal($('#ext-box', form));
@@ -218,6 +220,16 @@ App.register({
     };
   },
 });
+
+// Apariencia de esta PC (1.10): claro, oscuro o igual que Windows. Se guarda en cada computadora.
+function renderTheme(card) {
+  const opts = [['claro', 'Claro'], ['oscuro', 'Oscuro'], ['sistema', 'Igual que Windows']];
+  setHTML(card, html`
+    <h3>${icon('moon')} Apariencia de esta PC</h3>
+    <p class="muted small">Cada computadora recuerda la suya. También se cambia con el botón de la luna, arriba a la derecha. Los recibos, las etiquetas y los PDF salen siempre en claro.</p>
+    <div class="theme-choice" id="theme-choice">${opts.map(([v, l]) => html`<button type="button" class="theme-opt ${Theme.get() === v ? 'on' : ''}" data-t="${v}"><span class="theme-prev ${v}"><i></i><b></b></span>${l}</button>`)}</div>`);
+  $$('[data-t]', card).forEach((b) => (b.onclick = () => { Theme.set(b.dataset.t); renderTheme(card); }));
+}
 
 // Impresora de recibos de esta PC (RF-NUE-03). Cada PC tiene la suya.
 async function renderPrinter(card) {

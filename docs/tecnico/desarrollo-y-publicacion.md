@@ -68,7 +68,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
 | `actualizaciones.test.js` | Buscar actualizaciones desde Configuración: "Buscando…" mientras busca y el aviso de si hay versión nueva, no la hay o hubo un error (con respuestas simuladas del actualizador) |
 | `catalogo.test.js` | Configuración → Catálogo: renombrar una marca la cambia en sus productos, ya no hay pestaña de colores y un modelo desactivado ya no se ofrece |
-| `novedades19.test.js` | Venta en espera con F4 y retomarla desde la barra de carritos, Ctrl + K con el teclado (producto y acción), reposición a "Crear compra" con las cantidades, y la campanita |
+| `novedades19.test.js` | Venta en espera con F4 y retomarla desde la barra de carritos, Ctrl + K con el teclado (producto y acción), reposición a "Crear compra" con las cantidades, la campanita, y el modo oscuro (botón, Configuración y que la PC lo recuerde al volver a abrir) |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

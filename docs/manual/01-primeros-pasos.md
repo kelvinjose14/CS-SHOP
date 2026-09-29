@@ -114,3 +114,14 @@ Arriba a la derecha, la **campanita** muestra cuántas alertas nuevas hay:
 | **Depósitos por verificar** | Depósitos al banco sin comparar con el estado de cuenta (administrador) |
 
 Pulse la campanita para ver la lista. Cada alerta lleva a su pantalla. El número se apaga al abrir la lista y vuelve si algo cambia (por ejemplo, se agota otra gorra). El sistema las revisa al cambiar de pantalla y cada 2 minutos.
+
+## 1.9 Modo oscuro
+
+El botón de la **luna**, arriba a la derecha (al lado de la campanita), pasa todo el sistema a **oscuro**. Con el **sol** vuelve a claro. Es más cómodo de noche o con poca luz.
+
+En **Configuración → Apariencia de esta PC** hay tres opciones:
+- **Claro**.
+- **Oscuro**.
+- **Igual que Windows**: cambia solo cuando Windows cambia de modo.
+
+Cada computadora recuerda la suya: la caja puede estar en oscuro y la del administrador en claro. Los recibos, las etiquetas, los PDF y los Excel salen siempre en claro, para imprimirlos bien.

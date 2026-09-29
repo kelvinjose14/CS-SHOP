@@ -31,6 +31,31 @@ function el(markup) {
   return t.content.firstElementChild;
 }
 
+/* ---------- Tema claro u oscuro (1.10) ---------- */
+// Cada PC recuerda el suyo: 'claro', 'oscuro' o 'sistema' (igual que Windows). Se aplica antes de
+// dibujar nada, así no hay un destello claro al abrir en oscuro.
+const Theme = {
+  key: 'capsshop-tema',
+  get() { try { return localStorage.getItem(this.key) || 'claro'; } catch { return 'claro'; } },
+  media: window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null,
+  dark() { const t = this.get(); return t === 'oscuro' || (t === 'sistema' && !!(this.media && this.media.matches)); },
+  apply({ animate = false } = {}) {
+    const root = document.documentElement;
+    if (animate && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+      root.classList.add('theme-anim');
+      clearTimeout(this.animTimer);
+      this.animTimer = setTimeout(() => root.classList.remove('theme-anim'), 320);
+    }
+    root.dataset.theme = this.dark() ? 'dark' : 'light';
+    const btn = document.getElementById('theme-btn');
+    if (btn) { btn.innerHTML = toHtml(icon(this.dark() ? 'sun' : 'moon')); btn.title = this.dark() ? 'Modo claro' : 'Modo oscuro'; }
+  },
+  set(t) { try { localStorage.setItem(this.key, t); } catch { /* sin almacenamiento: solo por ahora */ } this.apply({ animate: true }); },
+  // El botón de la barra: pasa de claro a oscuro y al revés.
+  toggle() { this.set(this.dark() ? 'claro' : 'oscuro'); },
+};
+if (Theme.media && Theme.media.addEventListener) Theme.media.addEventListener('change', () => { if (Theme.get() === 'sistema') Theme.apply({ animate: true }); });
+
 /* ---------- Formatos ---------- */
 // Los formateadores se crean una sola vez: toLocaleString crea uno nuevo en cada llamada y en una tabla
 // de cientos de filas se notaba.
@@ -109,6 +134,8 @@ const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
+  moon: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   pause: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
   bell: '<path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 20a2 2 0 004 0"/>',
   command: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/>',
@@ -718,3 +745,6 @@ function flashNumber(node) {
 
 const productLabel = (p) => [p.name, p.color, p.size].filter(Boolean).join(' · ');
 const debounce = (fn, ms = 250) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+// Aplicar el tema en cuanto se cargan los íconos (antes de la primera pantalla).
+Theme.apply();

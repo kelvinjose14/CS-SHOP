@@ -225,6 +225,7 @@ const App = {
           <button class="topbar-search" id="gsearch" type="button" title="Buscar productos, clientes, ventas o acciones (Ctrl + K)">${icon('search')}<span>Buscar o ir a…</span><kbd>Ctrl K</kbd></button>
           <div class="topbar-tools">
             <div class="topbar-right" id="topbar-right"></div>
+            <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">${icon(Theme.dark() ? 'sun' : 'moon')}</button>
             <button class="icon-btn bell" id="bell" type="button" title="Alertas" aria-label="Alertas">${icon('bell')}<span class="bell-count hidden" id="bell-count"></span></button>
           </div>
         </header>
@@ -238,6 +239,8 @@ const App = {
     if (pref === 'contraido') document.body.classList.add('side-collapsed');
     $('#gsearch').onclick = () => commandPalette();
     $('#bell').onclick = () => this.showAlerts();
+    $('#theme-btn').onclick = () => Theme.toggle();
+    Theme.apply();
     this.alertsAt = 0;
     clearInterval(this.alertsTimer);
     this.alertsTimer = setInterval(() => this.refreshAlerts(true), 120000);
