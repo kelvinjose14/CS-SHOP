@@ -32,10 +32,13 @@ function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 }
 
-function money(value, field = 'Monto', { allowZero = true } = {}) {
+// decimals: un monto escrito a mano (precio, costo) lleva a lo sumo 2 decimales: 1500 y 1500.50 sí,
+// 1500.00000001 no. Sin esa opción se redondea (montos calculados).
+function money(value, field = 'Monto', { allowZero = true, decimals = false } = {}) {
   const n = Number(value);
   if (value === '' || value === null || value === undefined || !Number.isFinite(n)) throw new AppError(`${field}: valor inválido.`);
   if (n < 0 || (!allowZero && n === 0)) throw new AppError(`${field} debe ser ${allowZero ? 'mayor o igual a' : 'mayor que'} cero.`);
+  if (decimals && !/^\d+(\.\d{0,2})?$/.test(String(typeof value === 'number' ? n : value).trim())) throw new AppError(`${field}: use como máximo 2 decimales (por ejemplo 1500 o 1500.50).`);
   return round2(n);
 }
 

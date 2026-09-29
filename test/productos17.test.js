@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 const { openDatabase, Database } = require('../src/core/db');
 const { createApi } = require('../src/core/api');
-const { migrate, MIGRATIONS, CATALOG_SEEDS } = require('../src/core/schema');
+const { migrate, MIGRATIONS, CATALOG_SEEDS, QUICK_OPTIONS } = require('../src/core/schema');
 const { client } = require('./helpers');
 
 const tmp = (name) => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-17-')), name);
@@ -138,8 +138,8 @@ test('producto con colores y tallas del catálogo: una variante por combinación
   assert.equal(call('products.get', { id: solo }).color_id, null);
 
   // Editar el modelo cambia marca y categoría de todas sus variantes.
-  call('products.updateModel', { id: r.model_id, name: 'New Era Yankees 59FIFTY', model: '59FIFTY', brand_id: id('brands', "'47 Brand"), category_id: id('categories', 'Snapback') });
-  assert.ok(call('products.list', { search: 'Yankees' }).every((x) => x.brand === "'47 Brand" && x.category === 'Snapback'));
+  call('products.updateModel', { id: r.model_id, name: 'New Era Yankees 59FIFTY', model: '59FIFTY', brand_id: id('brands', 'Nike'), category_id: id('categories', 'Snapback') });
+  assert.ok(call('products.list', { search: 'Yankees' }).every((x) => x.brand === 'Nike' && x.category === 'Snapback'));
 });
 
 test('importar y las PCs con la versión anterior siguen funcionando con nombres', async () => {
@@ -153,4 +153,63 @@ test('importar y las PCs con la versión anterior siguen funcionando con nombres
   const res = call('products.import', { rows: [{ name: 'Importada', brand: 'nike', color: 'Blanco', size: '7', price_retail: '800' }] });
   assert.equal(res.created, 1);
   assert.equal(call('products.list', { search: 'Importada' })[0].brand, 'Nike');
+});
+
+test('migración 10: pocas opciones al empezar, catálogo de modelos y lo que ya se usa se conserva', async () => {
+  const db = new Database(tmp('v9.db'));
+  db.tx(() => migrate(db, MIGRATIONS.slice(0, 9)));
+  const t = '2026-01-01 10:00:00';
+  const jordan = db.value("SELECT id FROM brands WHERE name = 'Jordan'");
+  db.insert('products', { name: 'Gorra J', brand: 'Jordan', brand_id: jordan, model: '9forty', sku: 'J-1', cost: 100, price_retail: 900, stock: 1, created_at: t, updated_at: t });
+  db.insert('products', { name: 'Gorra K', model: 'Low Pro', sku: 'K-1', cost: 100, price_retail: 900, stock: 1, created_at: t, updated_at: t });
+  db.tx(() => migrate(db));
+  const api = createApi(db);
+  const admin = client(api);
+  admin.login({ username: 'admin', password: 'admin123' });
+  const c = admin.call('catalog.list', {});
+  assert.deepEqual(c.brands.map((b) => b.name).sort(), [...QUICK_OPTIONS.brands, 'Jordan'].sort(), 'las de siempre y la que ya se usa');
+  assert.deepEqual(c.categories.map((b) => b.name).sort(), [...QUICK_OPTIONS.categories].sort());
+  assert.deepEqual(c.models.map((b) => b.name).sort(), [...QUICK_OPTIONS.models, 'Low Pro'].sort());
+  assert.equal(db.value("SELECT model FROM products WHERE sku = 'J-1'"), '9FORTY', 'queda escrito como en el catálogo');
+  assert.equal(c.models.find((m) => m.name === '9FORTY').products, 1);
+  // Las desactivadas vuelven al crearlas desde el formulario.
+  assert.equal(admin.call('catalog.create', { type: 'brands', name: 'puma' }).name, 'Puma');
+  assert.ok(admin.call('catalog.list', {}).brands.some((b) => b.name === 'Puma'));
+});
+
+test('modelos y marcas nuevos: se guardan, no se repiten y renombrarlos no parte el producto', async () => {
+  const { call } = await setup();
+  const low = call('catalog.create', { type: 'models', name: '  low   profile ' });
+  assert.equal(low.name, 'low profile');
+  assert.equal(call('catalog.create', { type: 'models', name: 'LOW PROFILE' }).id, low.id, 'sin repetir por mayúsculas ni espacios');
+  assert.equal(call('catalog.create', { type: 'models', name: '59fifty' }).name, '59FIFTY');
+  const brand = call('catalog.create', { type: 'brands', name: 'Pink Dolphin' });
+  const r = call('products.createModel', { name: 'Gorra PD', brand_id: brand.id, model: 'Low Profile', price_retail: 1000, variants: [{ size_id: null, initial_stock: 1 }] });
+  assert.equal(call('products.get', { id: r.ids[0] }).model, 'low profile', 'con el nombre del catálogo');
+  call('products.createModel', { name: 'Gorra X', model: 'Modelo Nuevo', price_retail: 10, variants: [{ initial_stock: 0 }] });
+  assert.ok(call('catalog.list', {}).models.some((m) => m.name === 'Modelo Nuevo'), 'un modelo escrito se agrega al catálogo');
+
+  call('catalog.update', { type: 'models', id: low.id, name: 'Low Profile' });
+  call('catalog.update', { type: 'brands', id: brand.id, name: 'Pink Dolphin Co.' });
+  const p = call('products.get', { id: r.ids[0] });
+  assert.deepEqual([p.brand, p.model], ['Pink Dolphin Co.', 'Low Profile']);
+  call('products.save', { ...p, price_retail: 1200 });
+  assert.equal(call('products.get', { id: r.ids[0] }).model_id, r.model_id, 'sigue en el mismo modelo');
+  assert.equal(call('products.modelGet', { id: r.model_id }).model, 'Low Profile');
+});
+
+test('precios y costo: positivos y con 2 decimales como máximo', async () => {
+  const { call } = await setup();
+  assert.equal(call('products.get', { id: call('products.save', { name: 'A', cost: '1500', price_retail: 1500.5 }) }).price_retail, 1500.5);
+  assert.throws(() => call('products.save', { name: 'B', price_retail: '1500.00000001' }), /máximo 2 decimales/);
+  assert.throws(() => call('products.save', { name: 'B', price_retail: 1500, cost: 10.123 }), /Costo: use como máximo 2 decimales/);
+  assert.throws(() => call('products.save', { name: 'B', price_retail: 1500, price_wholesale: -1 }), /mayor o igual a cero/);
+  // El costo promedio que salió de las compras (4 decimales) se puede volver a guardar sin cambiarlo.
+  const id = call('products.save', { name: 'C', cost: 10, price_retail: 20, initial_stock: 1 });
+  const sup = call('suppliers.save', { name: 'Proveedor' });
+  call('purchases.create', { supplier_id: sup, payment_type: 'credito', items: [{ product_id: id, qty: 2, unit_cost: 11.33 }], confirm_costs: true });
+  const p = call('products.get', { id });
+  assert.notEqual(Math.round(p.cost * 100), p.cost * 100, 'el promedio tiene más de 2 decimales');
+  call('products.save', { ...p, price_retail: 25 });
+  assert.equal(call('products.get', { id }).price_retail, 25);
 });

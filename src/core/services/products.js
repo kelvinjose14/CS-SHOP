@@ -18,8 +18,10 @@ const MOVEMENT_LABELS = {
 
 const missing = (field) => { throw new AppError(`${field} es obligatorio.`); };
 const orZero = (v) => (v === undefined || v === null || v === '' ? 0 : v);
-const cost4 = (v) => {
-  money(orZero(v), 'Costo'); // valida
+// El costo promedio guarda 4 decimales (sale de las compras). Uno escrito a mano lleva a lo sumo 2; el
+// que ya estaba guardado se acepta tal cual (same).
+const cost4 = (v, { same = false } = {}) => {
+  money(orZero(v), 'Costo', { decimals: !same });
   return Math.round(Number(orZero(v)) * 10000) / 10000;
 };
 
@@ -99,13 +101,14 @@ function nextSku(db) {
   return sku;
 }
 
-// Marca, categoría, color y talla: por su clave del catálogo (el formulario) o por el nombre (importar,
-// o una PC con la versión anterior), que se busca o se agrega al catálogo (1.7, DT-45).
+// Marca, modelo, categoría, color y talla: por su clave del catálogo (el formulario) o por el nombre
+// (importar, o una PC con la versión anterior), que se busca o se agrega al catálogo (1.7, DT-45). El
+// modelo va solo por nombre y queda escrito como en el catálogo ("59fifty" → "59FIFTY").
 function catalogFields(ctx, data) {
   const out = {};
   for (const [type, t] of Object.entries(catalog.TYPES)) {
-    const r = catalog.resolve(ctx, type, { id: data[t.idColumn], name: data[t.column] });
-    out[t.idColumn] = r.id;
+    const r = catalog.resolve(ctx, type, { id: t.idColumn ? data[t.idColumn] : undefined, name: data[t.column] });
+    if (t.idColumn) out[t.idColumn] = r.id;
     out[t.column] = r.name;
   }
   return out;
@@ -114,16 +117,17 @@ function catalogFields(ctx, data) {
 const variantLabel = (f) => [f.color, f.size].filter(Boolean).join(' · ') || 'sin color ni talla';
 
 function save(ctx, data) {
+  const oldCost = data.id ? ctx.db.value('SELECT cost FROM products WHERE id = ?', [data.id]) : null;
   const fields = {
     name: text(data.name, 'Nombre', { required: true, max: 120 }),
     model: text(data.model, 'Modelo', { max: 80 }),
     sku: text(data.sku, 'SKU', { max: 60 }),
     barcode: text(data.barcode, 'Código de barras', { max: 60 }),
     // El costo promedio guarda 4 decimales para no acumular errores de redondeo.
-    cost: cost4(data.cost),
+    cost: cost4(data.cost, { same: oldCost !== null && oldCost !== undefined && Number(orZero(data.cost)) === oldCost }),
     // Un producto sin precio al detalle se vendería en 0 (RF-NUE-07).
-    price_retail: orZero(data.price_retail) === 0 && data.price_retail !== 0 ? missing('Precio al detalle') : money(data.price_retail, 'Precio al detalle', { allowZero: false }),
-    price_wholesale: money(orZero(data.price_wholesale), 'Precio al por mayor'),
+    price_retail: orZero(data.price_retail) === 0 && data.price_retail !== 0 ? missing('Precio al detalle') : money(data.price_retail, 'Precio al detalle', { allowZero: false, decimals: true }),
+    price_wholesale: money(orZero(data.price_wholesale), 'Precio al por mayor', { decimals: true }),
     min_stock: int(orZero(data.min_stock), 'Stock mínimo'),
     notes: text(data.notes, 'Notas', { max: 1000 }),
   };
@@ -261,6 +265,8 @@ function updateModel(ctx, data) {
     for (const v of variants) {
       const next = { ...v, name: data.name, model: data.model, brand_id: brand.id, brand: brand.name, category_id: category.id, category: category.name };
       if (data.notes !== undefined) next.notes = data.notes;
+      // El costo escrito en el formulario se aplica a todas; si no cambió, cada una conserva el suyo.
+      if (data.cost !== undefined && data.cost !== '' && data.cost !== null) next.cost = data.cost;
       if (data.apply_prices) Object.assign(next, { price_retail: data.price_retail, price_wholesale: data.price_wholesale });
       if (data.min_stock !== undefined && data.min_stock !== '') next.min_stock = data.min_stock;
       delete next.photo;

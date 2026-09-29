@@ -217,7 +217,7 @@ async function variantChooser(g, { priceKey = 'price_retail' } = {}) {
 /* ---------- Catálogos de productos (1.7) ---------- */
 const plainText = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
-// Selector con búsqueda (marca, categoría): se escribe para filtrar y al final está "+ Crear nueva …".
+// Selector con búsqueda (marca, modelo, categoría): se escribe para filtrar y al final está "+ Crear nueva …".
 // items: [{ id, name }]. Devuelve { value } con la clave elegida (null si se deja vacío).
 function comboSelect(root, { items, value = null, placeholder = 'Buscar o seleccionar…', createLabel, onCreate, id }) {
   const box = el(html`
@@ -285,15 +285,15 @@ function comboSelect(root, { items, value = null, placeholder = 'Buscar o selecc
   return { get value() { return selected ? selected.id : null; }, get name() { return nameOf(); }, input, el: box };
 }
 
-// Opciones que se marcan con un clic (colores, tallas). Varias a la vez; las elegidas llevan ✓.
-// items: [{ id, name, hex? }]. onAdd: agrega una opción nueva al catálogo y la deja marcada.
-function chipPicker(root, { items, selected = [], swatch = false, addLabel, onAdd, onChange, locked = [] }) {
+// Opciones que se marcan con un clic (tallas). Varias a la vez; las elegidas llevan ✓.
+// items: [{ id, name }]. onAdd: agrega una opción nueva al catálogo y la deja marcada.
+function chipPicker(root, { items, selected = [], addLabel, onAdd, onChange, locked = [] }) {
   const sel = new Set(selected);
   const box = el(html`<div class="chips"></div>`);
   root.appendChild(box);
   const draw = () => {
-    setHTML(box, html`${items.map((i) => html`<button type="button" class="chip-opt ${sel.has(i.id) ? 'on' : ''}" data-id="${i.id}" aria-pressed="${sel.has(i.id)}" title="${locked.includes(i.id) ? 'Tiene variantes: al quitarla se desactivan' : ''}">
-        ${sel.has(i.id) ? html`<span class="chip-check">✓</span>` : ''}${swatch ? html`<span class="swatch" style="background:${i.hex || 'transparent'}" data-empty="${i.hex ? '' : '1'}"></span>` : ''}${i.name}</button>`)}
+    setHTML(box, html`${items.map((i) => html`<button type="button" class="chip-opt ${sel.has(i.id) ? 'on' : ''}" data-id="${i.id}" aria-pressed="${sel.has(i.id)}" title="${locked.includes(i.id) ? 'Ya tiene existencia registrada: al quitarla se desactiva' : ''}">
+        ${sel.has(i.id) ? html`<span class="chip-check">✓</span>` : ''}${i.name}</button>`)}
       ${onAdd ? html`<button type="button" class="chip-opt chip-add">${icon('plus')} ${addLabel}</button>` : ''}`);
     $$('[data-id]', box).forEach((b) => (b.onclick = () => {
       const id = Number(b.dataset.id);
@@ -314,33 +314,4 @@ function chipPicker(root, { items, selected = [], swatch = false, addLabel, onAd
   draw();
   // Las elegidas, en el orden del catálogo.
   return { get value() { return items.filter((i) => sel.has(i.id)); }, el: box };
-}
-
-// Color nuevo: nombre y su color (para verlo en los botones).
-function newColorDialog() {
-  return new Promise((resolve) => {
-    let done = false;
-    modal({
-      title: 'Agregar color',
-      width: 420,
-      body: html`<div class="grid-2">
-        <label class="field"><span>Nombre *</span><input name="name" placeholder="Ej. Verde oliva"></label>
-        <label class="field"><span>Color</span><input name="hex" type="color" value="#808080"></label>
-      </div>`,
-      onClose: () => { if (!done) resolve(null); },
-      actions: [
-        { label: 'Cancelar' },
-        {
-          label: 'Agregar', primary: true,
-          onClick: async ({ body }) => {
-            const f = formData(body);
-            if (!f.name.trim()) { toast('Escriba el nombre del color.', 'error'); return false; }
-            const made = await api('catalog.create', { type: 'colors', name: f.name, hex: f.hex });
-            done = true;
-            resolve(made);
-          },
-        },
-      ],
-    });
-  });
 }

@@ -271,6 +271,25 @@ document.addEventListener('click', (e) => {
   if (b) expandTables(b.closest('.table-wrap'));
 });
 
+// La rueda del mouse sobre un número con el cursor dentro cambiaba el valor sin querer (un precio de
+// 1500 pasaba a 1499). Se saca el cursor del campo: el número queda igual y la página sigue bajando.
+document.addEventListener('wheel', (e) => {
+  const t = e.target;
+  if (t instanceof HTMLInputElement && t.type === 'number' && document.activeElement === t) t.blur();
+}, { passive: true, capture: true });
+
+// Montos (precio, costo): positivos y con 2 decimales como máximo. Se marca al salir del campo; al
+// guardar, el sistema también lo revisa.
+const MONEY_OK = /^\d+(\.\d{0,2})?$/;
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLInputElement) || !t.hasAttribute('data-money')) return;
+  const v = t.value.trim();
+  const bad = v !== '' && !MONEY_OK.test(v);
+  t.classList.toggle('invalid', bad);
+  if (bad) toast(Number(v) < 0 ? 'El monto no puede ser negativo.' : 'Use como máximo 2 decimales (por ejemplo 1500 o 1500.50).', 'error');
+}, true);
+
 function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable = false, totalsLabel = 'Totales', limit = TABLE_LIMIT }) {
   const cell = (c, r) => {
     if (c.render) return toHtml(c.render(r));

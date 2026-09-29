@@ -23,7 +23,7 @@ test('categoría en el producto y dashboard ejecutivo con comparaciones, pronós
   await win.press(`${dialog} #pe-category-input`, 'Enter');
   await win.fill(`${dialog} [name=cost]`, '400');
   await win.fill(`${dialog} [name=price_retail]`, '1000');
-  await win.fill(`${dialog} #pe-variants [data-stock]`, '10');
+  await win.fill(`${dialog} #pe-stock [data-stock]`, '10');
   await win.click(`${dialog} .modal-foot .btn.primary`);
   const id = await eventually(async () => (await api(win, 'products.list', { search: 'Snapback ejecutivo' }))[0]?.id);
   assert.equal((await api(win, 'products.get', { id })).category, 'Snapback');

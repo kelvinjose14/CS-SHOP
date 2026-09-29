@@ -66,7 +66,7 @@ Siga este orden. Cada paso usa lo que se cargó en el anterior.
 | Paso | Dónde | Qué registrar | Página del manual |
 |---|---|---|---|
 | 1 | **Proveedores** → **Nuevo proveedor** | A quién le compra la mercancía | [Compras y proveedores](05-compras-y-proveedores.md) |
-| 2 | **Inventario** → **Nuevo producto**, o **Importar** desde Excel si son muchos | Cada gorra: una ficha por combinación de modelo, color y talla | [Inventario](04-inventario.md), [4.7](04-inventario.md#47-importar-productos-desde-excel-administrador) |
+| 2 | **Inventario** → **Nuevo producto**, o **Importar** desde Excel si son muchos | Cada gorra: una ficha con sus tallas y la existencia de cada una | [Inventario](04-inventario.md), [4.7](04-inventario.md#47-importar-productos-desde-excel-administrador) |
 | 3 | Existencias que ya tiene | Escriba la **Existencia inicial** al crear cada producto (o la columna **Existencia** al importar); o, si quiere que quede como compra, déjela en 0 y registre una **Compra** | [Inventario](04-inventario.md) |
 | 4 | **Clientes** → **Nuevo cliente** | Clientes frecuentes y los que compran a crédito | [Clientes y cobros](06-clientes-y-cobros.md) |
 | 5 | Deudas que ya existían antes del sistema | En cada cliente y proveedor → **Saldo inicial**. No cuenta como venta ni compra | [Clientes, 6.1](06-clientes-y-cobros.md#saldo-inicial-administrador), [Proveedores, 5.1](05-compras-y-proveedores.md#51-proveedores) |

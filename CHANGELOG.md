@@ -5,21 +5,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 ## Sin publicar
 
 ### Agregado
-- **Nuevo producto, rehecho** (RF-NUE-22, DT-45, [manual 4.2](docs/manual/04-inventario.md#42-crear-un-producto-administrador)):
-  - **Marca** con búsqueda: se escribe parte del nombre y se elige (New Era, Mitchell & Ness, '47 Brand, Nike…); **+ Crear nueva marca** la agrega y la deja elegida.
-  - **Categoría** de una lista (Fitted, Snapback, Trucker, Dad Hat, Strapback, Adjustable, Beanie, Visera, Otro), con **+ Crear nueva categoría**.
-  - **Colores** y **tallas** que se marcan con un clic (✓), con **+ Agregar nuevo color** (con su color) y **+ Agregar talla**. Ya no se escriben separados por coma.
-  - **Variantes e inventario:** una fila por cada color y talla, con su existencia y código de barras, y el **stock total**. Sin colores ni tallas es una sola gorra; para una ajustable basta **Ajustable** u **One Size**.
-- **Editar producto** con todas sus variantes: marcar un color o talla nueva agrega sus variantes; quitarlo las desactiva (con aviso si tienen existencia). **Editar esta variante** cambia solo una combinación (SKU, código, costo, precios, color, talla, foto).
-- **Al vender** un producto con variantes se elige **color** y **talla**, viendo lo disponible de cada una; solo baja esa variante. También al apartar y al comprar.
-- **Configuración → Catálogo de productos:** renombrar (cambia el nombre en los productos), cambiar el color y desactivar marcas, categorías, colores y tallas.
-- Un producto no puede tener dos veces la misma combinación de color y talla.
-- La base pasa a la versión 9 al abrir: marcas, categorías, colores y tallas pasan a sus propias listas con lo que ya estaba escrito en los productos.
+- **Nuevo producto, más simple** (RF-NUE-22, DT-45, DT-46, [manual 4.2](docs/manual/04-inventario.md#42-crear-un-producto-administrador)): Nombre; Marca y Modelo; Categoría y Tallas; Costo y Precio detalle; Precio por mayor y Stock mínimo (empieza en 2); Notas.
+  - **Marca**, **Modelo** y **Categoría** son listas que empiezan con pocas opciones (New Era, Mitchell & Ness, Goorin Bros., Nike, Adidas; 59FIFTY, 9FIFTY, 9FORTY, 39THIRTY, 9TWENTY; Fitted, Snapback, Trucker, Ajustable, Dad Hat). **+ Crear nueva marca**, **+ Crear nuevo modelo** y **+ Crear nueva categoría** la guardan, la dejan elegida y sale en los próximos productos. No se repiten: "new era" y "NEW  ERA" son la misma. El modelo no depende de la marca.
+  - **Tallas** que se marcan con un clic (✓), cada una con su existencia debajo. Sin tallas, una sola **Existencia inicial**.
+- **Editar producto** con todas sus tallas: marcar una talla nueva la agrega; quitarla la desactiva (con aviso si tiene existencia). **Editar esta variante** cambia solo una talla (SKU, código, costo, precios, talla, foto).
+- **Al vender** un producto con varias tallas se elige la **talla**, viendo lo disponible de cada una; solo baja esa. También al apartar y al comprar.
+- **Configuración → Catálogo de productos:** renombrar (cambia el nombre en los productos) y desactivar marcas, modelos, categorías y tallas.
+- Un producto no puede tener dos veces la misma talla.
+- La base pasa a la versión 10 al abrir: marcas, modelos, categorías y tallas pasan a sus propias listas con lo que ya estaba escrito en los productos. Los productos que tenían color lo conservan (se ve en su detalle, en la exportación y al vender).
 
 ### Cambiado
 - **Las actualizaciones se instalan solas, sin ventanas de instalación** (DT-44). **Actualizar ahora** cierra el programa unos segundos y lo vuelve a abrir en la versión nueva; **Al cerrar el programa** la descarga mientras se trabaja y la instala cuando se cierra, por ejemplo al final del día. La barra de arriba dice **Versión X al cerrar**.
 
 ### Corregido
+- **La rueda del mouse cambiaba los números** (precios, costo, stock, cantidades) si el cursor estaba dentro del campo. Ahora la página baja y el número queda igual.
+- **Precios y costo con demasiados decimales** (1500.00000001) o negativos se rechazan: 2 decimales como máximo. El campo se marca en rojo al escribirlo.
 - El aviso de versión nueva de la barra de arriba desaparecía al refrescar la caja, y podía quedar repetida la etiqueta de la caja.
 - **Configuración → Actualizaciones → Buscar ahora** no mostraba nada mientras buscaba ni al terminar, y parecía que el programa se había trabado. Ahora dice "Buscando…" y un aviso indica si hay una versión nueva o no, con la hora de la última revisión.
 

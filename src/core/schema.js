@@ -487,7 +487,51 @@ const MIGRATIONS = [
     }
     db.exec('CREATE UNIQUE INDEX ux_products_variant ON products(model_id, IFNULL(color_id, 0), IFNULL(size_id, 0)) WHERE model_id IS NOT NULL;');
   },
+
+  // v10: formulario de productos simple (1.7). Catálogo de modelos (59FIFTY, 9FORTY…), que no depende de
+  // la marca; el producto guarda el nombre del modelo como siempre. Marcas y categorías quedan con pocas
+  // opciones al empezar: las de la lista inicial que ningún producto usa se desactivan (no se borran;
+  // se activan de nuevo al crearlas desde el formulario o en Configuración).
+  (db) => {
+    db.exec('CREATE TABLE models (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);');
+    const t = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const clean = (s) => String(s).trim().replace(/\s+/g, ' ');
+    const models = new Map();
+    const addModel = (name) => {
+      const k = catalogKey(name);
+      if (k && !models.has(k)) models.set(k, { id: db.insert('models', { name: clean(name), active: 1, created_at: t }), name: clean(name) });
+      return models.get(k);
+    };
+    for (const m of QUICK_OPTIONS.models) addModel(m);
+    for (const p of db.all('SELECT id, model FROM products WHERE model IS NOT NULL ORDER BY id')) {
+      const m = addModel(p.model);
+      if (m && m.name !== p.model) db.run('UPDATE products SET model = ? WHERE id = ?', [m.name, p.id]);
+    }
+    for (const r of db.all('SELECT id, model FROM product_models WHERE model IS NOT NULL')) {
+      const m = models.get(catalogKey(r.model));
+      if (m && m.name !== r.model) db.run('UPDATE product_models SET model = ? WHERE id = ?', [m.name, r.id]);
+    }
+    const hasCategory = db.all('SELECT name FROM categories').some((c) => catalogKey(c.name) === 'ajustable');
+    if (!hasCategory) db.insert('categories', { name: 'Ajustable', active: 1, created_at: t });
+    for (const [table, column] of [['brands', 'brand_id'], ['categories', 'category_id']]) {
+      const keep = new Set(QUICK_OPTIONS[table].map(catalogKey));
+      const seeded = new Set(CATALOG_SEEDS[table].map(catalogKey));
+      for (const r of db.all(`SELECT id, name FROM ${table} WHERE active = 1`)) {
+        const k = catalogKey(r.name);
+        if (!seeded.has(k) || keep.has(k)) continue;
+        if (db.value(`SELECT COUNT(*) FROM products WHERE ${column} = ?`, [r.id])) continue;
+        db.run(`UPDATE ${table} SET active = 0 WHERE id = ?`, [r.id]);
+      }
+    }
+  },
 ];
+
+// Opciones con las que empieza el formulario de productos (v10).
+const QUICK_OPTIONS = {
+  brands: ['New Era', 'Mitchell & Ness', 'Goorin Bros.', 'Nike', 'Adidas'],
+  models: ['59FIFTY', '9FIFTY', '9FORTY', '39THIRTY', '9TWENTY'],
+  categories: ['Fitted', 'Snapback', 'Trucker', 'Ajustable', 'Dad Hat'],
+};
 
 // Opciones iniciales de los catálogos (v9). El dueño agrega más desde el formulario del producto.
 const CATALOG_SEEDS = {
@@ -525,4 +569,4 @@ function migrate(db, migrations = MIGRATIONS) {
   }
 }
 
-module.exports = { migrate, MIGRATIONS, SCHEMA_VERSION: MIGRATIONS.length, CATALOG_SEEDS };
+module.exports = { migrate, MIGRATIONS, SCHEMA_VERSION: MIGRATIONS.length, CATALOG_SEEDS, QUICK_OPTIONS };

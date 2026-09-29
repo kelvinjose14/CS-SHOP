@@ -394,7 +394,7 @@ async function renderExternal(box) {
 
 // Catálogo de productos (1.7): marcas, categorías, colores y tallas. Se agregan desde el formulario del
 // producto; aquí se corrigen nombres, se cambia el color y se quitan de las opciones (desactivar).
-const CATALOG_TABS = [['brands', 'Marcas'], ['categories', 'Categorías'], ['colors', 'Colores'], ['sizes', 'Tallas']];
+const CATALOG_TABS = [['brands', 'Marcas'], ['models', 'Modelos'], ['categories', 'Categorías'], ['sizes', 'Tallas']];
 async function renderCatalog(card, tab = 'brands') {
   const all = await api('catalog.list', { includeInactive: true });
   const rows = all[tab];
@@ -405,11 +405,10 @@ async function renderCatalog(card, tab = 'brands') {
     <div class="table-wrap cat-list"><table class="table">
       <thead><tr><th>Nombre</th><th class="text-right">Productos</th><th>Estado</th><th></th></tr></thead>
       <tbody>${rows.map((r) => html`<tr data-id="${r.id}" class="${r.active ? '' : 'inactive'}">
-        <td>${tab === 'colors' ? html`<span class="swatch" style="background:${r.hex || 'transparent'}" data-empty="${r.hex ? '' : '1'}"></span> ` : ''}${r.name}</td>
+        <td>${r.name}</td>
         <td class="text-right">${Fmt.num(r.products)}</td>
         <td>${r.active ? badge('activo', 'Activa') : badge('anulada', 'Desactivada')}</td>
         <td class="text-right nowrap">
-          ${tab === 'colors' ? html`<label class="btn small" title="Cambiar el color">Color<input type="color" data-hex value="${r.hex || '#808080'}" hidden></label>` : ''}
           <button type="button" class="btn small" data-rename>Renombrar</button>
           <button type="button" class="btn small" data-toggle>${r.active ? 'Desactivar' : 'Activar'}</button>
         </td></tr>`)}</tbody>
@@ -424,8 +423,6 @@ async function renderCatalog(card, tab = 'brands') {
       try { await api('catalog.update', { type: tab, id: r.id, name }); toast('Nombre cambiado.'); redraw(); } catch (e) { /* el aviso ya se mostró */ }
     };
     $('[data-toggle]', tr).onclick = () => api('catalog.update', { type: tab, id: r.id, active: !r.active }).then(redraw, () => {});
-    const hex = $('[data-hex]', tr);
-    if (hex) hex.onchange = () => api('catalog.update', { type: tab, id: r.id, hex: hex.value }).then(redraw, () => {});
   });
 }
 
