@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.6.1] - 2026-09-29
+
+Excel con formato. Se instala encima de la 1.6.0 o desde Configuración → Actualizaciones; la base no cambia.
+
 ### Cambiado
 - **Exportar guarda un Excel con formato** (.xlsx) en lugar de un CSV, en todas las listas, los reportes y el dashboard ejecutivo ([manual 9.6](docs/manual/09-contabilidad-y-reportes.md#96-exportar-a-excel), DT-43):
   - arriba, el nombre de la tienda, el título, el período, cuántos registros son y quién lo generó;
@@ -187,6 +191,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.6.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.1
 [1.6.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.0
 [1.3.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.1
 [1.3.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.0
