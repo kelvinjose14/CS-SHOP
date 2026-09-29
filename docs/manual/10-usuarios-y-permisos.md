@@ -18,7 +18,8 @@
 | Inventario y movimientos (consultar) | ✔ sin costos | ✔ |
 | Crear o editar productos y modelos, ajustar existencias, conteos | ✘ | ✔ |
 | Compras, proveedores y cuentas por pagar | ✘ | ✔ |
-| Clientes (registrar y editar) | ✔ | ✔ |
+| Clientes (registrar y editar, ficha, notas, cumpleaños y etiquetas) | ✔ sin costos | ✔ |
+| Marcar el VIP a mano | ✘ | ✔ |
 | Cuentas por cobrar (ver) | ✔ | ✔ |
 | Registrar abonos de clientes | ✔ si está permitido | ✔ |
 | Caja: abrir, entradas, depósitos al banco y cerrar | ✔ | ✔ |

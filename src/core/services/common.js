@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS = {
   // Días que dura un apartado si no se elige otra fecha, y cuántas gorras propone el conteo cíclico (1.5).
   reservation_days: '15',
   cycle_count_size: '20',
+  // Cliente VIP automático: lo que compró en los últimos 12 meses (1.6). 0 = sin VIP automático.
+  vip_min_spend: '25000',
   receipt_footer: '¡Gracias por su compra!',
   expense_categories: JSON.stringify(['Alquiler', 'Transporte', 'Publicidad', 'Nómina', 'Servicios', 'Internet', 'Delivery', 'Otros']),
   // Los aportes del dueño no van aquí: se registran aparte y no son ganancia (DT-21).

@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.5.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo y el inventario avanzado (O7). Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.6.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo, el inventario avanzado y el CRM de clientes (O7). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -18,7 +18,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 102 | 1 | 0 |
 | No funcionales | 14 | 12 | 1 | 1 |
-| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31, DT-35 y DT-36) | 18 | 18 | 0 | 0 |
+| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31, DT-35 y DT-36) | 21 | 21 | 0 | 0 |
 
 
 > Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
@@ -223,12 +223,12 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón (DT-19). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 89 pruebas de lógica, 21 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 91 pruebas de lógica, 23 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md). RF-NUE-15 a 18 los pidió el dueño (DT-36, [O7](objetivos.md#o7-gestión-avanzada)).
+Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md). RF-NUE-15 a 21 los pidió el dueño (DT-36, [O7](objetivos.md#o7-gestión-avanzada)).
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
@@ -246,10 +246,13 @@ Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicier
 | RF-NUE-12 | Revisar los depósitos al banco contra el estado de cuenta (auditoría 4.2, DT-30) | Cada depósito queda por verificar; el administrador lo marca **En el banco** o **No llegó** (se descuenta del banco y queda como salida del negocio). El Inicio avisa mientras haya pendientes | Cumple (1.3.0) | Caja → **Depósitos por verificar** |
 | RF-NUE-13 | Límite de crédito y deuda vencida (auditoría 2.3 y 2.4, DT-31) | Límite por cliente (0 = sin límite); una venta a crédito que lo pasa, o a quien tiene deuda vencida, la detiene el sistema: el vendedor no sigue y el administrador la autoriza. Solo el administrador desactiva clientes, y no si deben | Cumple (1.3.0) | Clientes, Nueva venta, Configuración |
 | RF-NUE-14 | Copia externa protegida con contraseña (auditoría 4.3, DT-35) | Opcional. Con contraseña, la copia de la memoria va cifrada, las copias sin cifrar se borran y restaurar pide la contraseña | Cumple (1.3.0) | Configuración → Copias de seguridad |
-| RF-NUE-15 | Dashboard ejecutivo (DT-36, DT-37) | Ventas, utilidad, margen, ticket promedio, cantidad de ventas y unidades por venta comparados con el período anterior y con el año anterior; pronóstico de cierre de mes; rotación, días de inventario y productos estancados; utilidad por producto, marca, categoría y vendedor. Solo el administrador | Cumple (1.4.0) | Análisis → **Dashboard ejecutivo** |
-| RF-NUE-16 | Modelos con variantes de color y talla (DT-36, DT-38) | Un modelo se crea con todas sus combinaciones desde una cuadrícula; cada variante tiene su SKU, código y existencia; el inventario se ve por variante o por modelo, con la cuadrícula color × talla; se agregan colores o tallas y se editan juntos nombre, categoría y precios. Los productos existentes se agrupan solos | Cumple (1.5.0) | Inventario → **Nuevo producto** → **Varios colores y tallas**; **Modelos** |
-| RF-NUE-17 | Apartados con stock disponible (DT-36, DT-39) | Reservar gorras para un cliente hasta una fecha; se ven existencia, apartadas y disponible; la venta a otro cliente no toca lo apartado; se vende, se extiende o se cancela con motivo; al vencer las gorras vuelven a estar disponibles y el Inicio avisa | Cumple (1.5.0) | **Apartados**; Nueva venta |
-| RF-NUE-18 | Conteo cíclico sugerido (DT-36, DT-40) | Cada semana el sistema propone qué contar: lo que más se vende más seguido (A cada 7 días, B cada 30, C cada 90); lo contado sale de la lista aunque coincida | Cumple (1.5.0) | Inventario → **Conteo** → **Conteo sugerido** |
+| RF-NUE-15 | Dashboard ejecutivo (DT-36, DT-37) | Ventas, utilidad, margen, ticket promedio, cantidad de ventas y unidades por venta comparados con el período anterior y con el año anterior; pronóstico de cierre de mes; rotación, días de inventario y productos estancados; utilidad por producto, marca, categoría y vendedor. Solo el administrador | Cumple (1.6.0) | Análisis → **Dashboard ejecutivo** |
+| RF-NUE-16 | Modelos con variantes de color y talla (DT-36, DT-38) | Un modelo se crea con todas sus combinaciones desde una cuadrícula; cada variante tiene su SKU, código y existencia; el inventario se ve por variante o por modelo, con la cuadrícula color × talla; se agregan colores o tallas y se editan juntos nombre, categoría y precios. Los productos existentes se agrupan solos | Cumple (1.6.0) | Inventario → **Nuevo producto** → **Varios colores y tallas**; **Modelos** |
+| RF-NUE-17 | Apartados con stock disponible (DT-36, DT-39) | Reservar gorras para un cliente hasta una fecha; se ven existencia, apartadas y disponible; la venta a otro cliente no toca lo apartado; se vende, se extiende o se cancela con motivo; al vencer las gorras vuelven a estar disponibles y el Inicio avisa | Cumple (1.6.0) | **Apartados**; Nueva venta |
+| RF-NUE-18 | Conteo cíclico sugerido (DT-36, DT-40) | Cada semana el sistema propone qué contar: lo que más se vende más seguido (A cada 7 días, B cada 30, C cada 90); lo contado sale de la lista aunque coincida | Cumple (1.6.0) | Inventario → **Conteo** → **Conteo sugerido** |
+| RF-NUE-19 | Ficha del cliente (CRM) (DT-36, DT-41) | Compras, gasto total y de 12 meses, ticket promedio, primera y última compra, cada cuántos días compra, lo que debe, lo que más compra (categorías, marcas, tallas, gorras), apartados activos y notas de seguimiento con fecha y usuario. El vendedor la ve sin costos ni utilidad | Cumple (1.6.0) | Clientes → un cliente |
+| RF-NUE-20 | Segmentos y cliente VIP (DT-41, DT-42) | Cada cliente es nuevo, frecuente, ocasional, en riesgo, perdido o sin compras; VIP automático por lo comprado en 12 meses, o a mano (solo el administrador); etiquetas libres; se filtra por segmento, VIP y etiqueta | Cumple (1.6.0) | **Clientes** |
+| RF-NUE-21 | Cumpleaños y listas para contactar (DT-42) | Cumpleaños (día y mes) en la ficha; cumpleaños de los próximos 30 días y de la semana en el Inicio; copiar los teléfonos de la lista filtrada | Cumple (1.6.0) | Clientes → **Cumpleaños**, **Copiar teléfonos**; Inicio |
 
 ## 4. Fuera de alcance
 

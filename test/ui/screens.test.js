@@ -4,9 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { dataDir, launch, login, go } = require('./helpers');
 
-const ADMIN_ROUTES = ['dashboard', 'pos', 'sales', 'products', 'movements', 'purchases', 'purchase-new', 'suppliers', 'customers',
-  'receivables', 'payables', 'expenses', 'incomes', 'cash', 'accounting', 'cashflow', 'reports', 'audit', 'users', 'settings'];
-const SELLER_ROUTES = ['dashboard', 'pos', 'sales', 'products', 'customers', 'receivables', 'cash'];
+const ADMIN_ROUTES = ['dashboard', 'pos', 'sales', 'reservations', 'products', 'movements', 'purchases', 'purchase-new', 'suppliers', 'customers',
+  'receivables', 'payables', 'expenses', 'incomes', 'cash', 'executive', 'accounting', 'cashflow', 'reports', 'audit', 'users', 'settings'];
+const SELLER_ROUTES = ['dashboard', 'pos', 'sales', 'reservations', 'products', 'customers', 'receivables', 'cash'];
 
 for (const [who, password, routes] of [['admin', 'admin123', ADMIN_ROUTES], ['vendedor', 'vendedor123', SELLER_ROUTES]]) {
   test(`pantallas como ${who}`, async (t) => {

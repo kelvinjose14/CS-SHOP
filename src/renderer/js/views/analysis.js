@@ -65,6 +65,10 @@ App.register({
               ${d.low_stock.map((p) => html`<li><span>${productLabel(p)}</span><span class="badge warn">Quedan ${p.available}${p.reserved ? ` + ${p.reserved} apartadas` : ''} (mín. ${p.min_stock})</span></li>`)}
             </ul>` : html`<div class="empty ok">Todo el inventario está sobre el mínimo.</div>`}
           </div>
+          ${d.birthdays && d.birthdays.length ? html`<div class="card span-2" id="dash-birthdays">
+            <div class="card-head"><h3>${icon('gift')} Cumpleaños esta semana</h3><button class="link" data-go="customers">Clientes</button></div>
+            <ul class="stock-list">${d.birthdays.map((c) => html`<li><span>${c.vip ? html`<span class="vip" title="VIP">${icon('star')}</span> ` : ''}<b>${c.name}</b> <small class="muted">${c.phone || ''}</small></span><span class="badge ${c.birthday_in === 0 ? 'ok' : 'info'}">${Fmt.bday(c.birthday)} · ${Fmt.bdayIn(c.birthday_in)}</span></li>`)}</ul>
+          </div>` : ''}
           ${admin ? html`
           <div class="card span-2">
             <div class="card-head"><h3>Respuestas rápidas</h3></div>
@@ -514,7 +518,7 @@ const AUDIT_LABELS = {
   saldo_inicial_cliente: 'Saldo inicial de cliente', saldo_inicial_proveedor: 'Saldo inicial con proveedor', importar_productos: 'Importación de productos',
   crear_codigo_recuperacion: 'Código de recuperación creado', recuperar_contrasena: 'Contraseña recuperada con el código',
   conteo_inventario: 'Conteo de inventario', crear_modelo: 'Modelo creado', editar_modelo: 'Modelo editado',
-  crear_apartado: 'Apartado', extender_apartado: 'Apartado extendido', cancelar_apartado: 'Apartado cancelado', vender_apartado: 'Apartado vendido', anular_abono: 'Abono anulado', anular_pago_proveedor: 'Pago a proveedor anulado', anular_movimiento_caja: 'Movimiento de caja anulado',
+  nota_cliente: 'Nota de cliente', crear_apartado: 'Apartado', extender_apartado: 'Apartado extendido', cancelar_apartado: 'Apartado cancelado', vender_apartado: 'Apartado vendido', anular_abono: 'Abono anulado', anular_pago_proveedor: 'Pago a proveedor anulado', anular_movimiento_caja: 'Movimiento de caja anulado',
 };
 
 // Nombres en español para claves de registros anteriores o técnicas (RF-NUE-08).

@@ -163,6 +163,7 @@ const SETTING_LABELS = {
   csv_format: 'Formato del CSV',
   reservation_days: 'Días de un apartado',
   cycle_count_size: 'Gorras por conteo cíclico',
+  vip_min_spend: 'Compras para ser VIP (12 meses)',
   receipt_footer: 'Pie del recibo',
   expense_categories: 'Categorías de gastos',
   income_categories: 'Categorías de otros ingresos',
@@ -185,6 +186,7 @@ function settingsSave(ctx, values) {
       if (!(k in DEFAULT_SETTINGS)) continue;
       if (k === 'csv_format' && !['auto', 'coma', 'punto_y_coma'].includes(v)) throw new AppError('Formato del CSV inválido.');
       if (k === 'reservation_days' && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 180)) throw new AppError('Los días de un apartado deben ser un número entre 1 y 180.');
+      if (k === 'vip_min_spend' && !(Number(v) >= 0 && Number.isFinite(Number(v)))) throw new AppError('Las compras para ser VIP deben ser un monto mayor o igual a cero.');
       if (k === 'cycle_count_size' && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 500)) throw new AppError('Las gorras por conteo cíclico deben ser un número entre 1 y 500.');
       setSetting(ctx.db, k, v);
       if (String(before[k] ?? '') !== String(v ?? '')) changes[SETTING_LABELS[k] || k] = { antes: settingValue(k, before[k]), despues: settingValue(k, v) };

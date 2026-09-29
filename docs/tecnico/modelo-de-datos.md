@@ -1,7 +1,7 @@
 # Modelo de datos
 
 - **Motor:** SQLite a través de `node:sqlite`, en modo WAL (`src/core/db.js`). Es el mismo formato de archivo que escribía la versión 1.0.0 con sql.js, así que la base se abre tal cual.
-- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **7**.
+- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **8**.
   - **1:** esquema inicial (versión 1.0.0).
   - **2:** computadoras en red. Tabla `terminals`, y columna `terminal_id` en `cash_sessions` y `audit_log`. Las cajas existentes pasan a la PC principal (id 1).
   - **3:** índices de las tablas de detalle (`sale_items`, `sale_payments`, `purchase_items`, `purchase_payments`, `returns`, `return_items`), más `purchases(supplier_id)` y `audit_log(action)`. Con 3 años de datos, la lista de ventas bajó de 16 s a 34 ms ([Rendimiento](rendimiento.md)).
@@ -14,6 +14,7 @@
     - **reglas de la base** (ver abajo).
   - **6:** `products.category` e índice (dashboard ejecutivo, versión 1.4.0), e índice `sales(user_id, date)` para la utilidad por vendedor.
   - **7:** inventario avanzado (versión 1.5.0): tabla `product_models` y `products.model_id` (DT-38); `products.last_counted_at` (conteo cíclico, DT-40); tablas `reservations` y `reservation_items` (apartados, DT-39). Es la primera migración escrita como función: agrupa los productos existentes con la misma clave que usa el programa (`modelKey` en `src/core/util.js`).
+  - **8:** CRM (versión 1.6.0): `customers.birthday` ("MM-DD"), `customers.tags` (lista en JSON), `customers.vip_mode` (`auto` \| `si` \| `no`) y tabla `customer_notes` (DT-41, DT-42). Los segmentos y el VIP automático se calculan, no se guardan.
 - **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten, dentro de una transacción: si una falla, no queda nada a medias. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
 - **Base más nueva que el programa:** no se abre. Sale **"Esta base de datos es de una versión más nueva de CAPS Shop…"**, para que una versión vieja no la dañe.
 - **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.
@@ -58,6 +59,7 @@ erDiagram
 | `users` | Usuarios | `username` (único, sin distinguir mayúsculas), `role` (`admin` \| `vendedor`), `password_hash`, `password_salt`, `must_change`, `active` |
 | `settings` | Configuración clave/valor | Claves y valores por defecto en `DEFAULT_SETTINGS` (`common.js`). Las claves que empiezan con `_` son internas y nunca salen del núcleo (`_recovery`: huella del código de recuperación) |
 | `product_models` | Modelos (1.5): agrupan variantes | `key` (única: nombre, marca y modelo en minúsculas), `name`, `brand`, `model` |
+| `customer_notes` | Notas de seguimiento de un cliente (1.6) | `customer_id`, `text`, `user_id`, `created_at` |
 | `reservations` / `reservation_items` | Apartados (1.5) y sus gorras | `customer_id`, `date`, `expires_on`, `status` (`activo` \| `vendido` \| `cancelado`; vencido = activo con `expires_on` pasado), `sale_id`, `close_reason`; ítems `product_id`, `qty` |
 | `products` | Productos | `sku` (único), `barcode` (único si existe), `category` (texto libre), `model_id`, `last_counted_at`, `photo` (archivo), `cost`, `price_retail`, `price_wholesale`, `stock`, `min_stock`, `active` |
 | `inventory_movements` | Cada cambio de existencia | `type`, `qty` (con signo), `stock_before`, `stock_after`, `unit_cost`, `ref_type`/`ref_id`, `note`, `user_id` |
