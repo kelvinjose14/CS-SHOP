@@ -19,6 +19,12 @@ App.register({
         page.appendChild(w);
       }
     }
+    // Apartados vencidos: ya no reservan las gorras; hay que cancelarlos o darles más días (1.5).
+    if (d.reservations_expired) {
+      const w = el(html`<div class="warn-box" id="reservations-warning">${icon('bookmark')} ${d.reservations_expired === 1 ? 'Hay 1 apartado vencido' : `Hay ${d.reservations_expired} apartados vencidos`}: sus gorras ya se pueden vender. Llame al cliente, y cancélelo o dele más días. <a href="#">Ver apartados</a></div>`);
+      $('a', w).onclick = (e) => { e.preventDefault(); App.go('reservations', { status: 'vencido' }); };
+      page.appendChild(w);
+    }
     // Depósitos al banco que nadie ha comparado con el estado de cuenta (auditoría 4.2).
     if (admin && d.deposits_pending && d.deposits_pending.count) {
       const p = d.deposits_pending;
@@ -55,8 +61,8 @@ App.register({
           <div class="card">
             <div class="card-head"><h3>${icon('alert')} Por reponer</h3><button class="link" data-go="products">Inventario</button></div>
             ${d.out_of_stock.length + d.low_stock.length ? html`<ul class="stock-list">
-              ${d.out_of_stock.map((p) => html`<li><span>${productLabel(p)}</span>${badge('agotado')}</li>`)}
-              ${d.low_stock.map((p) => html`<li><span>${productLabel(p)}</span><span class="badge warn">Quedan ${p.stock} (mín. ${p.min_stock})</span></li>`)}
+              ${d.out_of_stock.map((p) => html`<li><span>${productLabel(p)}</span>${p.reserved > 0 ? html`<span class="badge info">Todo apartado (${p.reserved})</span>` : badge('agotado')}</li>`)}
+              ${d.low_stock.map((p) => html`<li><span>${productLabel(p)}</span><span class="badge warn">Quedan ${p.available}${p.reserved ? ` + ${p.reserved} apartadas` : ''} (mín. ${p.min_stock})</span></li>`)}
             </ul>` : html`<div class="empty ok">Todo el inventario está sobre el mínimo.</div>`}
           </div>
           ${admin ? html`
@@ -507,7 +513,8 @@ const AUDIT_LABELS = {
   deposito_banco: 'Depósito al banco', aporte_capital: 'Aporte del dueño', anular_aporte: 'Aporte anulado',
   saldo_inicial_cliente: 'Saldo inicial de cliente', saldo_inicial_proveedor: 'Saldo inicial con proveedor', importar_productos: 'Importación de productos',
   crear_codigo_recuperacion: 'Código de recuperación creado', recuperar_contrasena: 'Contraseña recuperada con el código',
-  conteo_inventario: 'Conteo de inventario', anular_abono: 'Abono anulado', anular_pago_proveedor: 'Pago a proveedor anulado', anular_movimiento_caja: 'Movimiento de caja anulado',
+  conteo_inventario: 'Conteo de inventario', crear_modelo: 'Modelo creado', editar_modelo: 'Modelo editado',
+  crear_apartado: 'Apartado', extender_apartado: 'Apartado extendido', cancelar_apartado: 'Apartado cancelado', vender_apartado: 'Apartado vendido', anular_abono: 'Abono anulado', anular_pago_proveedor: 'Pago a proveedor anulado', anular_movimiento_caja: 'Movimiento de caja anulado',
 };
 
 // Nombres en español para claves de registros anteriores o técnicas (RF-NUE-08).
@@ -515,7 +522,7 @@ const AUDIT_KEYS = {
   category: 'categoría', description: 'descripción', date: 'fecha', amount: 'monto', method: 'método', name: 'nombre', username: 'usuario',
   role: 'perfil', active: 'activo', password_reset: 'contraseña restablecida', cost: 'costo', price_retail: 'precio detalle', price_wholesale: 'precio por mayor',
   metodo: 'método', descripcion: 'descripción', contrasena_restablecida: 'contraseña restablecida', credito_aplicado: 'crédito aplicado',
-  reingreso_inventario: 'reingreso a inventario', efectivo_inicial: 'efectivo inicial', con_error: 'con error', categoria: 'categoría',
+  reingreso_inventario: 'reingreso a inventario', precios_aplicados: 'precios aplicados a todas', vence: 'vence', efectivo_inicial: 'efectivo inicial', con_error: 'con error', categoria: 'categoría',
   ...Object.fromEntries(Object.entries({
     business_name: 'Nombre del negocio', business_tagline: 'Eslogan', business_phone: 'Teléfono', business_address: 'Dirección', currency: 'Moneda',
     credit_days: 'Días de crédito', require_open_cash: 'Exigir caja abierta', allow_negative_stock: 'Permitir existencia negativa',
@@ -564,7 +571,7 @@ App.register({
       { key: 'user_name', label: 'Usuario' },
       { key: 'terminal_name', label: 'PC' },
       { key: 'action', label: 'Acción', render: (r) => html`<span class="chip">${AUDIT_LABELS[r.action] || r.action}</span>`, csv: (r) => AUDIT_LABELS[r.action] || r.action },
-      { key: 'entity_id', label: 'Ref.', render: (r) => (r.entity === 'venta' ? Fmt.saleNo(r.entity_id) : r.entity === 'compra' ? Fmt.purchaseNo(r.entity_id) : r.entity_id ? `${r.entity} #${r.entity_id}` : '') },
+      { key: 'entity_id', label: 'Ref.', render: (r) => (r.entity === 'venta' ? Fmt.saleNo(r.entity_id) : r.entity === 'compra' ? Fmt.purchaseNo(r.entity_id) : r.entity === 'apartado' ? Fmt.resNo(r.entity_id) : r.entity_id ? `${r.entity} #${r.entity_id}` : '') },
       { key: 'details', label: 'Detalle', render: (r) => auditDetails(r.details), csv: (r) => auditDetails(r.details), cls: 'wrap' },
     ];
     const load = async () => {

@@ -37,10 +37,11 @@ const Fmt = {
   datetime(s) { return s ? `${Fmt.date(s)} ${s.slice(11, 16)}` : ''; },
   saleNo(id) { return `V-${String(id).padStart(6, '0')}`; },
   purchaseNo(id) { return `C-${String(id).padStart(6, '0')}`; },
+  resNo(id) { return `A-${String(id).padStart(6, '0')}`; },
 };
 const METHOD_LABELS = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', otro: 'Otro' };
-const STATUS_LABELS = { pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada', ok: 'Normal', bajo: 'Stock bajo', agotado: 'Agotado', vencido: 'Vencido' };
-const STATUS_CLASS = { pendiente: 'warn', parcial: 'info', pagado: 'ok', anulada: 'muted', abierta: 'ok', cerrada: 'muted', ok: 'ok', bajo: 'warn', agotado: 'danger', vencido: 'danger' };
+const STATUS_LABELS = { activo: 'Activo', vendido: 'Vendido', cancelado: 'Cancelado', pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada', ok: 'Normal', bajo: 'Stock bajo', agotado: 'Agotado', vencido: 'Vencido' };
+const STATUS_CLASS = { activo: 'info', vendido: 'ok', cancelado: 'muted', pendiente: 'warn', parcial: 'info', pagado: 'ok', anulada: 'muted', abierta: 'ok', cerrada: 'muted', ok: 'ok', bajo: 'warn', agotado: 'danger', vencido: 'danger' };
 const badge = (status, label) => html`<span class="badge ${STATUS_CLASS[status] || ''}">${label || STATUS_LABELS[status] || status}</span>`;
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -79,6 +80,8 @@ const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   tag: '<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`);
 

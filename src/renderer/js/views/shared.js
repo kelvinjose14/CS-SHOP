@@ -1,6 +1,12 @@
 'use strict';
 /* Componentes compartidos: buscador de productos, cuadro de pago, etc. */
 
+// Existencia en el buscador: con apartados (1.5) se muestra lo disponible y lo apartado.
+function stockNote(p) {
+  const avail = p.available ?? p.stock;
+  return html`<small class="${avail <= 0 ? 'text-danger' : avail <= p.min_stock ? 'text-warn' : ''}">${p.reserved ? `Disp.: ${avail} · ${p.reserved} apart.` : `Exist.: ${p.stock}`}</small>`;
+}
+
 // Buscador de productos con soporte para lector de código de barras (Enter).
 function productPicker(root, onPick, { placeholder = 'Buscar producto o escanear código de barras…', showStock = true, priceKey = 'price_retail' } = {}) {
   const box = el(html`
@@ -22,7 +28,7 @@ function productPicker(root, onPick, { placeholder = 'Buscar producto o escanear
       <div class="picker-item ${i === active ? 'active' : ''}" data-i="${i}">
         ${productThumb(p, 34)}
         <div class="pi-main"><b>${p.name}</b><small>${[p.brand, p.color, p.size, p.sku].filter(Boolean).join(' · ')}</small></div>
-        <div class="pi-side">${typeof priceKey === 'function' ? priceKey(p) : Fmt.money(p[priceKey])}${showStock ? html`<small class="${p.stock <= 0 ? 'text-danger' : p.stock <= p.min_stock ? 'text-warn' : ''}">Exist.: ${p.stock}</small>` : ''}</div>
+        <div class="pi-side">${typeof priceKey === 'function' ? priceKey(p) : Fmt.money(p[priceKey])}${showStock ? stockNote(p) : ''}</div>
       </div>`));
     $$('.picker-item', results).forEach((d) => (d.onmousedown = (e) => { e.preventDefault(); pick(items[Number(d.dataset.i)]); }));
   };

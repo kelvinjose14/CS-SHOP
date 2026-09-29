@@ -5,6 +5,7 @@ const { openCashSession, isAdmin } = require('./common');
 const { CASH_LABELS, TRANSFERS } = require('./finance');
 const finance = require('./finance');
 const products = require('./products');
+const reservations = require('./reservations');
 
 function r2(obj) {
   for (const k of Object.keys(obj)) if (typeof obj[k] === 'number') obj[k] = round2(obj[k]);
@@ -166,8 +167,13 @@ function dashboard(ctx) {
   const todaySales = salesTotals(db, t, t);
   const monthProfit = profit(ctx, { period: 'mes' });
   const inv = products.summary(ctx);
-  const lowStock = db.all('SELECT id, name, color, size, sku, stock, min_stock FROM products WHERE active = 1 AND stock > 0 AND stock <= min_stock ORDER BY stock, name LIMIT 50');
-  const outOfStock = db.all('SELECT id, name, color, size, sku, stock, min_stock FROM products WHERE active = 1 AND stock <= 0 ORDER BY name LIMIT 50');
+  // Con apartados (1.5), lo que cuenta para reponer es lo disponible: existencia menos lo apartado.
+  const stockRows = (cond, order) => db.all(
+    `SELECT p.id, p.name, p.color, p.size, p.sku, p.stock, p.min_stock, COALESCE(rv.qty, 0) AS reserved, p.stock - COALESCE(rv.qty, 0) AS available
+       FROM products p LEFT JOIN ${products.RESERVED_SQL} rv ON rv.product_id = p.id
+      WHERE p.active = 1 AND ${cond} ORDER BY ${order} LIMIT 50`, [t, 0]);
+  const lowStock = stockRows('p.stock - COALESCE(rv.qty, 0) > 0 AND p.stock - COALESCE(rv.qty, 0) <= p.min_stock', 'available, p.name');
+  const outOfStock = stockRows('p.stock - COALESCE(rv.qty, 0) <= 0', 'p.name');
   const last30 = profit(ctx, { period: 'rango', from: addDays(t, -29), to: t }).series;
   const out = {
     today: t,
@@ -191,6 +197,7 @@ function dashboard(ctx) {
     out_of_stock: outOfStock,
     top_products: topProducts(ctx, { period: 'mes', limit: 10 }).rows,
     series: last30,
+    reservations_expired: reservations.expiredCount(db),
   };
   if (isAdmin(ctx)) {
     out.deposits_pending = finance.pendingDeposits(db); // depósitos al banco sin revisar (auditoría 4.2)

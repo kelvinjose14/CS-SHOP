@@ -1,6 +1,6 @@
 'use strict';
 // Esquema de la base de datos y migraciones versionadas (PRAGMA user_version).
-const { AppError } = require('./util');
+const { AppError, modelKey } = require('./util');
 
 const MIGRATIONS = [
   // v1: esquema inicial
@@ -355,6 +355,58 @@ const MIGRATIONS = [
   CREATE INDEX ix_products_category ON products(category);
   CREATE INDEX ix_sales_user ON sales(user_id, date);
   `,
+
+  // v7: inventario avanzado (versión 1.5).
+  // - Modelos: las variantes (color y talla) con el mismo nombre, marca y modelo se agrupan. Cada
+  //   variante sigue siendo un producto con su SKU, código y existencia; el modelo solo las reúne.
+  // - Apartados: gorras reservadas para un cliente hasta una fecha. Mientras el apartado está activo y
+  //   no vence, esas unidades no se pueden vender a otro (stock disponible = existencia − apartado).
+  // - Fecha del último conteo de cada producto, para sugerir el conteo cíclico.
+  // Es una función porque la clave del modelo se calcula igual que en el programa (acentos y ñ incluidos).
+  (db) => {
+    db.exec(`
+    CREATE TABLE product_models (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL, brand TEXT, model TEXT,
+      created_at TEXT NOT NULL
+    );
+    ALTER TABLE products ADD COLUMN model_id INTEGER REFERENCES product_models(id);
+    ALTER TABLE products ADD COLUMN last_counted_at TEXT;
+    CREATE INDEX ix_products_model ON products(model_id);
+
+    CREATE TABLE reservations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      date TEXT NOT NULL,
+      expires_on TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('activo','vendido','cancelado')),
+      note TEXT,
+      sale_id INTEGER REFERENCES sales(id),
+      user_id INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      closed_at TEXT, closed_by INTEGER REFERENCES users(id), close_reason TEXT
+    );
+    CREATE INDEX ix_reservations_status ON reservations(status, expires_on);
+    CREATE INDEX ix_reservations_customer ON reservations(customer_id);
+    CREATE TABLE reservation_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reservation_id INTEGER NOT NULL REFERENCES reservations(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      qty INTEGER NOT NULL CHECK (qty > 0)
+    );
+    CREATE INDEX ix_reservation_items_res ON reservation_items(reservation_id);
+    CREATE INDEX ix_reservation_items_product ON reservation_items(product_id);
+    `);
+    const models = new Map();
+    for (const p of db.all('SELECT id, name, brand, model, created_at FROM products ORDER BY id')) {
+      const key = modelKey(p);
+      if (!models.has(key)) models.set(key, db.insert('product_models', { key, name: p.name, brand: p.brand || null, model: p.model || null, created_at: p.created_at }));
+      db.run('UPDATE products SET model_id = ? WHERE id = ?', [models.get(key), p.id]);
+    }
+    db.exec(`UPDATE products SET last_counted_at = (SELECT MAX(created_at) FROM inventory_movements m
+               WHERE m.product_id = products.id AND m.type IN ('conteo', 'ajuste'))`);
+  },
 ];
 
 // Reglas de la base (v5): cada una es un par de disparadores (al insertar y al modificar) que rechazan
@@ -373,7 +425,9 @@ function migrate(db, migrations = MIGRATIONS) {
     throw new AppError('Esta base de datos es de una versión más nueva de CAPS Shop. Instale la versión más reciente del programa.', 'SCHEMA');
   }
   while (version < migrations.length) {
-    db.exec(migrations[version]);
+    const m = migrations[version];
+    if (typeof m === 'function') m(db);
+    else db.exec(m);
     version++;
     db.exec(`PRAGMA user_version = ${version}`);
   }

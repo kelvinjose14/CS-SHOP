@@ -17,6 +17,9 @@ const DEFAULT_SETTINGS = {
   block_overdue_credit: '1',
   // Formato del CSV: auto (según la región de Windows de cada PC), coma o punto_y_coma (auditoría 2.10).
   csv_format: 'auto',
+  // Días que dura un apartado si no se elige otra fecha, y cuántas gorras propone el conteo cíclico (1.5).
+  reservation_days: '15',
+  cycle_count_size: '20',
   receipt_footer: '¡Gracias por su compra!',
   expense_categories: JSON.stringify(['Alquiler', 'Transporte', 'Publicidad', 'Nómina', 'Servicios', 'Internet', 'Delivery', 'Otros']),
   // Los aportes del dueño no van aquí: se registran aparte y no son ganancia (DT-21).

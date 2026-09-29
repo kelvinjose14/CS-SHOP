@@ -1,6 +1,6 @@
 'use strict';
-const { AppError, now, round2, money, int, text } = require('../util');
-const { audit, changeStock, isAdmin } = require('./common');
+const { AppError, now, today, addDays, round2, money, int, text, modelKey } = require('../util');
+const { audit, changeStock, isAdmin, getSetting } = require('./common');
 
 const MOVEMENT_LABELS = {
   inicial: 'Inventario inicial',
@@ -28,35 +28,56 @@ function stripCosts(ctx, p) {
   return rest;
 }
 
+// El estado se mide con lo disponible: una gorra con todas sus unidades apartadas ya no se puede vender.
 function stockStatus(p) {
-  if (p.stock <= 0) return 'agotado';
-  if (p.stock <= p.min_stock) return 'bajo';
+  const available = p.stock - (p.reserved || 0);
+  if (available <= 0) return 'agotado';
+  if (available <= p.min_stock) return 'bajo';
   return 'ok';
 }
 
-function list(ctx, { search = '', status = 'todos', includeInactive = false } = {}) {
+// Unidades apartadas por producto (1.5): apartados activos que todavía no vencen. Vencen al terminar
+// el día de expires_on; desde el día siguiente esas unidades se pueden vender otra vez.
+const RESERVED_SQL = `(SELECT ri.product_id, SUM(ri.qty) AS qty FROM reservation_items ri JOIN reservations r ON r.id = ri.reservation_id
+  WHERE r.status = 'activo' AND r.expires_on >= ? AND r.id <> ? GROUP BY ri.product_id)`;
+
+function reservedQty(db, productId, { exclude = 0 } = {}) {
+  return db.value(`SELECT COALESCE(SUM(qty), 0) FROM ${RESERVED_SQL} WHERE product_id = ?`, [today(), exclude, productId]);
+}
+
+function withStock(ctx, p) {
+  const reserved = p.reserved || 0;
+  return stripCosts(ctx, { ...p, reserved, available: p.stock - reserved, status: stockStatus(p) });
+}
+
+function list(ctx, { search = '', status = 'todos', includeInactive = false, model_id } = {}) {
   const where = [];
-  const params = [];
+  const params = [today(), 0];
   if (!includeInactive) where.push('active = 1');
+  if (model_id) { where.push('model_id = ?'); params.push(model_id); }
   if (search) {
     const q = `%${search.trim()}%`;
     where.push('(name LIKE ? OR brand LIKE ? OR model LIKE ? OR category LIKE ? OR color LIKE ? OR size LIKE ? OR sku LIKE ? OR barcode LIKE ?)');
     params.push(q, q, q, q, q, q, q, q);
   }
-  if (status === 'agotado') where.push('stock <= 0');
-  if (status === 'bajo') where.push('stock > 0 AND stock <= min_stock');
-  if (status === 'reponer') where.push('stock <= min_stock');
+  const avail = '(stock - COALESCE(rv.qty, 0))';
+  if (status === 'agotado') where.push(`${avail} <= 0`);
+  if (status === 'bajo') where.push(`${avail} > 0 AND ${avail} <= min_stock`);
+  if (status === 'reponer') where.push(`${avail} <= min_stock`);
+  if (status === 'apartado') where.push('COALESCE(rv.qty, 0) > 0');
   const rows = ctx.db.all(
-    `SELECT * FROM products ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY name, color, size`,
+    `SELECT p.*, COALESCE(rv.qty, 0) AS reserved FROM products p LEFT JOIN ${RESERVED_SQL} rv ON rv.product_id = p.id
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY name, color, size`,
     params
   );
-  return rows.map((p) => stripCosts(ctx, { ...p, status: stockStatus(p) }));
+  return rows.map((p) => withStock(ctx, p));
 }
 
 function get(ctx, { id }) {
   const p = ctx.db.get('SELECT * FROM products WHERE id = ?', [id]);
   if (!p) throw new AppError('Producto no encontrado.');
-  return stripCosts(ctx, { ...p, status: stockStatus(p) });
+  const variants = p.model_id ? ctx.db.value('SELECT COUNT(*) FROM products WHERE model_id = ?', [p.model_id]) : 1;
+  return withStock(ctx, { ...p, reserved: reservedQty(ctx.db, p.id), variants });
 }
 
 // Búsqueda exacta por código de barras o SKU (lector de código de barras).
@@ -64,7 +85,7 @@ function findByCode(ctx, { code }) {
   const c = String(code || '').trim();
   if (!c) return null;
   const p = ctx.db.get('SELECT * FROM products WHERE active = 1 AND (barcode = ? OR sku = ?)', [c, c]);
-  return p ? stripCosts(ctx, { ...p, status: stockStatus(p) }) : null;
+  return p ? withStock(ctx, { ...p, reserved: reservedQty(ctx.db, p.id) }) : null;
 }
 
 function nextSku(db) {
@@ -97,6 +118,7 @@ function save(ctx, data) {
   if (data.active !== undefined) fields.active = data.active ? 1 : 0;
 
   return ctx.db.tx(() => {
+    fields.model_id = ensureModel(ctx.db, fields);
     if (!fields.sku) fields.sku = nextSku(ctx.db);
     if (ctx.db.get('SELECT id FROM products WHERE sku = ? AND id <> ?', [fields.sku, data.id || 0])) throw new AppError('Ya existe un producto con ese SKU.');
     if (fields.barcode && ctx.db.get('SELECT id FROM products WHERE barcode = ? AND id <> ?', [fields.barcode, data.id || 0])) {
@@ -106,6 +128,7 @@ function save(ctx, data) {
       const old = ctx.db.get('SELECT * FROM products WHERE id = ?', [data.id]);
       if (!old) throw new AppError('Producto no encontrado.');
       ctx.db.update('products', data.id, { ...fields, updated_at: now() });
+      if (old.model_id && old.model_id !== fields.model_id) dropEmptyModel(ctx.db, old.model_id);
       const priceChanges = {};
       for (const k of ['cost', 'price_retail', 'price_wholesale']) {
         if (Math.abs(old[k] - fields[k]) > 0.00005) priceChanges[k] = { antes: old[k], despues: fields[k] };
@@ -121,6 +144,186 @@ function save(ctx, data) {
     if (initial > 0) changeStock(ctx, id, initial, 'inicial', { refType: 'producto', refId: id, note: 'Existencia inicial', unitCost: fields.cost });
     return id;
   });
+}
+
+/* ---------- Modelos con variantes (1.5) ---------- */
+// Un modelo reúne las variantes (color y talla) que tienen el mismo nombre, marca y modelo. Se arma solo
+// al guardar: si se cambia el nombre de una variante, pasa al modelo que corresponde.
+
+function ensureModel(db, f) {
+  const key = modelKey(f);
+  const found = db.get('SELECT id FROM product_models WHERE key = ?', [key]);
+  if (found) {
+    db.run('UPDATE product_models SET name = ?, brand = ?, model = ? WHERE id = ?', [f.name, f.brand || null, f.model || null, found.id]);
+    return found.id;
+  }
+  return db.insert('product_models', { key, name: f.name, brand: f.brand || null, model: f.model || null, created_at: now() });
+}
+
+function dropEmptyModel(db, id) {
+  db.run('DELETE FROM product_models WHERE id = ? AND NOT EXISTS (SELECT 1 FROM products WHERE model_id = ?)', [id, id]);
+}
+
+// Orden de tallas: numéricas de gorra (7, 7 1/8, 7 1/4…), luego XS…XXL, luego el resto (Ajustable, S/M…).
+const LETTER_SIZES = ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl'];
+function sizeRank(size) {
+  const s = String(size ?? '').trim().toLowerCase();
+  const m = /^(\d+)(?:\s+(\d+)\/(\d+))?(?:["”]|\s*cm)?$/.exec(s);
+  if (m) return [0, Number(m[1]) + (m[2] ? Number(m[2]) / Number(m[3]) : 0), s];
+  const i = LETTER_SIZES.indexOf(s);
+  if (i >= 0) return [1, i, s];
+  return [s ? 2 : 3, 0, s];
+}
+function compareSizes(a, b) {
+  const x = sizeRank(a);
+  const y = sizeRank(b);
+  return x[0] - y[0] || x[1] - y[1] || x[2].localeCompare(y[2], 'es');
+}
+
+const variantKey = (color, size) => `${String(color ?? '').trim().toLowerCase()}|${String(size ?? '').trim().toLowerCase()}`;
+
+function cleanVariants(variants) {
+  if (!Array.isArray(variants) || !variants.length) throw new AppError('Agregue al menos un color o una talla.');
+  if (variants.length > 300) throw new AppError('Son demasiadas variantes para un modelo (máximo 300).');
+  const seen = new Set();
+  return variants.map((v) => {
+    const color = text(v.color, 'Color', { max: 60 });
+    const size = text(v.size, 'Talla', { max: 30 });
+    const k = variantKey(color, size);
+    if (seen.has(k)) throw new AppError(`La variante ${[color, size].filter(Boolean).join(' · ') || 'sin color ni talla'} está repetida.`);
+    seen.add(k);
+    return { color, size, initial_stock: v.initial_stock, barcode: v.barcode, sku: v.sku };
+  });
+}
+
+// Crea un modelo con todas sus variantes de una vez (la cuadrícula color × talla del formulario).
+function createModel(ctx, data) {
+  const variants = cleanVariants(data.variants);
+  return ctx.db.tx(() => {
+    const existing = ctx.db.all('SELECT color, size FROM products WHERE model_id = (SELECT id FROM product_models WHERE key = ?)', [modelKey(data)]);
+    const taken = new Set(existing.map((e) => variantKey(e.color, e.size)));
+    const clash = variants.find((v) => taken.has(variantKey(v.color, v.size)));
+    if (clash) throw new AppError(`Ya existe la variante ${[clash.color, clash.size].filter(Boolean).join(' · ')} de "${data.name}". Agregue solo las que faltan.`);
+    const common = {};
+    for (const k of ['name', 'brand', 'model', 'category', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes', 'photo']) if (data[k] !== undefined) common[k] = data[k];
+    const ids = variants.map((v) => save(ctx, { ...common, ...v }));
+    const modelId = ctx.db.value('SELECT model_id FROM products WHERE id = ?', [ids[0]]);
+    audit(ctx, 'crear_modelo', 'producto', ids[0], { modelo: data.name, variantes: ids.length });
+    return { model_id: modelId, ids };
+  });
+}
+
+// Agrega colores o tallas a un modelo que ya existe: copian nombre, categoría, precios y costo.
+function addVariants(ctx, { model_id, variants }) {
+  const base = ctx.db.get('SELECT * FROM products WHERE model_id = ? ORDER BY active DESC, id LIMIT 1', [model_id]);
+  if (!base) throw new AppError('Modelo no encontrado.');
+  const { id, sku, barcode, color, size, stock, active, created_at, updated_at, model_id: m, last_counted_at, ...common } = base;
+  return createModel(ctx, { ...common, variants });
+}
+
+// Cambia lo que comparten todas las variantes. Los precios solo si se pide (apply_prices): una talla
+// grande puede costar distinto.
+function updateModel(ctx, data) {
+  const variants = ctx.db.all('SELECT * FROM products WHERE model_id = ? ORDER BY id', [data.id]);
+  if (!variants.length) throw new AppError('Modelo no encontrado.');
+  return ctx.db.tx(() => {
+    for (const v of variants) {
+      const next = { ...v, name: data.name, brand: data.brand, model: data.model, category: data.category };
+      if (data.apply_prices) Object.assign(next, { price_retail: data.price_retail, price_wholesale: data.price_wholesale });
+      if (data.min_stock !== undefined && data.min_stock !== '') next.min_stock = data.min_stock;
+      delete next.photo;
+      save(ctx, next);
+    }
+    const modelId = ctx.db.value('SELECT model_id FROM products WHERE id = ?', [variants[0].id]);
+    audit(ctx, 'editar_modelo', 'producto', variants[0].id, { modelo: data.name, variantes: variants.length, precios_aplicados: !!data.apply_prices });
+    return modelId;
+  });
+}
+
+// Un modelo con sus variantes y la cuadrícula color × talla (existencia, apartadas y disponible).
+function modelGet(ctx, { id }) {
+  const m = ctx.db.get('SELECT * FROM product_models WHERE id = ?', [id]);
+  if (!m) throw new AppError('Modelo no encontrado.');
+  const variants = list(ctx, { model_id: id, includeInactive: true });
+  const colors = [];
+  for (const v of [...variants].sort((a, b) => a.id - b.id)) if (!colors.includes(v.color || '')) colors.push(v.color || '');
+  const sizes = [...new Set(variants.map((v) => v.size || ''))].sort(compareSizes);
+  const cells = {};
+  for (const v of variants) cells[variantKey(v.color, v.size)] = v.id;
+  const sum = (k) => variants.filter((v) => v.active).reduce((s, v) => s + v[k], 0);
+  return {
+    ...m,
+    category: (variants.find((v) => v.category) || {}).category || null,
+    photo: (variants.find((v) => v.photo) || {}).photo || null,
+    variants,
+    colors,
+    sizes,
+    cells,
+    stock: sum('stock'),
+    reserved: sum('reserved'),
+    available: sum('available'),
+  };
+}
+
+// Inventario agrupado por modelo.
+function models(ctx, params = {}) {
+  const map = new Map();
+  for (const v of list(ctx, params)) {
+    const key = v.model_id || -v.id;
+    if (!map.has(key)) map.set(key, { id: v.model_id, name: v.name, brand: v.brand, model: v.model, category: v.category, photo: v.photo, variants: 0, stock: 0, reserved: 0, available: 0, colors: new Set(), sizes: new Set(), price_min: Infinity, price_max: 0, low: 0, out: 0, first_id: v.id });
+    const g = map.get(key);
+    g.variants++;
+    g.stock += v.stock;
+    g.reserved += v.reserved;
+    g.available += v.available;
+    if (v.color) g.colors.add(v.color);
+    if (v.size) g.sizes.add(v.size);
+    g.price_min = Math.min(g.price_min, v.price_retail);
+    g.price_max = Math.max(g.price_max, v.price_retail);
+    if (v.status === 'bajo') g.low++;
+    if (v.status === 'agotado') g.out++;
+    g.photo = g.photo || v.photo;
+    g.category = g.category || v.category;
+  }
+  return [...map.values()].map((g) => ({ ...g, colors: [...g.colors], sizes: [...g.sizes].sort(compareSizes), price_min: g.price_min === Infinity ? 0 : g.price_min }));
+}
+
+/* ---------- Conteo cíclico (1.5) ---------- */
+// En vez de contar todo de una vez, cada semana se cuenta una parte. Lo que más se vende se cuenta más
+// seguido (clasificación ABC por lo vendido en 90 días): A (80 % de las ventas) cada 7 días, B (el 15 %
+// siguiente) cada 30 y C (el resto, y lo que no se vende pero tiene existencia) cada 90.
+const CYCLE_DAYS = { A: 7, B: 30, C: 90 };
+
+function cycleCount(ctx, { limit } = {}) {
+  const t = today();
+  const from = addDays(t, -89);
+  const size = Math.min(int(limit ?? (Number(getSetting(ctx.db, 'cycle_count_size')) || 20), 'Cantidad', { min: 1 }), 500);
+  const sold = new Map(ctx.db.all(
+    `SELECT si.product_id AS id, SUM(si.net_total) AS v FROM sale_items si JOIN sales s ON s.id = si.sale_id
+      WHERE s.status <> 'anulada' AND s.date BETWEEN ? AND ? GROUP BY si.product_id`, [from, t]).map((r) => [r.id, r.v]));
+  const products = ctx.db.all('SELECT id, name, brand, color, size, sku, barcode, stock, last_counted_at FROM products WHERE active = 1 OR stock > 0');
+  const total = [...sold.values()].reduce((s, v) => s + Math.max(v, 0), 0);
+  let acc = 0;
+  const cls = new Map();
+  for (const p of [...products].sort((a, b) => (sold.get(b.id) || 0) - (sold.get(a.id) || 0))) {
+    const v = Math.max(sold.get(p.id) || 0, 0);
+    const share = total > 0 ? acc / total : 1;
+    cls.set(p.id, v > 0 && share < 0.8 ? 'A' : v > 0 && share < 0.95 ? 'B' : 'C');
+    acc += v;
+  }
+  const dayDiff = (d) => Math.round((new Date(`${t}T12:00:00`) - new Date(`${d.slice(0, 10)}T12:00:00`)) / 86400000);
+  const rows = products.map((p) => {
+    const c = cls.get(p.id);
+    const since = p.last_counted_at ? dayDiff(p.last_counted_at) : null;
+    return { ...p, class: c, every_days: CYCLE_DAYS[c], days_since: since, overdue_days: since === null ? null : since - CYCLE_DAYS[c], sold_90: round2(sold.get(p.id) || 0) };
+  }).filter((r) => r.days_since === null || r.overdue_days >= 0)
+    // Lo que no se vende y no tiene existencia no hace falta contarlo.
+    .filter((r) => r.stock > 0 || r.class !== 'C')
+    .sort((a, b) => a.class.localeCompare(b.class) || (b.overdue_days ?? 9999) - (a.overdue_days ?? 9999) || b.sold_90 - a.sold_90);
+  const byClass = { A: 0, B: 0, C: 0 };
+  for (const r of rows) byClass[r.class]++;
+  if (!isAdmin(ctx)) rows.forEach((r) => delete r.sold_90);
+  return { date: t, size, due: rows.length, by_class: byClass, every_days: CYCLE_DAYS, rows: rows.slice(0, size) };
 }
 
 // Importación desde Excel o CSV (RF-NUE-05). Cada fila crea un producto o, si ya existe uno con ese
@@ -190,6 +393,7 @@ function adjust(ctx, { product_id, type, qty, counted, note }) {
     else throw new AppError('Tipo de ajuste inválido.');
     if (delta === 0) throw new AppError('La existencia no cambia con este ajuste.');
     const after = changeStock(ctx, p.id, delta, type, { refType: 'ajuste', note: reason, allowNegative: false });
+    if (type === 'ajuste') ctx.db.run('UPDATE products SET last_counted_at = ? WHERE id = ?', [now(), p.id]);
     audit(ctx, 'ajuste_inventario', 'producto', p.id, { producto: p.name, tipo: type, cantidad: delta, existencia: after, motivo: reason });
     return after;
   });
@@ -226,6 +430,8 @@ function count(ctx, { counts, note, dryRun = false }) {
             changeStock(ctx, p.id, row.diff, 'conteo', { refType: 'conteo', note: `Conteo: ${reason || ''}`.trim(), allowNegative: false });
             row.action = 'ajustar';
           }
+          // Contado aunque coincida: el conteo cíclico lo da por revisado.
+          ctx.db.run('UPDATE products SET last_counted_at = ? WHERE id = ?', [now(), p.id]);
         } catch (err) {
           if (!err.userFacing) throw err;
           Object.assign(row, { action: 'error', message: err.message });
@@ -298,8 +504,10 @@ function summary(ctx) {
            COALESCE(SUM(CASE WHEN active = 0 AND stock > 0 THEN 1 ELSE 0 END), 0) AS inactive_with_stock,
            COALESCE(SUM(CASE WHEN active = 0 AND stock > 0 THEN stock ELSE 0 END), 0) AS inactive_units
       FROM products`);
+  const reserved = ctx.db.value(`SELECT COALESCE(SUM(qty), 0) FROM ${RESERVED_SQL}`, [today(), 0]);
   const out = {
     ...s,
+    reserved_units: reserved,
     value_cost: round2(s.value_cost),
     value_retail: round2(s.value_retail),
     value_wholesale: round2(s.value_wholesale),
@@ -315,4 +523,4 @@ function facets(ctx) {
   return { brands: distinct('brand'), categories: distinct('category') };
 }
 
-module.exports = { list, get, findByCode, facets, save, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };
+module.exports = { list, get, findByCode, facets, save, createModel, addVariants, updateModel, modelGet, models, cycleCount, reservedQty, compareSizes, RESERVED_SQL, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };

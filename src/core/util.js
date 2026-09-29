@@ -83,6 +83,12 @@ function accountStatus(total, paid) {
   return 'pendiente';
 }
 
+// Clave de un modelo (1.5): nombre, marca y modelo sin importar mayúsculas ni espacios de más. Las
+// variantes (color y talla) con la misma clave son del mismo modelo.
+function modelKey({ name, brand, model } = {}) {
+  return [name, brand, model].map((s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase()).join('|');
+}
+
 // Rango de fechas a partir de un período: dia, semana, mes, anio o personalizado.
 function periodRange({ period = 'mes', from, to, ref } = {}) {
   const base = ref ? new Date(`${ref}T12:00:00`) : new Date();
@@ -106,4 +112,4 @@ function periodRange({ period = 'mes', from, to, ref } = {}) {
   }
 }
 
-module.exports = { AppError, METHODS, now, today, addDays, round2, money, int, text, date, method, accountStatus, periodRange };
+module.exports = { AppError, METHODS, now, today, addDays, round2, money, int, text, date, method, accountStatus, periodRange, modelKey };

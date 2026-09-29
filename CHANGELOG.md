@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Agregado
+- **Modelos con colores y tallas**: "Nuevo producto" → **Varios colores y tallas** crea todas las combinaciones desde una cuadrícula, cada una con su SKU y su existencia inicial. **Inventario → Modelos** agrupa las variantes; el detalle muestra la existencia por color y talla, y permite agregar colores o tallas y editar el modelo completo (nombre, categoría y, si se quiere, precios). Los productos que ya tenía se agrupan solos por nombre, marca y modelo.
+- **Apartados** (Principal → Apartados): reservar gorras para un cliente hasta una fecha. Lo apartado no se le vende a otro cliente; en el inventario y en la venta se ve la existencia, lo apartado y lo disponible. Desde el apartado se vende (con el cliente y las gorras ya puestos), se dan más días o se cancela con motivo. El Inicio avisa de los apartados vencidos. El vendedor también puede usarlos.
+- **Conteo sugerido** (Inventario → Conteo): cada semana, la lista de lo que toca contar, primero lo que más se vende (A cada 7 días, B cada 30, C cada 90).
+- Configuración: **Días que dura un apartado** y **Gorras por conteo cíclico**.
+- La base pasa a la versión 7 al abrir.
+
+### Cambiado
+- El dashboard ejecutivo calcula los productos estancados mucho más rápido (el mes, de 264 a 33 ms con 3 años de datos).
+
 ## [1.4.0] - 2026-09-29
 
 Dashboard ejecutivo, primera parte de la gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)). La base pasa a la versión 6 al abrir: todas las PCs deben tener la 1.4.0 (actualice primero la PC principal).

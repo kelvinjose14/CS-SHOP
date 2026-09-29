@@ -3,17 +3,32 @@
 
 App.register({
   id: 'pos', title: 'Nueva venta', icon: 'cart', group: 'Principal',
-  async render(page) {
+  async render(page, params = {}) {
     const admin = App.isAdmin();
     const settings = App.settings;
     const cash = await api('cash.status');
     let customers = await api('customers.list');
     const sale = { sale_type: 'detalle', payment_type: 'contado', customer_id: '', lines: [], discount: 0, discountMode: 'monto', payments: [{ method: 'efectivo', amount: '' }] };
+    // Venta de un apartado (1.5): el cliente y las gorras vienen del apartado.
+    let reservation = null;
+    if (params.reservation) {
+      reservation = await api('reservations.get', { id: params.reservation }).catch(() => null);
+      if (reservation && reservation.status !== 'activo') { toast(`El apartado ${Fmt.resNo(reservation.id)} ya está ${reservation.status}.`, 'error'); reservation = null; }
+    }
+    const heldHere = (id) => (reservation ? reservation.items.filter((i) => i.product_id === id).reduce((s, i) => s + i.qty, 0) : 0);
+    const avail = (p) => (p.available ?? p.stock) + heldHere(p.id);
     const canDiscount = admin || settings.seller_can_discount === '1';
 
     if (!cash.open && settings.require_open_cash === '1') {
       page.appendChild(el(html`<div class="warn-box">${icon('alert')} La caja está cerrada. Para cobrar en efectivo debe <a href="#" id="go-cash">abrir la caja</a>.</div>`));
       $('#go-cash', page).onclick = (e) => { e.preventDefault(); App.go('cash'); };
+    }
+
+    if (reservation) {
+      const b = el(html`<div class="info-box" id="pos-reservation">${icon('bookmark')} Venta del apartado <b>${Fmt.resNo(reservation.id)}</b> de <b>${reservation.customer_name}</b> (vence ${Fmt.date(reservation.expires_on)}). Al cobrar, el apartado queda vendido. <a href="#">Venta normal</a></div>`);
+      $('a', b).onclick = (e) => { e.preventDefault(); App.go('pos'); };
+      page.appendChild(b);
+      sale.customer_id = String(reservation.customer_id);
     }
 
     const root = el(html`
@@ -106,12 +121,12 @@ App.register({
       }
       setHTML(box, html`
         <table class="table lines">
-          <thead><tr><th></th><th>Producto</th><th class="text-right">Exist.</th><th>Cant.</th><th>Precio</th><th class="text-right">Importe</th><th></th></tr></thead>
+          <thead><tr><th></th><th>Producto</th><th class="text-right">Disp.</th><th>Cant.</th><th>Precio</th><th class="text-right">Importe</th><th></th></tr></thead>
           <tbody>${sale.lines.map((l, i) => html`
             <tr data-i="${i}">
               <td class="w-thumb">${productThumb(l.p, 36)}</td>
               <td><b>${l.p.name}</b><div class="muted small">${[l.p.brand, l.p.color, l.p.size, l.p.sku].filter(Boolean).join(' · ')}</div></td>
-              <td class="text-right ${l.qty > l.p.stock ? 'text-danger' : ''}">${l.p.stock}</td>
+              <td class="text-right ${l.qty > avail(l.p) ? 'text-danger' : ''}">${avail(l.p)}</td>
               <td><div class="qty"><button data-q="-1">−</button><input data-k="qty" type="number" min="1" step="1" value="${l.qty}"><button data-q="1">+</button></div></td>
               <td>${admin ? html`<input class="num ${l.unit_price > 0 ? '' : 'invalid'}" data-k="unit_price" type="number" min="0" step="0.01" value="${l.unit_price}">` : l.unit_price > 0 ? Fmt.money(l.unit_price) : html`<b class="text-danger">Sin precio</b>`}</td>
               <td class="text-right sub"><b>${Fmt.money(l.qty * l.unit_price)}</b></td>
@@ -132,6 +147,7 @@ App.register({
     };
 
     const picker = productPicker($('#pos-picker', root), (p) => {
+      if (p.reserved && avail(p) <= 0) { toast(`"${productLabel(p)}" está apartado para otro cliente.`, 'error'); return; }
       if (p.stock <= 0 && settings.allow_negative_stock !== '1') { toast(`"${p.name}" está agotado.`, 'error'); return; }
       const ex = sale.lines.find((l) => l.p.id === p.id);
       if (ex) ex.qty += 1;
@@ -176,6 +192,7 @@ App.register({
         sale_type: sale.sale_type,
         payment_type: sale.payment_type,
         customer_id: sale.customer_id ? Number(sale.customer_id) : null,
+        reservation_id: reservation ? reservation.id : undefined,
         due_date: sale.payment_type === 'credito' ? $('#pos-due', root).value : undefined,
         discount: discountAmount(),
         note: $('#pos-note', root).value,
@@ -217,6 +234,14 @@ App.register({
     };
     document.addEventListener('keydown', keyHandler);
 
+    if (reservation) {
+      $('#pos-customer', root).disabled = true;
+      $('#pos-new-customer', root).disabled = true;
+      for (const it of reservation.items) {
+        const p = await api('products.get', { id: it.product_id });
+        sale.lines.push({ p, qty: it.qty, unit_price: listPrice(p) });
+      }
+    }
     drawPayments();
     drawLines();
     picker.focus();
@@ -373,6 +398,7 @@ async function saleDetail(id, onChange) {
       <div class="kv cols-4">
         <div><span>Fecha</span><b>${Fmt.datetime(s.created_at)}</b></div>
         <div><span>Cliente</span><b>${s.customer_name || 'General'}</b></div>
+        ${s.reservation_id ? html`<div><span>Apartado</span><b>${Fmt.resNo(s.reservation_id)}</b></div>` : ''}
         <div><span>Tipo</span><b>${s.sale_type === 'mayor' ? 'Al por mayor' : 'Al detalle'}</b></div>
         <div><span>Pago</span><b>${s.payment_type === 'credito' ? 'Crédito' : 'Contado'}</b></div>
         <div><span>Subtotal</span><b>${Fmt.money(s.subtotal)}</b></div>

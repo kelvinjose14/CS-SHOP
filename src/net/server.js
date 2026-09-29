@@ -38,7 +38,8 @@ function withPhoto(params, photosDir) {
 
 // Llamada a la lógica del negocio, igual desde la PC principal o desde la red.
 function callApi(api, token, name, params, photosDir) {
-  if (name === 'products.save' && params && params.photo_data) {
+  // Un modelo nuevo con variantes (1.5) lleva la misma foto en todas.
+  if ((name === 'products.save' || name === 'products.createModel') && params && params.photo_data) {
     const user = api.user(token);
     if (!user) throw new AppError('Debe iniciar sesión.', 'AUTH');
     if (user.role !== 'admin') throw new AppError('No tiene permiso para realizar esta operación.', 'FORBIDDEN');

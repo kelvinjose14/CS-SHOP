@@ -123,6 +123,8 @@ App.register({
           <div class="grid-2">
             <label class="field"><span>Días de crédito por defecto</span><input name="credit_days" type="number" min="0" value="${s.credit_days}"></label>
             <label class="field"><span>Descuento máximo del vendedor (%)</span><input name="seller_max_discount_pct" type="number" min="0" max="100" value="${s.seller_max_discount_pct}"></label>
+            <label class="field"><span>Días que dura un apartado</span><input name="reservation_days" type="number" min="1" max="180" value="${s.reservation_days}"></label>
+            <label class="field"><span>Gorras por conteo cíclico (cada semana)</span><input name="cycle_count_size" type="number" min="1" max="500" value="${s.cycle_count_size}"></label>
             <label class="check"><input type="checkbox" name="require_open_cash" ${s.require_open_cash === '1' ? 'checked' : ''}> Exigir caja abierta para movimientos en efectivo</label>
             <label class="check"><input type="checkbox" name="allow_negative_stock" ${s.allow_negative_stock === '1' ? 'checked' : ''}> Permitir vender sin existencia (inventario negativo)</label>
             <label class="check"><input type="checkbox" name="seller_can_receive_payments" ${s.seller_can_receive_payments === '1' ? 'checked' : ''}> El vendedor puede registrar abonos de clientes</label>
