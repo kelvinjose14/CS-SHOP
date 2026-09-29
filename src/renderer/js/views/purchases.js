@@ -177,9 +177,12 @@ App.register({
     $('[name=date]', form).onchange = setDue;
 
     const total = () => lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unit_cost) || 0), 0);
+    let shownTotal = null;
     const updateTotals = () => {
       const t = total();
       $('#pu-total', form).textContent = Fmt.money(t);
+      if (shownTotal !== null && shownTotal !== t) flashNumber($('#pu-total', form));
+      shownTotal = t;
       $('#pu-balance', form).textContent = Fmt.money(t - (Number($('[name=paid]', form).value) || 0));
     };
     const drawLines = () => {
@@ -208,7 +211,12 @@ App.register({
           $('.sub', tr).textContent = Fmt.money((Number(l.qty) || 0) * (Number(l.unit_cost) || 0));
           updateTotals();
         }));
-        $('[data-del]', tr).onclick = () => { lines.splice(Number(tr.dataset.i), 1); drawLines(); };
+        $('[data-del]', tr).onclick = () => {
+          lines.splice(Number(tr.dataset.i), 1);
+          if (reduceMotion()) return drawLines();
+          tr.classList.add('line-out');
+          setTimeout(drawLines, 110);
+        };
       });
       updateTotals();
     };
@@ -219,7 +227,10 @@ App.register({
       drawLines();
       const last = $$('#pu-lines tr[data-i] [data-k=qty]', form);
       const idx = lines.findIndex((l) => l.p.id === p.id);
-      if (last[idx]) last[idx].select();
+      if (last[idx]) {
+        last[idx].select();
+        if (!ex && !reduceMotion()) last[idx].closest('tr').classList.add('line-in');
+      }
     }, { priceKey: (p) => `Costo ${Fmt.money(p.cost)}` });
     drawLines();
 

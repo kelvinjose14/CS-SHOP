@@ -102,11 +102,11 @@ App.register({
     const tb = toolbar(page, {
       left: html`
         <div class="search">${icon('search')}<input id="p-search" placeholder="Buscar por nombre, marca, modelo, categoría, talla, SKU o código…"></div>
-        <div class="seg" id="p-view" title="Ver cada variante o agrupar por modelo">
-          <button data-v="variantes" class="active">Variantes</button><button data-v="modelos">${icon('grid')} Modelos</button>
-        </div>
         <div class="seg" id="p-status">
           <button data-s="todos" class="active">Todos</button><button data-s="bajo">Stock bajo</button><button data-s="agotado">Agotados</button><button data-s="reponer">Reponer</button><button data-s="apartado">Apartados</button>
+        </div>
+        <div class="seg" id="p-view" title="Ver cada variante o agrupar por modelo">
+          <button data-v="variantes" class="active">Variantes</button><button data-v="modelos">${icon('grid')} Modelos</button>
         </div>
         ${admin ? html`<label class="check"><input type="checkbox" id="p-inactive"> Ver inactivos</label>` : ''}`,
       right: html`
@@ -131,7 +131,14 @@ App.register({
       }
       drawSummary(sum);
       const cols = productColumns().filter((c) => !c.hide);
-      setHTML(listBox, table({ columns: cols, rows, clickable: true, empty: 'No hay productos. Agregue el primero con “Nuevo producto”.', rowClass: (p) => (p.active ? '' : 'inactive') }));
+      // Sin productos todavía: una invitación a crear el primero. Con filtros: "sin resultados".
+      const filtered = state.search || state.status !== 'todos';
+      const empty = filtered
+        ? emptyState({ icon: 'search', title: 'Sin resultados', text: 'Pruebe con otro nombre, código o filtro.' })
+        : emptyState({ icon: 'box', title: 'No hay productos todavía', text: 'Agregue la primera gorra o impórtelas desde Excel.', action: admin ? { id: 'p-empty-new', label: 'Nuevo producto', icon: 'plus' } : null });
+      setHTML(listBox, table({ columns: cols, rows, clickable: true, empty, rowClass: (p) => (p.active ? '' : 'inactive') }));
+      const first = $('#p-empty-new', listBox);
+      if (first) first.onclick = () => productEditor(null, load);
       onRowClick(listBox, rows, (p) => productDetail(p.id, load));
     };
     const drawSummary = (sum) => {
@@ -263,23 +270,31 @@ async function productEditor(m, onSaved) {
   const sameCost = new Set(activeVs.map((v) => v.cost)).size <= 1;
   let photoData = null;
   const body = el(html`
-    <form class="grid-form editor">
-      ${isNew ? html`<div class="photo-pick">
-        <div class="photo-preview">${productThumb({}, 120)}</div>
-        <label class="btn small">${icon('plus')} Foto<input type="file" accept="image/*" hidden name="__file"></label>
-      </div>` : ''}
-      <div class="grid-2 ${isNew ? '' : 'span-all'}">
-        <label class="field span-2"><span>Nombre *</span><input name="name" value="${isNew ? '' : m.name}" placeholder="Ej. Gorra New York Yankees"></label>
+    <form class="grid-form editor sections">
+      <div class="grid-2">
+        <div class="form-section">Información general</div>
+        <label class="field"><span>Nombre *</span><input name="name" value="${isNew ? '' : m.name}" placeholder="Ej. Gorra New York Yankees"></label>
+        <div class="field"><span>Categoría</span><div id="pe-category"></div></div>
         <div class="field"><span>Marca</span><div id="pe-brand"></div></div>
         <div class="field"><span>Modelo</span><div id="pe-model"></div></div>
-        <div class="field"><span>Categoría</span><div id="pe-category"></div></div>
-        <div class="field"><span>Tallas</span><div id="pe-sizes"></div></div>
-        <div class="span-2" id="pe-stock"></div>
-        <label class="field"><span>Costo</span><input name="cost" ${MONEY_ATTRS} value="${isNew ? '' : sameCost ? first.cost : ''}" placeholder="${!isNew && !sameCost ? 'Distinto en cada talla' : ''}"></label>
-        <label class="field"><span>Precio detalle *</span><input name="price_retail" ${MONEY_ATTRS} value="${first.price_retail ?? ''}"></label>
-        <label class="field"><span>Precio por mayor</span><input name="price_wholesale" ${MONEY_ATTRS} value="${first.price_wholesale ?? ''}"></label>
-        <label class="field"><span>Stock mínimo</span><input name="min_stock" type="number" step="1" min="0" value="${first.min_stock ?? 2}"></label>
-        <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${first.notes || ''}</textarea></label>
+        <div class="form-section">Inventario</div>
+        <div class="field span-2"><span>Tallas</span><div id="pe-sizes"></div></div>
+        <div class="span-2 inv-row">
+          <div id="pe-stock"></div>
+          <label class="field min-field"><span>Stock mínimo</span><input name="min_stock" type="number" step="1" min="0" value="${first.min_stock ?? 2}"></label>
+        </div>
+        <div class="form-section">Precios</div>
+        <label class="field"><span>Costo</span><input name="cost" ${MONEY_ATTRS} value="${isNew ? '' : sameCost ? first.cost : ''}" placeholder="${!isNew && !sameCost ? 'Distinto en cada talla' : '0.00'}"></label>
+        <label class="field"><span>Precio detalle *</span><input name="price_retail" ${MONEY_ATTRS} value="${first.price_retail ?? ''}" placeholder="0.00"></label>
+        <label class="field"><span>Precio por mayor</span><input name="price_wholesale" ${MONEY_ATTRS} value="${first.price_wholesale ?? ''}" placeholder="0.00"></label>
+        <div class="field margin-box"><span>Margen al detalle</span><b id="pe-margin">—</b></div>
+        <div class="form-section">Otros</div>
+        ${isNew ? html`<div class="field span-2 photo-row"><span>Foto</span><div class="photo-inline">
+          <div class="photo-preview">${productThumb({}, 64)}</div>
+          <label class="btn small">${icon('upload')} Elegir foto<input type="file" accept="image/*" hidden name="__file"></label>
+          <small class="muted">Se reduce sola para no llenar el disco.</small>
+        </div></div>` : ''}
+        <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2" placeholder="Opcional">${first.notes || ''}</textarea></label>
       </div>
     </form>`);
   const brand = comboSelect($('#pe-brand', body), { items: cat.brands, value: isNew ? null : m.brand_id ?? first.brand_id, placeholder: 'Seleccionar marca…', createLabel: 'Crear nueva marca', onCreate: newCatalogItem('brands', 'marca'), id: 'pe-brand-input' });
@@ -327,8 +342,19 @@ async function productEditor(m, onSaved) {
     const f = e.target.files[0];
     if (!f) return;
     photoData = await readImage(f);
-    setHTML($('.photo-preview', body), html`<img class="thumb" src="${photoData}" style="width:120px;height:120px">`);
+    setHTML($('.photo-preview', body), html`<img class="thumb" src="${photoData}" style="width:64px;height:64px">`);
   };
+  // Margen al detalle, en vivo mientras se escriben el costo y el precio.
+  const marginBox = $('#pe-margin', body);
+  const showMargin = () => {
+    const c = Number($('[name=cost]', body).value || (isNew ? 0 : sameCost ? first.cost : 0));
+    const r = Number($('[name=price_retail]', body).value);
+    marginBox.textContent = c > 0 && r > 0 ? `${Fmt.pct(((r - c) / r) * 100)} · ${Fmt.money(r - c)} por gorra` : '—';
+    marginBox.className = c > 0 && r > 0 && r < c ? 'text-danger' : '';
+  };
+  $('[name=cost]', body).addEventListener('input', showMargin);
+  $('[name=price_retail]', body).addEventListener('input', showMargin);
+  showMargin();
 
   modal({
     title: isNew ? 'Nuevo producto' : `Editar producto · ${m.name}`,

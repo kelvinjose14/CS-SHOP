@@ -7,7 +7,7 @@ const { dataDir, launch, login, go, text, eventually } = require('./helpers');
 
 const api = (win, name, params) => win.evaluate(([n, p]) => api(n, p), [name, params]);
 
-test('tablas grandes: 1000 filas en pantalla, totales con todas y "Mostrar todas"', async (t) => {
+test('tablas grandes: se dibujan por partes, hasta 1000 filas, totales con todas y "Mostrar todas"', async (t) => {
   const { win, errors } = await launch(t, dataDir({ demo: true }));
   await login(win, 'admin', 'admin123');
   const r = await win.evaluate(() => {
@@ -18,11 +18,15 @@ test('tablas grandes: 1000 filas en pantalla, totales con todas y "Mostrar todas
     let clicked = null;
     onRowClick(box, rows, (row) => (clicked = row.n));
     const before = { shown: box.querySelectorAll('tbody tr[data-idx]').length, note: box.querySelector('.table-more').textContent, total: box.querySelector('tfoot').textContent };
+    // Al bajar se agregan las siguientes (carga por partes).
+    renderMore(box.querySelector('tr.table-lazy'));
+    before.more = box.querySelectorAll('tbody tr[data-idx]').length;
     box.querySelector('[data-show-all]').click();
     box.querySelectorAll('tbody tr[data-idx]')[1400].click();
     return { before, after: box.querySelectorAll('tbody tr[data-idx]').length, note: !!box.querySelector('.table-more'), clicked };
   });
-  assert.equal(r.before.shown, 1000);
+  assert.equal(r.before.shown, 60, 'de entrada solo las primeras');
+  assert.equal(r.before.more, 120);
   assert.match(r.before.note, /1,000 de 1,500/);
   assert.match(r.before.total, /3,000\.00/, 'el total suma las 1500 filas');
   assert.equal(r.after, 1500);

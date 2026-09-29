@@ -69,6 +69,7 @@ const METHODS = {
   'payables.list': [ADMIN, purchases.payables],
 
   'customers.list': [ALL, sales.customerList],
+  'customers.options': [ALL, sales.customerOptions],
   'customers.get': [ALL, sales.customerGet],
   'customers.save': [ALL, sales.customerSave],
   'customers.opening': [ADMIN, sales.customerOpening],

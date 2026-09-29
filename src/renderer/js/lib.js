@@ -13,7 +13,18 @@ function html(strings, ...vals) {
 }
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-function setHTML(el, content) { el.innerHTML = toHtml(content); return el; }
+function setHTML(el, content) {
+  if (content instanceof Raw && content.table && patchTable(el, content.table)) return el;
+  el.innerHTML = toHtml(content);
+  if (content instanceof Raw && content.table) {
+    const t = $('table', el);
+    if (t) t.dataset.head = content.table.head;
+  }
+  // Una tarjeta que solo tiene una tabla: la tabla llega a los bordes (sin selector :has, que es lento).
+  if (el.classList && el.classList.contains('card')) el.classList.toggle('flush', el.children.length === 1 && el.firstElementChild.classList.contains('table-wrap'));
+  $$('tr.table-lazy', el).forEach(observeLazy);
+  return el;
+}
 function el(markup) {
   const t = document.createElement('template');
   t.innerHTML = toHtml(markup).trim();
@@ -21,13 +32,17 @@ function el(markup) {
 }
 
 /* ---------- Formatos ---------- */
+// Los formateadores se crean una sola vez: toLocaleString crea uno nuevo en cada llamada y en una tabla
+// de cientos de filas se notaba.
+const MONEY_FMT = new Intl.NumberFormat('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NUM_FMT = new Intl.NumberFormat('es-DO');
 const Fmt = {
   currency: 'RD$',
   money(n) {
     const v = Number(n) || 0;
-    return `${v < 0 ? '-' : ''}${Fmt.currency} ${Math.abs(v).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `${v < 0 ? '-' : ''}${Fmt.currency} ${MONEY_FMT.format(Math.abs(v))}`;
   },
-  num(n) { return (Number(n) || 0).toLocaleString('es-DO'); },
+  num(n) { return NUM_FMT.format(Number(n) || 0); },
   pct(n) { return `${(Number(n) || 0).toFixed(1)}%`; },
   date(s) {
     if (!s) return '';
@@ -91,6 +106,9 @@ const ICONS = {
   gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8c-2-4-6-4-6-1.5S9 8 12 8zm0 0c2-4 6-4 6-1.5S15 8 12 8z"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/>',
+  chevron: '<path d="M9 6l6 6-6 6"/>',
 };
 const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`);
 
@@ -99,9 +117,37 @@ const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 2
 const SESSION_ERRORS = ['AUTH', 'TERMINAL', 'KEY', 'VERSION'];
 // Errores de conexión con la PC principal: en la pantalla de entrada permiten volver a configurar la PC.
 const CONNECTION_ERRORS = ['OFFLINE', 'KEY', 'TERMINAL', 'VERSION'];
-async function api(name, params, { silent = false } = {}) {
+// Datos que cambian poco (catálogos, lista corta de clientes, usuarios): se guardan un rato en memoria
+// para no pedirlos cada vez que se abre un formulario. Cualquier cambio del mismo módulo (crear, editar,
+// desactivar) los descarta, y en red otra PC los ve actualizados en a lo sumo CACHE_MS.
+const CACHE_MS = 60000;
+const CACHEABLE = new Set(['catalog.list', 'customers.options']);
+const apiCache = new Map();
+const cacheKey = (name, params) => `${name}|${JSON.stringify(params ?? null)}`;
+function dropCache(prefix) {
+  for (const k of apiCache.keys()) if (!prefix || k.startsWith(prefix)) apiCache.delete(k);
+}
+// Una venta, un abono o una compra cambian lo que debe cada cliente o proveedor.
+const CACHE_LINKS = { sales: ['customers.'], customers: ['customers.'], reservations: ['customers.'], catalog: ['catalog.'], products: ['catalog.'] };
+async function api(name, params, { silent = false, fresh = false } = {}) {
+  const cacheable = CACHEABLE.has(name);
+  const key = cacheable && cacheKey(name, params);
+  if (cacheable && !fresh) {
+    const hit = apiCache.get(key);
+    // Una copia: quien la reciba puede ordenarla o agregarle opciones sin tocar la guardada.
+    if (hit && Date.now() - hit.at < CACHE_MS) return hit.promise.then((v) => structuredClone(v));
+  }
+  const call = window.capsApi.call(name, params);
+  if (cacheable) {
+    apiCache.set(key, { at: Date.now(), promise: call });
+    call.catch(() => apiCache.delete(key));
+  } else if (!/\.(list|get|status|summary|range|models|modelGet|movements|options|dashboard|executive|profit|cashflow|history|facets|birthdays|findByCode|cycleCount|audit|report)/.test(name)) {
+    // Una operación que cambia datos: se descarta lo guardado de ese módulo.
+    for (const p of CACHE_LINKS[name.split('.')[0]] || []) dropCache(p);
+  }
   try {
-    return await window.capsApi.call(name, params);
+    const v = await call;
+    return cacheable ? structuredClone(v) : v;
   } catch (err) {
     if (SESSION_ERRORS.includes(err.code)) { App.onLoggedOut(err.message, err.code); throw err; }
     if (err.code === 'OFFLINE') { App.showOffline(err.message); throw err; }
@@ -130,7 +176,7 @@ function toast(message, type = 'ok') {
   let box = $('#toasts');
   // Al principio de la página: así la ventana abierta sigue siendo la última (se ve igual: z-index 100).
   if (!box) { box = el(html`<div id="toasts"></div>`); document.body.prepend(box); }
-  const t = el(html`<div class="toast ${type}">${message}</div>`);
+  const t = el(html`<div class="toast ${type}" role="status"><span class="toast-icon">${icon(type === 'error' ? 'x' : 'check')}</span><span>${message}</span></div>`);
   box.appendChild(t);
   setTimeout(() => t.classList.add('hide'), type === 'error' ? 5000 : 2800);
   setTimeout(() => t.remove(), type === 'error' ? 5500 : 3300);
@@ -153,8 +199,8 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
   const close = () => {
     if (closed) return;
     closed = true;
-    back.remove();
     document.removeEventListener('keydown', onKey);
+    leave(back);
     if (onClose) onClose();
   };
   // La de arriba es la última ventana abierta (los avisos también se agregan al final de la página).
@@ -168,12 +214,16 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
     b.onclick = async () => {
       if (!a.onClick) return close();
       b.disabled = true;
+      // Si tarda, el botón muestra que está trabajando (sin parpadear en lo que es instantáneo).
+      const spin = setTimeout(() => b.classList.add('loading'), 150);
       try {
         const r = await a.onClick({ close, body: bodyEl });
         if (r !== false) close();
       } catch (err) {
         if (!err.code) toast(err.message, 'error');
       } finally {
+        clearTimeout(spin);
+        b.classList.remove('loading');
         b.disabled = false;
       }
     };
@@ -185,6 +235,17 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
   // (no le quita el cursor).
   if (first) setTimeout(() => { if (onTop() && !back.contains(document.activeElement)) first.focus(); }, 30);
   return { close, el: back, body: bodyEl };
+}
+
+// Cerrar una ventana con una salida corta. Deja de ser ".modal-back" en el acto (ya no cuenta como
+// abierta ni responde a Esc), sin ids repetidos, y pasa detrás de las otras mientras se desvanece.
+function leave(back) {
+  if (!back.isConnected) return;
+  back.classList.replace('modal-back', 'modal-leaving');
+  back.setAttribute('inert', '');
+  $$('[id]', back).forEach((x) => x.removeAttribute('id'));
+  document.body.prepend(back);
+  setTimeout(() => back.remove(), 140);
 }
 
 function confirmDialog(message, { title = 'Confirmar', okLabel = 'Aceptar', danger = false } = {}) {
@@ -261,7 +322,7 @@ function expandTables(root = document) {
   $$('table[data-big]', root).forEach((t) => {
     const big = bigTables.get(t.dataset.big);
     if (!big) return;
-    $('tbody', t).innerHTML = big.rows.map(big.row).join('');
+    $('tbody', t).innerHTML = big.rows.map((r, i) => big.row(r, i)).join('');
     bigTables.delete(t.dataset.big);
     t.removeAttribute('data-big');
   });
@@ -290,7 +351,36 @@ document.addEventListener('change', (e) => {
   if (bad) toast(Number(v) < 0 ? 'El monto no puede ser negativo.' : 'Use como máximo 2 decimales (por ejemplo 1500 o 1500.50).', 'error');
 }, true);
 
-function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable = false, totalsLabel = 'Totales', limit = TABLE_LIMIT }) {
+// Estado vacío: icono, título, texto y (opcional) un botón. action: { id, label, icon }.
+function emptyState({ icon: ic = 'inbox', title, text = '', action } = {}) {
+  return html`<div class="empty-state"><div class="es-icon">${icon(ic)}</div><b>${title}</b>${text ? html`<p>${text}</p>` : ''}${action ? html`<button class="btn primary" type="button" id="${action.id}">${action.icon ? icon(action.icon) : ''} ${action.label}</button>` : ''}</div>`;
+}
+
+// Filas que se dibujan de entrada; el resto se agrega al bajar (carga por partes). Así una lista de
+// 1,000 productos aparece en un instante, y el total, el Excel y el PDF siguen usando todas.
+const TABLE_CHUNK = 60;
+let lazyObserver = null;
+function observeLazy(tr) {
+  if (!('IntersectionObserver' in window)) return;
+  if (!lazyObserver) {
+    lazyObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) { lazyObserver.unobserve(e.target); renderMore(e.target); }
+    }, { rootMargin: '600px 0px' });
+  }
+  lazyObserver.observe(tr);
+}
+function renderMore(sentinel) {
+  const t = sentinel.closest('table');
+  const big = t && bigTables.get(t.dataset.big);
+  if (!big) return;
+  const end = Math.min(big.shown + TABLE_CHUNK, big.upto);
+  sentinel.insertAdjacentHTML('beforebegin', big.rows.slice(big.shown, end).map((r, i) => big.row(r, big.shown + i)).join(''));
+  big.shown = end;
+  if (end >= big.upto) sentinel.remove();
+  else observeLazy(sentinel);
+}
+
+function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable = false, totalsLabel = 'Totales', limit = TABLE_LIMIT, key = 'id' }) {
   const cell = (c, r) => {
     if (c.render) return toHtml(c.render(r));
     const v = r[c.key];
@@ -310,18 +400,79 @@ function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable
       return `<td class="${align(c)}">${esc(c.money ? Fmt.money(v) : c.pct ? Fmt.pct(v) : Fmt.num(v))}</td>`;
     }).join('') + '</tr></tfoot>';
   }
-  const row = (r, i) => `<tr data-idx="${i}" class="${rowClass ? esc(rowClass(r) || '') : ''}">${columns.map((c) => `<td class="${align(c)} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`;
-  const big = rows.length > limit;
-  const id = big ? `t${++tableSeq}` : '';
-  if (big) bigTables.set(id, { rows, row });
-  const more = big ? `<tr class="table-more"><td colspan="${columns.length}">Se muestran ${esc(Fmt.num(limit))} de ${esc(Fmt.num(rows.length))} filas. Los totales, el Excel y el PDF incluyen todas. <button class="btn small" type="button" data-show-all>Mostrar todas</button></td></tr>` : '';
-  const body = rows.length ? rows.slice(0, big ? limit : rows.length).map(row).join('') + more : `<tr><td colspan="${columns.length}" class="empty">${esc(empty)}</td></tr>`;
-  return raw(`
-    <div class="table-wrap"><table class="table ${clickable ? 'clickable' : ''}"${big ? ` data-big="${id}"` : ''}>
+  const keyOf = (r, i) => (r && key && r[key] !== undefined && r[key] !== null ? r[key] : `i${i}`);
+  const row = (r, i) => `<tr data-idx="${i}" data-key="${esc(keyOf(r, i))}" class="${rowClass ? esc(rowClass(r) || '') : ''}">${columns.map((c) => `<td class="${align(c)} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`;
+  const capped = rows.length > limit;
+  const upto = capped ? limit : rows.length;
+  const lazy = upto > TABLE_CHUNK;
+  const id = capped || lazy ? `t${++tableSeq}` : '';
+  if (id) bigTables.set(id, { rows, row, shown: lazy ? TABLE_CHUNK : upto, upto });
+  const more = capped ? `<tr class="table-more"><td colspan="${columns.length}">Se muestran ${esc(Fmt.num(limit))} de ${esc(Fmt.num(rows.length))} filas. Los totales, el Excel y el PDF incluyen todas. <button class="btn small" type="button" data-show-all>Mostrar todas</button></td></tr>` : '';
+  const sentinel = lazy ? `<tr class="table-lazy" aria-hidden="true"><td colspan="${columns.length}"></td></tr>` : '';
+  const emptyCell = empty instanceof Raw ? empty.s : toHtml(emptyState({ icon: 'inbox', title: empty }));
+  const body = rows.length ? rows.slice(0, lazy ? TABLE_CHUNK : upto).map(row).join('') + sentinel + more : `<tr><td colspan="${columns.length}" class="empty">${emptyCell}</td></tr>`;
+  const out = raw(`
+    <div class="table-wrap"><table class="table ${clickable ? 'clickable' : ''}"${id ? ` data-big="${id}"` : ''}>
       <thead><tr>${columns.map((c) => `<th class="${align(c)} ${c.cls || ''}">${esc(c.label)}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
       ${foot}
     </table></div>`);
+  // Para actualizar en su lugar (setHTML): solo las filas que cambiaron se vuelven a dibujar.
+  out.table = { head: columns.map((c) => c.label).join('|'), rows: !id && rows.length ? rows.map(row) : null, foot, clickable };
+  return out;
+}
+
+// Una tabla que ya está en pantalla y se vuelve a cargar (por ejemplo, después de editar un producto):
+// se cambian solo las filas distintas, la nueva entra suave y la modificada se ilumina un momento.
+// Devuelve false si no se puede (otra tabla, o una grande que se dibuja por partes).
+function patchTable(host, t) {
+  const wrap = host.firstElementChild;
+  if (!t.rows || host.children.length !== 1 || !wrap || !wrap.classList.contains('table-wrap')) return false;
+  const table = $('table', wrap);
+  if (!table || table.dataset.big || table.dataset.head !== t.head) return false;
+  const tbody = table.tBodies[0];
+  const old = new Map();
+  for (const tr of tbody.rows) if (tr.dataset.key !== undefined) old.set(tr.dataset.key, tr);
+  if (!old.size) return false;
+  const tpl = document.createElement('tbody');
+  tpl.innerHTML = t.rows.join('');
+  const next = [...tpl.rows];
+  const wanted = [];
+  for (const tr of next) {
+    const prev = old.get(tr.dataset.key);
+    if (prev && prev.innerHTML.replace(/ cell-changed/g, '') === tr.innerHTML && prev.className.replace(/ ?row-(enter|changed)/g, '') === tr.className) {
+      prev.dataset.idx = tr.dataset.idx;
+      wanted.push(prev);
+      old.delete(tr.dataset.key);
+    } else if (prev && prev.cells.length === tr.cells.length) {
+      // Misma fila con otros datos: se cambian solo las celdas distintas, que se iluminan un momento.
+      prev.className = tr.className;
+      prev.dataset.idx = tr.dataset.idx;
+      [...tr.cells].forEach((td, j) => {
+        const cur = prev.cells[j];
+        if (cur.innerHTML !== td.innerHTML || cur.className.replace(' cell-changed', '') !== td.className) {
+          cur.innerHTML = td.innerHTML;
+          cur.className = `${td.className} cell-changed`;
+        }
+      });
+      wanted.push(prev);
+      old.delete(tr.dataset.key);
+    } else {
+      if (prev) old.delete(tr.dataset.key);
+      tr.classList.add(prev ? 'row-changed' : 'row-enter');
+      wanted.push(tr);
+    }
+  }
+  for (const tr of old.values()) tr.remove();
+  wanted.forEach((tr, i) => { if (tbody.rows[i] !== tr) tbody.insertBefore(tr, tbody.rows[i] || null); });
+  while (tbody.rows.length > wanted.length) tbody.rows[wanted.length].remove();
+  const f = table.tFoot;
+  if (t.foot) { if (f) f.outerHTML = t.foot; else table.insertAdjacentHTML('beforeend', t.foot); } else if (f) f.remove();
+  setTimeout(() => {
+    $$('.row-enter, .row-changed', tbody).forEach((x) => x.classList.remove('row-enter', 'row-changed'));
+    $$('.cell-changed', tbody).forEach((x) => x.classList.remove('cell-changed'));
+  }, 1000);
+  return true;
 }
 
 // Clic en una fila y en un botón de una fila. Se escuchan en el contenedor (no fila por fila), así
@@ -505,7 +656,7 @@ document.addEventListener('error', (e) => {
 function productThumb(p, size = 40) {
   const url = photoUrl(p.photo);
   return url
-    ? html`<img class="thumb" src="${url}" style="width:${size}px;height:${size}px" alt="">`
+    ? html`<img class="thumb" src="${url}" style="width:${size}px;height:${size}px" alt="" loading="lazy" decoding="async">`
     : html`<span class="thumb ph" style="width:${size}px;height:${size}px">${icon('tag')}</span>`;
 }
 // Reduce la imagen seleccionada para no llenar el disco.
@@ -528,6 +679,37 @@ function readImage(file, max = 600) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+// Cuenta rápida desde 0 hasta el valor (KPIs del Inicio), una sola vez al entrar. Respeta "menos movimiento".
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(root, { ms = 450 } = {}) {
+  if (!root || reduceMotion()) return;
+  $$('.stat-value', root).forEach((node) => {
+    const txt = node.textContent;
+    const m = /^(-?)(\D*?)\s*([\d,]+(?:\.\d+)?)(\D*)$/.exec(txt.trim());
+    if (!m || node.children.length) return;
+    const target = Number(m[3].replace(/,/g, '')) * (m[1] ? -1 : 1);
+    if (!target) return;
+    const decimals = (m[3].split('.')[1] || '').length;
+    const fmt = (v) => `${v < 0 ? '-' : ''}${m[2]}${m[2] ? ' ' : ''}${Math.abs(v).toLocaleString('es-DO', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${m[4]}`.replace(/\s+/g, ' ').trim();
+    const start = performance.now();
+    const step = (now) => {
+      if (!node.isConnected) return;
+      const k = Math.min(1, (now - start) / ms);
+      const e = 1 - (1 - k) ** 3;
+      node.textContent = k < 1 ? fmt(target * e) : txt;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+// Marca un número que acaba de cambiar (existencia, total) con un destello corto.
+function flashNumber(node) {
+  if (!node || reduceMotion()) return;
+  node.classList.remove('num-changed');
+  void node.offsetWidth;
+  node.classList.add('num-changed');
 }
 
 const productLabel = (p) => [p.name, p.color, p.size].filter(Boolean).join(' · ');

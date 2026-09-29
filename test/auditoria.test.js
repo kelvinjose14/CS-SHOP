@@ -194,7 +194,7 @@ test('4.1: ninguna respuesta al vendedor trae costos ni ganancias', async () => 
     'products.list': {}, 'products.get': { id: p }, 'products.findByCode': { code: call('products.get', { id: p }).sku }, 'products.summary': {}, 'products.facets': {},
     'products.movements': { product_id: p }, 'customers.list': {}, 'customers.get': { id: cu }, 'sales.list': {}, 'sales.get': { id: sale },
     'receivables.list': {}, 'cash.status': {}, 'reports.dashboard': {}, 'settings.get': {},
-    'products.models': {}, 'products.modelGet': { id: call('products.get', { id: p }).model_id }, 'reservations.list': {}, 'reservations.get': { id: res }, 'customers.birthdays': { days: 366 }, 'catalog.list': { includeInactive: true },
+    'products.models': {}, 'products.modelGet': { id: call('products.get', { id: p }).model_id }, 'reservations.list': {}, 'reservations.get': { id: res }, 'customers.birthdays': { days: 366 }, 'catalog.list': { includeInactive: true }, 'customers.options': { includeInactive: true },
   };
   // Todas las operaciones de lectura del vendedor están aquí (si se agrega una, hay que sumarla).
   const reads = Object.entries(METHODS).filter(([n, [roles]]) => roles.includes('vendedor') && !/save|create|pay|open|close|movement|change|range|extend|cancel|addNote/i.test(n)).map(([n]) => n);

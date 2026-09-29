@@ -206,11 +206,11 @@ const App = {
         .filter((r) => r.group === g && !r.hidden && this.can(r))
         .sort((a, b) => NAV_ORDER.indexOf(a.id) - NAV_ORDER.indexOf(b.id));
       if (!items.length) return '';
-      return html`<div class="nav-group"><div class="nav-title">${g}</div>${items.map((r) => html`<a href="#" data-route="${r.id}">${icon(r.icon)}<span>${r.title}</span></a>`)}</div>`;
+      return html`<div class="nav-group"><div class="nav-title">${g}</div>${items.map((r) => html`<a href="#" data-route="${r.id}" title="${r.title}">${icon(r.icon)}<span>${r.title}</span></a>`)}</div>`;
     });
     setHTML(document.body, html`
       <aside class="sidebar">
-        <div class="brand"><img src="assets/logo.png" alt="CAPS._.SHOP"></div>
+        <div class="brand"><img src="assets/logo.png" alt="CAPS._.SHOP"><button class="icon-btn side-toggle" id="side-toggle" title="Contraer o expandir el menú" aria-label="Contraer o expandir el menú">${icon('panel')}</button></div>
         <nav>${nav}</nav>
         <div class="side-user">
           <div class="avatar">${this.user.name.slice(0, 1).toUpperCase()}</div>
@@ -221,7 +221,7 @@ const App = {
       </aside>
       <main class="main">
         <header class="topbar">
-          <h1 id="page-title"></h1>
+          <div class="crumb"><small id="page-group"></small><h1 id="page-title"></h1></div>
           <div class="topbar-right" id="topbar-right"></div>
         </header>
         <section id="page" class="page"></section>
@@ -229,26 +229,54 @@ const App = {
     $$('[data-route]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); this.go(a.dataset.route); }));
     $('#btn-logout').onclick = () => this.logout();
     $('#btn-password').onclick = () => this.changePasswordDialog();
+    // Menú contraído (solo iconos): se recuerda en esta PC. En ventanas angostas empieza contraído.
+    const pref = (() => { try { return localStorage.getItem('capsshop-menu'); } catch { return null; } })();
+    if (pref === 'contraido') document.body.classList.add('side-collapsed');
+    $('#side-toggle').onclick = () => {
+      const narrow = window.matchMedia('(max-width: 1100px)').matches;
+      const cls = narrow ? 'side-expanded' : 'side-collapsed';
+      const on = document.body.classList.toggle(cls);
+      if (!narrow) try { localStorage.setItem('capsshop-menu', on ? 'contraido' : 'abierto'); } catch { /* sin almacenamiento */ }
+    };
   },
 
   async go(id, params = {}) {
     const route = this.routes.find((r) => r.id === id);
     if (!route || !this.can(route)) return;
     this.current = { id, params };
+    const nav = (this.navSeq = (this.navSeq || 0) + 1);
     clearBigTables();
     $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === (route.navAs || id)));
     $('#page-title').textContent = route.title;
-    setHTML($('#topbar-right'), '');
-    const page = $('#page');
-    page.className = `page page-${id}`;
-    setHTML(page, html`<div class="loading">Cargando…</div>`);
+    const navRoute = this.routes.find((r) => r.id === (route.navAs || id));
+    $('#page-group').textContent = (navRoute && navRoute.group) || '';
+    // Una página nueva en cada cambio de pantalla: si el usuario pasa rápido por varias, lo que termina
+    // de cargar una pantalla anterior queda en la página vieja (fuera de la vista) y no se mezcla.
+    const old = $('#page');
+    const page = el(html`<section id="page" class="page page-${id}"></section>`);
+    old.replaceWith(page);
+    // Si la pantalla tarda, un esqueleto con la forma de la página (no un "Cargando…" en blanco).
+    const main = page.parentElement;
+    $$('.page-skeleton', main).forEach((x) => x.remove());
+    const skeleton = setTimeout(() => {
+      if (this.navSeq !== nav || !page.isConnected) return;
+      main.appendChild(el(html`<div class="page-skeleton" aria-hidden="true"><div class="sk-row"><div class="sk sk-bar"></div></div><div class="sk-row"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div><div class="sk sk-table"></div></div>`));
+    }, 120);
     try {
-      page.innerHTML = '';
       await route.render(page, params);
     } catch (err) {
       console.error(err);
-      if (!SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') setHTML(page, html`<div class="error-box">${err.message}</div>`);
+      if (this.navSeq === nav && !SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') {
+        setHTML(page, html`<div class="empty-state">${html`<div class="es-icon">${icon('alert')}</div>`}<b>No se pudo abrir esta pantalla</b><p>${err.message}</p><button class="btn" type="button" id="page-retry">Intentar de nuevo</button></div>`);
+        const retry = $('#page-retry', page);
+        if (retry) retry.onclick = () => this.go(id, params);
+      }
+    } finally {
+      clearTimeout(skeleton);
     }
+    if (this.navSeq !== nav) return;
+    $$('.page-skeleton', main).forEach((x) => x.remove());
+    if (!reduceMotion()) page.classList.add('page-enter');
     this.refreshCashBadge();
     this.refreshUpdateBadge();
   },
@@ -259,10 +287,13 @@ const App = {
     try {
       const u = await window.capsApi.updates.status();
       const box = $('#topbar-right');
-      if (!box || $('.update-pill', box) || !['available', 'downloading', 'ready', 'scheduled'].includes(u.status)) return;
+      if (!box) return;
+      const old = $('.update-pill', box);
+      if (!['available', 'downloading', 'ready', 'scheduled'].includes(u.status)) { if (old) old.remove(); return; }
       const pill = el(html`<button class="cash-pill update-pill" title="Hay una versión nueva">${icon('download')} ${u.status === 'scheduled' ? `Versión ${u.version} al cerrar` : `Versión ${u.version} disponible`}</button>`);
+      if (old && old.outerHTML === pill.outerHTML) return;
       pill.onclick = () => this.go('settings');
-      box.prepend(pill);
+      if (old) old.replaceWith(pill); else box.prepend(pill);
     } catch { /* sin actualizaciones */ }
   },
 
@@ -275,13 +306,15 @@ const App = {
       const st = await api('cash.status', null, { silent: true });
       const box = $('#topbar-right');
       if (!box) return;
-      const old = $('.cash-pill:not(.update-pill)', box);
-      if (old) old.remove();
-      const pill = el(st.open
+      const markup = st.open
         ? html`<button class="cash-pill open" title="Caja abierta">${icon('cash')} Caja abierta · ${Fmt.money(st.open.expected)}</button>`
-        : html`<button class="cash-pill closed" title="Caja cerrada">${icon('cash')} Caja cerrada</button>`);
+        : html`<button class="cash-pill closed" title="Caja cerrada">${icon('cash')} Caja cerrada</button>`;
+      const old = $('.cash-pill:not(.update-pill)', box);
+      // Igual que antes: no se toca (sin parpadeo al cambiar de pantalla).
+      if (old && old.outerHTML === el(markup).outerHTML) return;
+      const pill = el(markup);
       pill.onclick = () => this.go('cash');
-      box.appendChild(pill);
+      if (old) old.replaceWith(pill); else box.appendChild(pill);
     } catch { /* sin sesión */ }
   },
 

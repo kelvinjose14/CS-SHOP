@@ -59,6 +59,7 @@ async function main() {
     ['Ventas (todas)', () => A('sales.list', {})],
     ['Detalle de venta', () => A('sales.get', { id: sale.id })],
     ['Clientes', () => A('customers.list', {})],
+    ['Clientes para elegir (venta, apartado)', () => V('customers.options', {})],
     ['Cliente con más compras', () => A('customers.get', { id: customer })],
     ['Clientes: VIP (filtro)', () => A('customers.list', { segment: 'vip' })],
     ['Cumpleaños (30 días)', () => A('customers.birthdays', { days: 30 })],

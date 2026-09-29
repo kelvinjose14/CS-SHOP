@@ -6,8 +6,8 @@ App.register({
   async render(page, params = {}) {
     const admin = App.isAdmin();
     const settings = App.settings;
-    const cash = await api('cash.status');
-    let customers = await api('customers.list');
+    // En paralelo: la caja y la lista corta de clientes (guardada un rato: no se pide en cada venta).
+    let [cash, customers] = await Promise.all([api('cash.status'), api('customers.options')]);
     const sale = { sale_type: 'detalle', payment_type: 'contado', customer_id: '', lines: [], discount: 0, discountMode: 'monto', payments: [{ method: 'efectivo', amount: '' }] };
     // Venta de un apartado (1.5): el cliente y las gorras vienen del apartado.
     let reservation = null;
@@ -35,7 +35,7 @@ App.register({
       <div class="pos">
         <div class="pos-left card">
           <div id="pos-picker"></div>
-          <div id="pos-lines" class="pos-lines"></div>
+          <div id="pos-lines" class="pos-lines"><table class="table lines hidden"><thead><tr><th></th><th>Producto</th><th class="text-right">Disp.</th><th>Cant.</th><th>Precio</th><th class="text-right">Importe</th><th></th></tr></thead><tbody></tbody></table><div class="pos-empty">${icon('cart', 'huge')}<p>Escanee un código de barras o busque una gorra para empezar.</p></div></div>
         </div>
         <div class="pos-right card">
           <div class="seg full" id="pos-type"><button data-v="detalle" class="active">Al detalle</button><button data-v="mayor">Al por mayor</button></div>
@@ -45,7 +45,7 @@ App.register({
           <div class="seg full" id="pos-pay-type"><button data-v="contado" class="active">Contado</button><button data-v="credito">Crédito</button></div>
           <label class="field credit-only hidden"><span>Fecha de vencimiento</span><input type="date" id="pos-due" min="${todayStr()}"></label>
           <div class="pos-totals">
-            <div><span>Subtotal</span><b id="t-sub"></b></div>
+            <div><span>Subtotal <span class="muted small" id="t-items"></span></span><b id="t-sub"></b></div>
             ${canDiscount ? html`<div class="disc"><span>Descuento</span>
               <div class="inline"><select id="pos-disc-mode"><option value="monto">${Fmt.currency}</option><option value="pct">%</option></select><input id="pos-disc" type="number" min="0" step="0.01" value="0" class="num"></div></div>` : ''}
             <div class="grand"><span>Total</span><b id="t-total"></b></div>
@@ -95,10 +95,16 @@ App.register({
       });
     };
 
+    let shownTotal = null;
     const updateTotals = () => {
       const t = total();
       $('#t-sub', root).textContent = Fmt.money(subtotal());
+      const units = sale.lines.reduce((n, l) => n + l.qty, 0);
+      $('#t-items', root).textContent = units ? `· ${units} ${units === 1 ? 'artículo' : 'artículos'}` : '';
       $('#t-total', root).textContent = Fmt.money(t);
+      // El total "late" un instante al cambiar (el vendedor ve que se sumó).
+      if (shownTotal !== null && shownTotal !== t) flashNumber($('#t-total', root));
+      shownTotal = t;
       const received = sale.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
       if (sale.payment_type === 'contado') {
         const effective = received || t; // sin monto = pago exacto
@@ -112,48 +118,75 @@ App.register({
       }
     };
 
-    const drawLines = () => {
-      const box = $('#pos-lines', root);
-      if (!sale.lines.length) {
-        setHTML(box, html`<div class="pos-empty">${icon('cart', 'huge')}<p>Escanee un código de barras o busque una gorra para empezar.</p></div>`);
-        updateTotals();
-        return;
-      }
-      setHTML(box, html`
-        <table class="table lines">
-          <thead><tr><th></th><th>Producto</th><th class="text-right">Disp.</th><th>Cant.</th><th>Precio</th><th class="text-right">Importe</th><th></th></tr></thead>
-          <tbody>${sale.lines.map((l, i) => html`
-            <tr data-i="${i}">
-              <td class="w-thumb">${productThumb(l.p, 36)}</td>
-              <td><b>${l.p.name}</b><div class="muted small">${[l.p.brand, l.p.color, l.p.size, l.p.sku].filter(Boolean).join(' · ')}</div></td>
-              <td class="text-right ${l.qty > avail(l.p) ? 'text-danger' : ''}">${avail(l.p)}</td>
-              <td><div class="qty"><button data-q="-1">−</button><input data-k="qty" type="number" min="1" step="1" value="${l.qty}"><button data-q="1">+</button></div></td>
-              <td>${admin ? html`<input class="num ${l.unit_price > 0 ? '' : 'invalid'}" data-k="unit_price" type="number" min="0" step="0.01" value="${l.unit_price}">` : l.unit_price > 0 ? Fmt.money(l.unit_price) : html`<b class="text-danger">Sin precio</b>`}</td>
-              <td class="text-right sub"><b>${Fmt.money(l.qty * l.unit_price)}</b></td>
-              <td><button class="icon-btn danger" data-del title="Quitar">${icon('trash')}</button></td>
-            </tr>`)}</tbody>
-        </table>`);
-      $$('tr[data-i]', box).forEach((tr) => {
-        const i = Number(tr.dataset.i);
-        const l = sale.lines[i];
-        const refresh = () => { $('.sub b', tr).textContent = Fmt.money(l.qty * l.unit_price); updateTotals(); };
-        $('[data-k=qty]', tr).oninput = (e) => { l.qty = Math.max(1, parseInt(e.target.value, 10) || 1); refresh(); };
-        $$('[data-q]', tr).forEach((b) => (b.onclick = () => { l.qty = Math.max(1, l.qty + Number(b.dataset.q)); drawLines(); }));
-        const price = $('[data-k=unit_price]', tr);
-        if (price) price.oninput = (e) => { l.unit_price = Number(e.target.value) || 0; refresh(); };
-        $('[data-del]', tr).onclick = () => { sale.lines.splice(i, 1); drawLines(); };
-      });
+    // Carrito: cada línea es una fila propia. Agregar, cambiar la cantidad o quitar toca solo esa fila
+    // (todo se calcula aquí, sin pedir nada al sistema hasta cobrar).
+    const tbody = $('#pos-lines tbody', root);
+    const lineRow = (l) => el(html`<table><tbody><tr>
+      <td class="w-thumb">${productThumb(l.p, 36)}</td>
+      <td><b>${l.p.name}</b><div class="muted small">${[l.p.brand, l.p.color, l.p.size, l.p.sku].filter(Boolean).join(' · ')}</div></td>
+      <td class="text-right" data-avail>${avail(l.p)}</td>
+      <td><div class="qty"><button data-q="-1" aria-label="Menos">−</button><input data-k="qty" type="number" min="1" step="1" value="${l.qty}"><button data-q="1" aria-label="Más">+</button></div></td>
+      <td>${admin ? html`<input class="num ${l.unit_price > 0 ? '' : 'invalid'}" data-k="unit_price" type="number" min="0" step="0.01" value="${l.unit_price}">` : html`<span data-price></span>`}</td>
+      <td class="text-right sub"><b></b></td>
+      <td><button class="icon-btn danger" data-del title="Quitar">${icon('trash')}</button></td>
+    </tr></tbody></table>`).querySelector('tr');
+    // Lo que cambia de una línea: cantidad, disponible (en rojo si no alcanza), precio e importe.
+    const paintLine = (l) => {
+      const tr = l.tr;
+      const q = $('[data-k=qty]', tr);
+      if (document.activeElement !== q) q.value = l.qty;
+      $('[data-avail]', tr).classList.toggle('text-danger', l.qty > avail(l.p));
+      const price = $('[data-k=unit_price]', tr);
+      if (price) { if (document.activeElement !== price) price.value = l.unit_price; price.classList.toggle('invalid', !(l.unit_price > 0)); }
+      const shown = $('[data-price]', tr);
+      if (shown) setHTML(shown, l.unit_price > 0 ? Fmt.money(l.unit_price) : html`<b class="text-danger">Sin precio</b>`);
+      $('.sub b', tr).textContent = Fmt.money(l.qty * l.unit_price);
+    };
+    const syncEmpty = () => {
+      $('#pos-lines .table', root).classList.toggle('hidden', !sale.lines.length);
+      $('#pos-lines .pos-empty', root).classList.toggle('hidden', !!sale.lines.length);
       updateTotals();
     };
+    const addLine = (l, { animate = true } = {}) => {
+      l.tr = lineRow(l);
+      if (animate && !reduceMotion()) l.tr.classList.add('line-in');
+      paintLine(l);
+      const tr = l.tr;
+      $('[data-k=qty]', tr).oninput = (e) => { l.qty = Math.max(1, parseInt(e.target.value, 10) || 1); paintLine(l); updateTotals(); };
+      $('[data-k=qty]', tr).onchange = () => paintLine(l);
+      $$('[data-q]', tr).forEach((b) => (b.onclick = () => { l.qty = Math.max(1, l.qty + Number(b.dataset.q)); paintLine(l); flashNumber($('.sub b', tr)); updateTotals(); }));
+      const price = $('[data-k=unit_price]', tr);
+      if (price) price.oninput = (e) => { l.unit_price = Number(e.target.value) || 0; paintLine(l); updateTotals(); };
+      $('[data-del]', tr).onclick = () => removeLine(l);
+      tbody.appendChild(tr);
+      syncEmpty();
+    };
+    const removeLine = (l) => {
+      const i = sale.lines.indexOf(l);
+      if (i < 0) return;
+      sale.lines.splice(i, 1);
+      const tr = l.tr;
+      if (reduceMotion()) tr.remove();
+      else { tr.classList.add('line-out'); setTimeout(() => tr.remove(), 110); }
+      syncEmpty();
+    };
+    const drawLines = () => { sale.lines.forEach(paintLine); syncEmpty(); };
 
     const picker = productPicker($('#pos-picker', root), (p) => {
       if (p.reserved && avail(p) <= 0) { toast(`"${productLabel(p)}" está apartado para otro cliente.`, 'error'); return; }
       if (p.stock <= 0 && settings.allow_negative_stock !== '1') { toast(`"${p.name}" está agotado.`, 'error'); return; }
       const ex = sale.lines.find((l) => l.p.id === p.id);
-      if (ex) ex.qty += 1;
-      else sale.lines.push({ p, qty: 1, unit_price: listPrice(p) });
+      if (ex) {
+        ex.qty += 1;
+        paintLine(ex);
+        flashNumber($('.sub b', ex.tr));
+        updateTotals();
+      } else {
+        const l = { p, qty: 1, unit_price: listPrice(p) };
+        sale.lines.push(l);
+        addLine(l);
+      }
       if (!(listPrice(p) > 0)) toast(`"${p.name}" no tiene precio ${sale.sale_type === 'mayor' ? 'por mayor' : 'al detalle'}.${admin ? ' Escriba el precio.' : ''}`, 'error');
-      drawLines();
     }, { priceKey: (p) => Fmt.money(listPrice(p)) });
 
     $$('#pos-type [data-v]', root).forEach((b) => (b.onclick = () => {
@@ -172,7 +205,7 @@ App.register({
     }));
     $('#pos-customer', root).onchange = (e) => (sale.customer_id = e.target.value);
     $('#pos-new-customer', root).onclick = () => customerForm(null, async (id) => {
-      customers = await api('customers.list');
+      customers = await api('customers.options');
       sale.customer_id = String(id);
       drawCustomers();
     });
@@ -237,10 +270,13 @@ App.register({
     if (reservation) {
       $('#pos-customer', root).disabled = true;
       $('#pos-new-customer', root).disabled = true;
-      for (const it of reservation.items) {
-        const p = await api('products.get', { id: it.product_id });
-        sale.lines.push({ p, qty: it.qty, unit_price: listPrice(p) });
-      }
+      // Las gorras del apartado, pedidas todas a la vez.
+      const ps = await Promise.all(reservation.items.map((it) => api('products.get', { id: it.product_id })));
+      reservation.items.forEach((it, i) => {
+        const l = { p: ps[i], qty: it.qty, unit_price: listPrice(ps[i]) };
+        sale.lines.push(l);
+        addLine(l, { animate: false });
+      });
     }
     drawPayments();
     drawLines();
@@ -513,7 +549,7 @@ function returnForm(s, onChange) {
 async function customerForm(c, onSaved) {
   c = c || {};
   // Etiquetas ya usadas, para sugerirlas (1.6).
-  const all = await api('customers.list', { includeInactive: true }).catch(() => []);
+  const all = await api('customers.options', { includeInactive: true }).catch(() => []);
   const tags = [...new Set(all.flatMap((x) => x.tags || []))].sort((a, b) => a.localeCompare(b, 'es'));
   modal({
     title: c.id ? 'Editar cliente' : 'Nuevo cliente',
@@ -682,10 +718,10 @@ async function customerDetail(id, onChange) {
     width: 960,
     body: html`
       <div class="crm-head">
-        ${c.vip ? html`<span class="badge warn">${icon('star')} VIP</span>` : ''}
+        ${c.vip ? html`<span class="badge warn has-icon">${icon('star')} VIP</span>` : ''}
         ${segBadge(c)}
         ${tagChips(c)}
-        ${c.birthday ? html`<span class="badge info">${icon('gift')} ${Fmt.bday(c.birthday)}${c.birthday_in <= 30 ? ` · ${Fmt.bdayIn(c.birthday_in)}` : ''}</span>` : ''}
+        ${c.birthday ? html`<span class="badge info has-icon">${icon('gift')} ${Fmt.bday(c.birthday)}${c.birthday_in <= 30 ? ` · ${Fmt.bdayIn(c.birthday_in)}` : ''}</span>` : ''}
         ${c.active ? '' : badge('anulada', 'Desactivado')}
       </div>
       <div class="kv cols-4">
