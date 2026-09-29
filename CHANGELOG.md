@@ -27,6 +27,10 @@ Gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)): dashb
 - **Cliente VIP** automático por lo comprado en 12 meses (Configuración → Cliente VIP) o a mano (administrador). **Etiquetas** libres y **cumpleaños**.
 - **Cumpleaños** de los próximos 30 días y **Copiar teléfonos** de la lista filtrada, para escribirles. El Inicio muestra los cumpleaños de la semana.
 
+### Corregido
+- Una ventana que se abre encima de otra (por ejemplo, el motivo al anular un abono desde la ficha del cliente) ya no pierde el cursor: la de abajo se lo quitaba si la de arriba se abría enseguida.
+- **Esc** cierra la ventana abierta aunque haya aparecido un aviso mientras estaba abierta.
+
 ### Documentación
 - La rama por defecto del repositorio ya es `main`: se quitó el aviso de pendiente en objetivos y en la guía de publicación.
 

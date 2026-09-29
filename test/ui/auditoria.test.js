@@ -31,6 +31,28 @@ test('tablas grandes: 1000 filas en pantalla, totales con todas y "Mostrar todas
   assert.deepEqual(errors, []);
 });
 
+test('un diálogo que se abre encima de otro no pierde el cursor', async (t) => {
+  const { win, errors } = await launch(t, dataDir({ demo: true }));
+  await login(win, 'admin', 'admin123');
+  // Como la ficha del cliente (con el cuadro de notas) y el "Motivo" de anular un abono abierto enseguida:
+  // la ventana de abajo no le quita el cursor a la de arriba mientras se escribe.
+  const r = await win.evaluate(() => new Promise((resolve) => {
+    const below = modal({ title: 'Ficha', body: html`<textarea id="t-below"></textarea>` });
+    let stolen = false;
+    $('#t-below', below.body).addEventListener('focus', () => (stolen = true));
+    const above = modal({ title: 'Motivo', body: html`<input id="t-above">` });
+    $('#t-above', above.body).focus();
+    setTimeout(() => {
+      resolve({ stolen, active: document.activeElement.id });
+      above.close();
+      below.close();
+    }, 100);
+  }));
+  assert.equal(r.stolen, false, 'la ventana de abajo no toma el cursor');
+  assert.equal(r.active, 't-above');
+  assert.deepEqual(errors, []);
+});
+
 test('anular un movimiento de caja y un abono desde la pantalla; producto sin precio en la venta', async (t) => {
   const { win, errors } = await launch(t, dataDir({ demo: true }));
   await login(win, 'admin', 'admin123');
