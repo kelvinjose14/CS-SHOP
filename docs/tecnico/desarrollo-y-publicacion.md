@@ -49,6 +49,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/controles.test.js` | 10 | Controles de la [auditoría](auditoria.md), secciones 2 y 4: motivo al abrir la caja, depósitos por verificar, inventario con productos desactivados, clientes desactivados, límite de crédito y deuda vencida, fechas y textos largos, costos sospechosos y categorías, reglas de la base, contraseñas de 8 y separador del CSV según la región |
 | `test/xlsx.test.js` | 4 | Excel con formato: ZIP y CRC, fechas de Excel, montos y porcentajes como números, textos que nunca son fórmulas, filtros, títulos fijos, impresión, y la plantilla y un inventario exportado que se vuelven a importar |
 | `test/productos17.test.js` | 8 | Catálogos (1.7): migraciones 9 y 10 desde la 1.0.0, con productos repetidos y con marcas en uso; crear marcas y modelos sin repetir, renombrar sin partir el producto, desactivar; variantes únicas, stock total, la venta baja solo su variante; importar por nombre; montos con 2 decimales como máximo |
+| `test/novedades19.test.js` | 4 | Versión 1.9: venta en espera (guardar, retomar con la existencia de hoy, volver a guardar, cobrarla la borra, descartar), buscador global (producto, cliente, venta por número, proveedor solo para el administrador), reposición por ritmo de venta y sin movimiento, y alertas por rol |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -67,6 +68,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
 | `actualizaciones.test.js` | Buscar actualizaciones desde Configuración: "Buscando…" mientras busca y el aviso de si hay versión nueva, no la hay o hubo un error (con respuestas simuladas del actualizador) |
 | `catalogo.test.js` | Configuración → Catálogo: renombrar una marca la cambia en sus productos, ya no hay pestaña de colores y un modelo desactivado ya no se ofrece |
+| `novedades19.test.js` | Venta en espera con F4 y retomarla desde la barra de carritos, Ctrl + K con el teclado (producto y acción), reposición a "Crear compra" con las cantidades, y la campanita |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

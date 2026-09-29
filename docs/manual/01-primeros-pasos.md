@@ -87,3 +87,30 @@ Siga este orden. Cada paso usa lo que se cargó en el anterior.
 - [ ] Recibo de prueba impreso en cada computadora con impresora (**Configuración** → **Imprimir prueba**).
 - [ ] Primera copia de seguridad guardada en una memoria USB (**Configuración** → **Crear copia de seguridad…**).
 - [ ] Caja abierta con el efectivo real del día ([Caja](07-caja.md)).
+
+## 1.7 Buscar cualquier cosa (Ctrl + K)
+
+Arriba, en el centro, está la barra **Buscar o ir a…**. Púlsela, o pulse **Ctrl + K** en cualquier pantalla:
+
+![Buscador global](img/buscador.jpg)
+
+- **Acciones:** Nueva venta, Nuevo producto, Nuevo cliente, Nueva compra, Qué comprar, Nuevo apartado, y "Ir a" cualquier pantalla del menú.
+- Al escribir dos letras o más busca **productos** (con precio y disponible), **clientes** (por nombre, teléfono o cédula), **ventas** (por su número, por ejemplo **V-000120** o **120**, o por el nombre del cliente) y **proveedores** (solo el administrador).
+- Con las flechas **↑ ↓** elija, **Enter** abre y **Esc** cierra.
+
+## 1.8 Las alertas (la campanita)
+
+Arriba a la derecha, la **campanita** muestra cuántas alertas nuevas hay:
+
+| Alerta | Qué significa |
+|---|---|
+| **Productos agotados** | Sin existencia disponible: no se pueden vender |
+| **Con stock bajo** | Llegaron a su mínimo. El administrador va a **Reposición** |
+| **Crédito vencido** | Clientes que pasaron la fecha límite de pago |
+| **Clientes deben** | Cuentas por cobrar pendientes |
+| **Apartados vencidos** | Sus gorras ya se pueden vender: llame al cliente |
+| **Compras vencidas o por vencer** | Pagos a proveedores atrasados o en los próximos 3 días (administrador) |
+| **Sin venderse en 60 días** | Mercancía parada, con su valor al costo (administrador) |
+| **Depósitos por verificar** | Depósitos al banco sin comparar con el estado de cuenta (administrador) |
+
+Pulse la campanita para ver la lista. Cada alerta lleva a su pantalla. El número se apaga al abrir la lista y vuelve si algo cambia (por ejemplo, se agota otra gorra). El sistema las revisa al cambiar de pantalla y cada 2 minutos.

@@ -44,6 +44,20 @@ Menú **Principal** → **Nueva venta**.
 
 **Limpiar venta** borra la venta en curso sin registrarla.
 
+### Poner una venta en espera (varios clientes a la vez)
+
+Si un cliente fue a buscar dinero o a probarse otra gorra, no hace falta borrar su venta:
+
+1. Pulse **Poner en espera (F4)**. El carrito se guarda y la pantalla queda lista para el siguiente cliente.
+2. Arriba, en **Carritos**, se ve cada venta en espera con su nombre (el del cliente, o la hora), cuántos artículos tiene y el total.
+3. Para retomarla, púlsela. Vuelve con su cliente, su tipo de venta, su descuento, su nota y sus gorras, con la existencia de hoy. Si en ese momento había otro carrito con gorras, ese queda en espera solo.
+4. **+ Nueva** deja el carrito actual en espera y empieza uno vacío.
+5. Al cobrarla deja de estar en espera. **Descartar esta venta** la borra sin cobrar.
+
+Las ventas en espera **no apartan** las gorras: si otro cliente se las lleva, al retomarla se ve la existencia real. Se guardan en el sistema: no se pierden si se cierra el programa, y se pueden retomar desde otra PC.
+
+**Atajos de teclado:** **F2** va al buscador de productos, **F4** pone la venta en espera y **F9** cobra. **Ctrl + K** abre el buscador global desde cualquier pantalla ([1.7](01-primeros-pasos.md#17-buscar-cualquier-cosa-ctrl--k)).
+
 ### Qué cambia en el sistema
 - **Inventario:** baja la existencia de cada producto vendido y queda un movimiento "Venta" en su historial.
 - **Caja y flujo de dinero:** entra el dinero cobrado. Si fue en efectivo, suma a la caja abierta; el cambio entregado se descuenta.

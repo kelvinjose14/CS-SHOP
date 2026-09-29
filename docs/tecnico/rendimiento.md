@@ -137,6 +137,17 @@ Lo que se hizo:
 
 La operación **Clientes para elegir (venta, apartado)** agregada a `npm run test:perf` tarda 5.9 ms.
 
+## Resultados de la 1.9 (29/09/2026)
+
+| Operación | ms |
+|---|---:|
+| Buscador global (Ctrl + K) | 5.0 |
+| Alertas (campanita) | 6.3 |
+| Reposición: qué comprar (30 días) | 122.3 |
+| Sin movimiento (60 días) | 1.2 |
+
+La campanita se pide al cambiar de pantalla, a lo sumo cada 30 s, y cada 2 minutos.
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.

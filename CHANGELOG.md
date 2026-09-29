@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Agregado
+- **Ventas en espera y varios carritos** (RF-NUE-23, DT-48, [manual 3.1](docs/manual/03-ventas.md#poner-una-venta-en-espera-varios-clientes-a-la-vez)): **Poner en espera (F4)** guarda el carrito y deja la venta libre para el siguiente cliente. La barra **Carritos** muestra las que están esperando y las retoma con un clic, con su cliente, descuento, nota y gorras. **+ Nueva** abre otro carrito. Se guardan en el sistema (no se pierden al cerrar y se ven desde otras PCs) y cobrarlas las quita de la espera. Atajos: **F2** buscar, **F4** en espera, **F9** cobrar.
+- **Buscador global y acciones rápidas** (RF-NUE-24, [manual 1.7](docs/manual/01-primeros-pasos.md#17-buscar-cualquier-cosa-ctrl--k)): la barra **Buscar o ir a…**, o **Ctrl + K** desde cualquier pantalla, encuentra gorras, clientes, ventas (por número o cliente) y proveedores, y ofrece Nueva venta, Nuevo producto, Nuevo cliente, Nueva compra y más. Se usa con el teclado.
+- **Reposición** (RF-NUE-25, [manual 4.6](docs/manual/04-inventario.md#46-reposición-qué-comprar-y-qué-no-se-mueve-administrador)): cuántas gorras comprar según lo vendido en los últimos 15 a 90 días, para cuántos días alcanza lo que hay, y **Crear compra con estas cantidades**. **Sin movimiento**: lo que no se vende hace 30, 60 o 90 días, con el dinero parado.
+- **Campanita de alertas** (RF-NUE-26, [manual 1.8](docs/manual/01-primeros-pasos.md#18-las-alertas-la-campanita)): agotados, stock bajo, crédito vencido, clientes que deben, apartados vencidos, compras vencidas o por vencer, sin movimiento y depósitos por verificar. Cuenta las nuevas y cada una lleva a su pantalla.
+- La base pasa a la versión 11 al abrir (ventas en espera).
+
 ### Cambiado
 - **Interfaz más rápida y moderna** (DT-47). Todo funciona igual; cambia cómo se ve y cuánto tarda:
   - **Diseño unificado:** los mismos colores, letras, bordes y sombras en botones, campos, tarjetas, tablas, ventanas y avisos. Los colores fuertes quedan para acciones, estados y alertas.

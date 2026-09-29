@@ -36,6 +36,8 @@ El vendedor ve una versión reducida, sin costos, ganancias, compras ni gastos. 
 
 La píldora verde arriba a la derecha (**Caja abierta · RD$ …**) muestra en todo momento el efectivo esperado en caja. Si dice **Caja cerrada**, púlsela para ir a abrirla.
 
+A su lado, la **campanita** junta las alertas del día (agotados, stock bajo, créditos vencidos, apartados vencidos, pagos a proveedores y mercancía sin movimiento) ([1.8](01-primeros-pasos.md#18-las-alertas-la-campanita)). Una buena costumbre es revisarla al abrir la tienda.
+
 ## 2.3 Lista diaria
 
 **Al abrir**

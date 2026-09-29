@@ -111,11 +111,26 @@ Menú **Inventario** → **Movimientos de inventario**. Muestra todas las entrad
 | Anulación de venta | **Anular venta** | + |
 | Anulación de compra | **Anular compra** | − |
 
-## 4.6 Qué reponer
+## 4.6 Reposición: qué comprar y qué no se mueve (administrador)
 
+Menú **Inventario** → **Reposición**.
+
+![Reposición](img/reposicion.jpg)
+
+**Qué comprar.** El sistema mira cuánto se vendió de cada gorra y calcula cuántas comprar:
+
+> Comprar = lo vendido por día × los días que quiere cubrir + el stock mínimo − lo disponible (sin lo apartado)
+
+- Elija **según lo vendido en los últimos** 15, 30, 60 o 90 días, y **para que alcance** 15, 30, 45 o 60 días.
+- Cada gorra muestra lo disponible, su mínimo, cuántas se vendieron, cuántas **por semana**, para cuántos días **alcanza** lo que hay (rojo: una semana o menos) y cuántas **comprar**, con el costo estimado.
+- Solo salen las que hace falta comprar. Una gorra que no se vende pero está bajo su mínimo pide lo que falta para el mínimo.
+- Puede cambiar la cantidad de cualquiera (0 la deja fuera). **Crear compra con estas cantidades** abre **Nueva compra** con esas gorras; revise los costos, elija el proveedor y regístrela.
+
+**Sin movimiento.** Las gorras con existencia que no se venden hace **30, 60 o 90 días** (y que llevan al menos ese tiempo en la tienda), con la última venta y el **dinero parado** al costo. Sirve para decidir una oferta, un combo o dejar de pedirlas.
+
+También:
 - **Inicio** → **Por reponer**: los productos agotados y los que están en su stock mínimo o por debajo.
 - **Inventario** → filtro **Reponer**: la misma lista con todos los datos.
-- Para decidir cuánto pedir, compare con **Reportes** → **Productos más vendidos** ([Contabilidad y reportes](09-contabilidad-y-reportes.md)).
 
 ## 4.7 Importar productos desde Excel (administrador)
 
