@@ -13,8 +13,8 @@
     - índices `money_movements(ref_type, ref_id)` y `(category, method)`;
     - **reglas de la base** (ver abajo).
   - **6:** `products.category` e índice (dashboard ejecutivo, versión 1.4.0), e índice `sales(user_id, date)` para la utilidad por vendedor.
-  - **8:** CRM (versión 1.6.0): `customers.birthday` ("MM-DD"), `customers.tags` (lista en JSON), `customers.vip_mode` (`auto` \| `si` \| `no`) y tabla `customer_notes` (DT-41, DT-42). Los segmentos y el VIP automático se calculan, no se guardan.
   - **7:** inventario avanzado (versión 1.5.0): tabla `product_models` y `products.model_id` (DT-38); `products.last_counted_at` (conteo cíclico, DT-40); tablas `reservations` y `reservation_items` (apartados, DT-39). Es la primera migración escrita como función: agrupa los productos existentes con la misma clave que usa el programa (`modelKey` en `src/core/util.js`).
+  - **8:** CRM (versión 1.6.0): `customers.birthday` ("MM-DD"), `customers.tags` (lista en JSON), `customers.vip_mode` (`auto` \| `si` \| `no`) y tabla `customer_notes` (DT-41, DT-42). Los segmentos y el VIP automático se calculan, no se guardan.
 - **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten, dentro de una transacción: si una falla, no queda nada a medias. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
 - **Base más nueva que el programa:** no se abre. Sale **"Esta base de datos es de una versión más nueva de CAPS Shop…"**, para que una versión vieja no la dañe.
 - **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.

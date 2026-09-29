@@ -253,15 +253,15 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 
 ### O7. Gestión avanzada
 
-**Estado:** en curso. Pedido del dueño el 27/09/2026 (DT-36). Una versión por parte; cada una se prueba en la tienda antes de seguir.
+**Estado:** en curso. Pedido del dueño el 27/09/2026 (DT-36). Las tres primeras partes se publicaron juntas en la 1.6.0 (29/09/2026). El dueño decidió probarlas en la tienda antes de empezar la 1.7.0.
 
 **Meta:** que el sistema no solo registre, sino que ayude a decidir: cómo va el negocio contra antes, qué mercancía sobra o falta, quiénes son los mejores clientes y cuánto comprar.
 
 | Versión | Parte | Qué trae | Estado |
 |---|---|---|---|
-| **1.4.0** | Dashboard ejecutivo (RF-NUE-15, DT-37) | Indicadores comparados con el período anterior y el año anterior (ventas, utilidad, margen, ticket promedio, unidades por venta), pronóstico de cierre de mes, rotación, días de inventario, productos estancados, utilidad por producto, marca, categoría y vendedor. **Categoría** en el producto ([manual 9.1](../manual/09-contabilidad-y-reportes.md#91-dashboard-ejecutivo)) | Publicada (29/09/2026) |
-| **1.5.0** | Inventario avanzado (RF-NUE-16 a 18, DT-38 a DT-40) | Modelos con variantes de color y talla (se crean en una cuadrícula; los productos actuales se agrupan solos), apartados con **existencia** y **disponible**, conteo cíclico sugerido. Sin lotes (DT-36) ([manual 4.10](../manual/04-inventario.md#410-modelos-con-colores-y-tallas-administrador), [3.5](../manual/03-ventas.md#35-apartados)) | Unida a `main` (29/09/2026) |
-| **1.6.0** | CRM de clientes (RF-NUE-19 a 21, DT-41 y DT-42) | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad ([manual 6.1](../manual/06-clientes-y-cobros.md#61-clientes)) | En revisión |
+| **1.4.0** | Dashboard ejecutivo (RF-NUE-15, DT-37) | Indicadores comparados con el período anterior y el año anterior (ventas, utilidad, margen, ticket promedio, unidades por venta), pronóstico de cierre de mes, rotación, días de inventario, productos estancados, utilidad por producto, marca, categoría y vendedor. **Categoría** en el producto ([manual 9.1](../manual/09-contabilidad-y-reportes.md#91-dashboard-ejecutivo)) | Publicada en la 1.6.0 (29/09/2026) |
+| **1.5.0** | Inventario avanzado (RF-NUE-16 a 18, DT-38 a DT-40) | Modelos con variantes de color y talla (se crean en una cuadrícula; los productos actuales se agrupan solos), apartados con **existencia** y **disponible**, conteo cíclico sugerido. Sin lotes (DT-36) ([manual 4.10](../manual/04-inventario.md#410-modelos-con-colores-y-tallas-administrador), [3.5](../manual/03-ventas.md#35-apartados)) | Publicada en la 1.6.0 (29/09/2026) |
+| **1.6.0** | CRM de clientes (RF-NUE-19 a 21, DT-41 y DT-42) | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad ([manual 6.1](../manual/06-clientes-y-cobros.md#61-clientes)) | Publicada (29/09/2026) |
 | 1.7.0 | Compras inteligentes | Tiempo de reposición por proveedor, sugerencia "Compra N" por gorra con su explicación (velocidad de venta, stock disponible, mínimo, lo ya pedido) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
 
 Pruebas de la 1.4.0: `test/ejecutivo.test.js`, `test/ui/ejecutivo.test.js` y la [medición de rendimiento](../tecnico/rendimiento.md#resultados-de-la-140-27092026). De la 1.5.0: `test/inventario15.test.js`, `test/ui/inventario15.test.js` y la [medición de la 1.5.0](../tecnico/rendimiento.md#resultados-de-la-150-29092026). De la 1.6.0: `test/crm.test.js` y `test/ui/crm.test.js`.

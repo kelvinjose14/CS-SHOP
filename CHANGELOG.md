@@ -4,33 +4,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
-### Agregado (1.6)
-- **CRM de clientes**: la lista de Clientes muestra el segmento de cada cliente (nuevo, frecuente, ocasional, en riesgo, perdido o sin compras), cuántas compras hizo, el gasto total, el ticket promedio, la última compra y su cumpleaños, y se filtra por segmento, VIP y etiqueta.
-- **Ficha del cliente**: gasto de 12 meses, cada cuántos días compra, lo que más compra (categorías, marcas, tallas y gorras), apartados activos y **notas de seguimiento** con fecha y usuario. El vendedor la ve sin costos ni utilidad.
-- **Cliente VIP** automático por lo comprado en 12 meses (Configuración → Cliente VIP) o a mano (administrador). **Etiquetas** libres y **cumpleaños**.
-- **Cumpleaños** de los próximos 30 días y **Copiar teléfonos** de la lista filtrada, para escribirles. El Inicio muestra los cumpleaños de la semana.
-- La base pasa a la versión 8 al abrir.
+## [1.6.0] - 2026-09-29
 
-### Agregado (1.5)
-- **Modelos con colores y tallas**: "Nuevo producto" → **Varios colores y tallas** crea todas las combinaciones desde una cuadrícula, cada una con su SKU y su existencia inicial. **Inventario → Modelos** agrupa las variantes; el detalle muestra la existencia por color y talla, y permite agregar colores o tallas y editar el modelo completo (nombre, categoría y, si se quiere, precios). Los productos que ya tenía se agrupan solos por nombre, marca y modelo.
-- **Apartados** (Principal → Apartados): reservar gorras para un cliente hasta una fecha. Lo apartado no se le vende a otro cliente; en el inventario y en la venta se ve la existencia, lo apartado y lo disponible. Desde el apartado se vende (con el cliente y las gorras ya puestos), se dan más días o se cancela con motivo. El Inicio avisa de los apartados vencidos. El vendedor también puede usarlos.
-- **Conteo sugerido** (Inventario → Conteo): cada semana, la lista de lo que toca contar, primero lo que más se vende (A cada 7 días, B cada 30, C cada 90).
-- Configuración: **Días que dura un apartado** y **Gorras por conteo cíclico**.
-- La base pasa a la versión 7 al abrir.
+Gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)): dashboard ejecutivo, inventario con colores, tallas y apartados, y CRM de clientes. Trae juntas las partes preparadas como 1.4 y 1.5, que no se publicaron por separado. La base pasa a la versión 8 al abrir: todas las PCs deben tener la 1.6.0 (actualice primero la PC principal).
 
-### Cambiado (1.5)
-- El dashboard ejecutivo calcula los productos estancados mucho más rápido (el mes, de 264 a 33 ms con 3 años de datos).
-
-## [1.4.0] - 2026-09-29
-
-Dashboard ejecutivo, primera parte de la gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)). La base pasa a la versión 6 al abrir: todas las PCs deben tener la 1.4.0 (actualice primero la PC principal).
-
-### Agregado
+### Agregado: dashboard ejecutivo
 - **Dashboard ejecutivo** (Análisis): ventas netas, utilidad bruta y neta, margen, ticket promedio, cantidad de ventas, unidades vendidas y unidades por venta, cada uno comparado con el período anterior (ayer, mes anterior…) y con el año anterior. Un período en curso se compara hasta el mismo día.
 - **Pronóstico de cierre de mes** según lo que se vende normalmente cada día de la semana, con la utilidad estimada y la comparación con el mes anterior y el mismo mes del año pasado.
 - **Salud del inventario:** rotación, días de inventario y productos estancados (30 a 180 días sin venderse) con el dinero parado.
 - **Utilidad por producto, marca, categoría y vendedor**, exportable a Excel.
-- **Categoría** en el producto (Snapback, Trucker…), con sugerencias de las ya usadas; también en la importación desde Excel. La base pasa a la versión 6 al abrir.
+- **Categoría** en el producto (Snapback, Trucker…), con sugerencias de las ya usadas; también en la importación desde Excel.
+
+### Agregado: inventario avanzado
+- **Modelos con colores y tallas**: "Nuevo producto" → **Varios colores y tallas** crea todas las combinaciones desde una cuadrícula, cada una con su SKU y su existencia inicial. **Inventario → Modelos** agrupa las variantes; el detalle muestra la existencia por color y talla, y permite agregar colores o tallas y editar el modelo completo (nombre, categoría y, si se quiere, precios). Los productos que ya tenía se agrupan solos por nombre, marca y modelo.
+- **Apartados** (Principal → Apartados): reservar gorras para un cliente hasta una fecha. Lo apartado no se le vende a otro cliente; en el inventario y en la venta se ve la existencia, lo apartado y lo disponible. Desde el apartado se vende (con el cliente y las gorras ya puestos), se dan más días o se cancela con motivo. El Inicio avisa de los apartados vencidos. El vendedor también puede usarlos.
+- **Conteo sugerido** (Inventario → Conteo): cada semana, la lista de lo que toca contar, primero lo que más se vende (A cada 7 días, B cada 30, C cada 90).
+- Configuración: **Días que dura un apartado** y **Gorras por conteo cíclico**.
+
+### Agregado: CRM de clientes
+- **CRM de clientes**: la lista de Clientes muestra el segmento de cada cliente (nuevo, frecuente, ocasional, en riesgo, perdido o sin compras), cuántas compras hizo, el gasto total, el ticket promedio, la última compra y su cumpleaños, y se filtra por segmento, VIP y etiqueta.
+- **Ficha del cliente**: gasto de 12 meses, cada cuántos días compra, lo que más compra (categorías, marcas, tallas y gorras), apartados activos y **notas de seguimiento** con fecha y usuario. El vendedor la ve sin costos ni utilidad.
+- **Cliente VIP** automático por lo comprado en 12 meses (Configuración → Cliente VIP) o a mano (administrador). **Etiquetas** libres y **cumpleaños**.
+- **Cumpleaños** de los próximos 30 días y **Copiar teléfonos** de la lista filtrada, para escribirles. El Inicio muestra los cumpleaños de la semana.
 
 ### Documentación
 - La rama por defecto del repositorio ya es `main`: se quitó el aviso de pendiente en objetivos y en la guía de publicación.
@@ -177,6 +172,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.6.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.0
 [1.3.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.1
 [1.3.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.0
 [1.2.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.2.0
