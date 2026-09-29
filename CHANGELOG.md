@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.9.0] - 2026-09-29
+
+Interfaz más rápida y moderna, ventas en espera con varios carritos, buscador global con Ctrl + K, reposición según el ritmo de venta, campanita de alertas y modo oscuro. Se instala encima de la 1.7.0 o desde Configuración → Actualizaciones; los datos se conservan y la base pasa sola a la versión 11.
+
 ### Agregado
 - **Ventas en espera y varios carritos** (RF-NUE-23, DT-48, [manual 3.1](docs/manual/03-ventas.md#poner-una-venta-en-espera-varios-clientes-a-la-vez)): **Poner en espera (F4)** guarda el carrito y deja la venta libre para el siguiente cliente. La barra **Carritos** muestra las que están esperando y las retoma con un clic, con su cliente, descuento, nota y gorras. **+ Nueva** abre otro carrito. Se guardan en el sistema (no se pierden al cerrar y se ven desde otras PCs) y cobrarlas las quita de la espera. Atajos: **F2** buscar, **F4** en espera, **F9** cobrar.
 - **Buscador global y acciones rápidas** (RF-NUE-24, [manual 1.7](docs/manual/01-primeros-pasos.md#17-buscar-cualquier-cosa-ctrl--k)): la barra **Buscar o ir a…**, o **Ctrl + K** desde cualquier pantalla, encuentra gorras, clientes, ventas (por número o cliente) y proveedores, y ofrece Nueva venta, Nuevo producto, Nuevo cliente, Nueva compra y más. Se usa con el teclado.
@@ -233,6 +237,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.9.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.9.0
 [1.7.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.7.0
 [1.6.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.1
 [1.6.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.0
