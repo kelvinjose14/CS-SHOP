@@ -94,9 +94,10 @@ async function modelDetail(id, onChange) {
 
 App.register({
   id: 'products', title: 'Inventario', icon: 'box', group: 'Inventario',
-  async render(page) {
+  async render(page, params = {}) {
     const admin = App.isAdmin();
-    const state = { search: '', status: 'todos', includeInactive: false, view: 'variantes' };
+    // Desde una alerta se llega con el filtro puesto (agotados, stock bajo).
+    const state = { search: '', status: params.status || 'todos', includeInactive: false, view: 'variantes' };
     const summaryBox = el(html`<div class="stats"></div>`);
     page.appendChild(summaryBox);
     const tb = toolbar(page, {
@@ -115,6 +116,7 @@ App.register({
         ${admin ? html`<button class="btn" id="p-count">${icon('box')} Conteo</button><button class="btn" id="p-import">${icon('upload')} Importar</button>` : ''}
         ${admin ? html`<button class="btn primary" id="p-new">${icon('plus')} Nuevo producto</button>` : ''}`,
     });
+    $$('#p-status [data-s]', tb).forEach((x) => x.classList.toggle('active', x.dataset.s === state.status));
     const listBox = el(html`<div class="card"></div>`);
     page.appendChild(listBox);
     let rows = [];

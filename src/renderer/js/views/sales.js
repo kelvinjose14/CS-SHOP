@@ -7,7 +7,12 @@ App.register({
     const admin = App.isAdmin();
     const settings = App.settings;
     // En paralelo: la caja y la lista corta de clientes (guardada un rato: no se pide en cada venta).
-    let [cash, customers] = await Promise.all([api('cash.status'), api('customers.options')]);
+    // Y las ventas en espera (1.9): otros carritos abiertos; con params.held se retoma una.
+    let [cash, customers, heldList, held] = await Promise.all([
+      api('cash.status'), api('customers.options'), params.reservation ? [] : api('sales.heldList'),
+      params.held ? api('sales.heldGet', { id: params.held }).catch(() => null) : null,
+    ]);
+    let heldId = held ? held.id : null;
     const sale = { sale_type: 'detalle', payment_type: 'contado', customer_id: '', lines: [], discount: 0, discountMode: 'monto', payments: [{ method: 'efectivo', amount: '' }] };
     // Venta de un apartado (1.5): el cliente y las gorras vienen del apartado.
     let reservation = null;
@@ -34,6 +39,7 @@ App.register({
     const root = el(html`
       <div class="pos">
         <div class="pos-left card">
+          ${reservation ? '' : html`<div class="pos-carts" id="pos-carts"></div>`}
           <div id="pos-picker"></div>
           <div id="pos-lines" class="pos-lines"><table class="table lines hidden"><thead><tr><th></th><th>Producto</th><th class="text-right">Disp.</th><th>Cant.</th><th>Precio</th><th class="text-right">Importe</th><th></th></tr></thead><tbody></tbody></table><div class="pos-empty">${icon('cart', 'huge')}<p>Escanee un código de barras o busque una gorra para empezar.</p></div></div>
         </div>
@@ -57,7 +63,8 @@ App.register({
           </div>
           <label class="field"><span>Nota</span><input id="pos-note" placeholder="Opcional"></label>
           <button class="btn primary big block" id="pos-charge">Cobrar (F9)</button>
-          <button class="btn block" id="pos-clear">Limpiar venta</button>
+          ${reservation ? '' : html`<button class="btn block" id="pos-hold" title="Guarda este carrito para atender a otro cliente (F4)">${icon('pause')} Poner en espera (F4)</button>`}
+          <button class="btn block" id="pos-clear">${heldId ? 'Descartar esta venta' : 'Limpiar venta'}</button>
         </div>
       </div>`);
     page.appendChild(root);
@@ -214,7 +221,48 @@ App.register({
       $('#pos-disc-mode', root).onchange = (e) => { sale.discountMode = e.target.value; updateTotals(); };
     }
     $('#add-pay', root).onclick = () => { sale.payments.push({ method: 'tarjeta', amount: '' }); drawPayments(); };
-    $('#pos-clear', root).onclick = () => App.go('pos');
+    // Carritos en espera (1.9): el actual se guarda y se atiende a otro; se retoma con un clic.
+    const cartData = () => ({
+      id: heldId || undefined, customer_id: sale.customer_id || null, sale_type: sale.sale_type, payment_type: sale.payment_type,
+      discount: canDiscount ? Number($('#pos-disc', root).value) || 0 : 0, discount_mode: sale.discountMode, note: $('#pos-note', root).value,
+      lines: sale.lines.map((l) => ({ product_id: l.p.id, qty: l.qty, unit_price: l.unit_price })),
+    });
+    // Guarda el carrito actual si tiene algo (devuelve true si se pudo o no hacía falta).
+    const holdCurrent = async ({ quiet = false } = {}) => {
+      if (!sale.lines.length) return true;
+      try {
+        heldId = await api('sales.hold', cartData());
+        if (!quiet) toast('Venta en espera. Retómela desde la barra de carritos.');
+        return true;
+      } catch { return false; }
+    };
+    const drawCarts = () => {
+      const bar = $('#pos-carts', root);
+      if (!bar) return;
+      const others = heldList.filter((h) => h.id !== heldId);
+      setHTML(bar, html`
+        <span class="pc-label">${icon('cart')} Carritos</span>
+        <button type="button" class="cart-chip on" title="El carrito que está atendiendo">${held ? held.label : 'Actual'}</button>
+        ${others.map((h) => html`<button type="button" class="cart-chip" data-held="${h.id}" title="Dejada por ${h.user_name || '—'} el ${Fmt.datetime(h.updated_at)}">${h.label} <small>${h.items} art. · ${Fmt.money(h.total)}</small></button>`)}
+        <button type="button" class="cart-chip add" id="pos-new-cart" title="Deja este carrito en espera y empieza otro">${icon('plus')} Nueva</button>`);
+      $$('[data-held]', bar).forEach((b) => (b.onclick = async () => {
+        if (await holdCurrent({ quiet: true })) App.go('pos', { held: Number(b.dataset.held) });
+      }));
+      $('#pos-new-cart', bar).onclick = async () => { if (await holdCurrent()) App.go('pos'); };
+    };
+    drawCarts();
+    const holdBtn = $('#pos-hold', root);
+    if (holdBtn) holdBtn.onclick = async () => {
+      if (!sale.lines.length) return toast('El carrito está vacío.', 'error');
+      if (await holdCurrent()) App.go('pos');
+    };
+    $('#pos-clear', root).onclick = async () => {
+      if (heldId) {
+        if (!(await confirmDialog('Se borra esta venta en espera y su carrito. Las gorras no se tocan.', { title: 'Descartar la venta en espera', okLabel: 'Descartar', danger: true }))) return;
+        await api('sales.heldDelete', { id: heldId }).catch(() => {});
+      }
+      App.go('pos');
+    };
 
     const charge = async () => {
       if (!sale.lines.length) return toast('Agregue productos a la venta.', 'error');
@@ -226,6 +274,7 @@ App.register({
         payment_type: sale.payment_type,
         customer_id: sale.customer_id ? Number(sale.customer_id) : null,
         reservation_id: reservation ? reservation.id : undefined,
+        held_id: heldId || undefined,
         due_date: sale.payment_type === 'credito' ? $('#pos-due', root).value : undefined,
         discount: discountAmount(),
         note: $('#pos-note', root).value,
@@ -263,7 +312,11 @@ App.register({
     $('#pos-charge', root).onclick = charge;
     const keyHandler = (e) => {
       if (!document.body.contains(root)) return document.removeEventListener('keydown', keyHandler);
+      // Atajos de la venta: F2 buscar, F4 poner en espera, F9 cobrar.
+      if (document.querySelector('.modal-back')) return;
       if (e.key === 'F9') { e.preventDefault(); charge(); }
+      else if (e.key === 'F2') { e.preventDefault(); picker.focus(); }
+      else if (e.key === 'F4' && holdBtn) { e.preventDefault(); holdBtn.click(); }
     };
     document.addEventListener('keydown', keyHandler);
 
@@ -277,6 +330,24 @@ App.register({
         sale.lines.push(l);
         addLine(l, { animate: false });
       });
+    }
+    // Retomar una venta en espera: su cliente, tipo, descuento, nota y líneas (con la existencia de hoy).
+    if (held) {
+      sale.customer_id = held.customer_id ? String(held.customer_id) : '';
+      drawCustomers();
+      sale.sale_type = held.sale_type;
+      $$('#pos-type [data-v]', root).forEach((x) => x.classList.toggle('active', x.dataset.v === held.sale_type));
+      if (held.payment_type === 'credito') $('#pos-pay-type [data-v=credito]', root).click();
+      if (canDiscount && held.discount) {
+        sale.discountMode = held.discount_mode;
+        $('#pos-disc-mode', root).value = held.discount_mode;
+        $('#pos-disc', root).value = held.discount;
+      }
+      $('#pos-note', root).value = held.note || '';
+      held.lines.forEach((hl) => { const l = { p: hl.p, qty: hl.qty, unit_price: hl.unit_price }; sale.lines.push(l); addLine(l, { animate: false }); });
+      if (held.missing) toast(`${held.missing} ${held.missing === 1 ? 'gorra ya no existe y se quitó' : 'gorras ya no existen y se quitaron'} del carrito.`, 'error');
+    } else if (params.held) {
+      toast('Esa venta en espera ya no existe (la cobró o la descartó otra persona).', 'error');
     }
     drawPayments();
     drawLines();

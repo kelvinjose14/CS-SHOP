@@ -524,6 +524,25 @@ const MIGRATIONS = [
       }
     }
   },
+
+  // v11: ventas en espera (1.9). Un carrito que se suspende para atender a otro cliente y se retoma
+  // después, desde esta u otra PC. data guarda las líneas, el cliente, el tipo de venta y el descuento
+  // (JSON); items y total son para la lista. No aparta las gorras: se venden hasta cobrar.
+  `
+  CREATE TABLE held_sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT NOT NULL,
+    data TEXT NOT NULL,
+    items INTEGER NOT NULL DEFAULT 0,
+    total REAL NOT NULL DEFAULT 0,
+    customer_id INTEGER REFERENCES customers(id),
+    user_id INTEGER REFERENCES users(id),
+    terminal_id INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX ix_held_sales_updated ON held_sales(updated_at);
+  `,
 ];
 
 // Opciones con las que empieza el formulario de productos (v10).

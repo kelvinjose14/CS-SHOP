@@ -126,7 +126,7 @@ async function purchaseDetail(id, onChange) {
 
 App.register({
   id: 'purchase-new', title: 'Nueva compra', icon: 'truck', group: 'Inventario', roles: ['admin'], hidden: true, navAs: 'purchases',
-  async render(page) {
+  async render(page, params = {}) {
     const suppliers = await api('suppliers.list');
     const settings = App.settings;
     const lines = [];
@@ -232,6 +232,12 @@ App.register({
         if (!ex && !reduceMotion()) last[idx].closest('tr').classList.add('line-in');
       }
     }, { priceKey: (p) => `Costo ${Fmt.money(p.cost)}` });
+    // Desde Reposición (1.9): la compra llega con las gorras y las cantidades sugeridas.
+    if (Array.isArray(params.lines) && params.lines.length) {
+      const ps = await Promise.all(params.lines.map((l) => api('products.get', { id: l.product_id }).catch(() => null)));
+      params.lines.forEach((l, i) => { if (ps[i]) lines.push({ p: ps[i], qty: l.qty, unit_cost: ps[i].cost || 0, price_retail: '', price_wholesale: '' }); });
+      if (lines.length) toast(`${lines.length} ${lines.length === 1 ? 'producto agregado' : 'productos agregados'} desde Reposición. Revise cantidades y costos.`);
+    }
     drawLines();
 
     $$('#pu-type [data-t]', form).forEach((b) => (b.onclick = () => {

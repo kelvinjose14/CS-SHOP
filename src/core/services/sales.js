@@ -265,6 +265,8 @@ function create(ctx, data) {
       ledger(ctx, { direction: 'in', amount, method: p.method, category: 'venta', refType: 'venta', refId: id, description: `Venta #${id}${customer ? ' - ' + customer.name : ''}`, date: saleDate });
     }
     if (reservation) reservations.markSold(ctx, reservation.id, id);
+    // Una venta en espera que se retomó y se cobró deja de estar en espera (1.9), en la misma operación.
+    if (data.held_id) ctx.db.run('DELETE FROM held_sales WHERE id = ?', [Number(data.held_id)]);
     audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts, ...(credit ? { credito_autorizado: credit } : {}), ...(reservation ? { apartado: reservation.id } : {}) });
     return id;
   });
