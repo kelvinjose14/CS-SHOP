@@ -36,7 +36,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
 | `test/migration.test.js` | 4 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; migración que falla sin dejar nada a medias; rechazo de una base más nueva; respaldos válidos |
 | `test/backup.test.js` | 9 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal; **copia fuera de la PC** con fotos, memoria desconectada, aviso de 7 días y restaurar trayendo las fotos; **copia con contraseña** sin nada legible y restaurada solo con la contraseña |
-| `test/updates.test.js` | 2 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
+| `test/updates.test.js` | 3 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
 | `test/permissions.test.js` | 1 | Todas las operaciones: el vendedor recibe "sin permiso" en las de administrador; sin sesión, nada; con la contraseña inicial, solo cambiarla |
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
 | `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos (solo con sesión), búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |

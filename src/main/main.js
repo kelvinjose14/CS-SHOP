@@ -382,11 +382,11 @@ function registerIpc() {
   // ---------- Actualizaciones (con aviso; el administrador decide) ----------
   ipcMain.handle('update:status', wrap(() => updates.status()));
   ipcMain.handle('update:check', wrap(() => updates.check()));
-  ipcMain.handle('update:install', wrap(() => {
+  ipcMain.handle('update:install', wrap((opts) => {
     // Con sesión, solo el administrador. Sin sesión (pantalla de entrada de una PC con otra versión que
     // la principal) cualquiera puede traer la versión publicada: si no, nadie podría entrar para hacerlo.
     if (backend && backend.user()) backend.requireAdmin();
-    return updates.install();
+    return updates.install(opts || {});
   }));
 
   ipcMain.handle('backup:openFolder', wrap(() => shell.openPath(needPrincipal().backupsDir)));

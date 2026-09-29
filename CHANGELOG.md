@@ -4,7 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Cambiado
+- **Las actualizaciones se instalan solas, sin ventanas de instalación** (DT-44). **Actualizar ahora** cierra el programa unos segundos y lo vuelve a abrir en la versión nueva; **Al cerrar el programa** la descarga mientras se trabaja y la instala cuando se cierra, por ejemplo al final del día. La barra de arriba dice **Versión X al cerrar**.
+
 ### Corregido
+- El aviso de versión nueva de la barra de arriba desaparecía al refrescar la caja, y podía quedar repetida la etiqueta de la caja.
 - **Configuración → Actualizaciones → Buscar ahora** no mostraba nada mientras buscaba ni al terminar, y parecía que el programa se había trabado. Ahora dice "Buscando…" y un aviso indica si hay una versión nueva o no, con la hora de la última revisión.
 
 ## [1.6.1] - 2026-09-29

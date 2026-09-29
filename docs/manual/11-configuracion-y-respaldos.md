@@ -126,12 +126,10 @@ En una computadora conectada, el diagnóstico muestra a qué PC principal está 
 **Configuración → Actualizaciones** (administrador) muestra la versión instalada y si hay una más nueva. El programa busca solo al abrirse y cada 6 horas, pero **no descarga ni instala nada sin que usted lo pida**.
 
 - **Buscar ahora:** busca en el momento; mientras busca dice "Buscando…" y al terminar un aviso indica si hay una versión nueva. Necesita internet.
-- **Instalar la versión X:**
-  - descarga la versión nueva;
-  - cierra el programa;
-  - la instala y lo vuelve a abrir.
+- **Actualizar ahora a la X:** descarga la versión nueva, cierra el programa unos segundos y **vuelve a abrirlo solo**, ya actualizado. No aparece el asistente de instalación ni hay que pulsar nada más.
+- **Al cerrar el programa:** descarga la versión nueva mientras sigue trabajando y **se instala sola cuando cierre el programa**, por ejemplo al final del día. La barra de arriba dice **Versión X al cerrar**. Si luego prefiere no esperar, **Actualizar ahora** sigue disponible.
 
-  Los datos no se tocan.
+  En los dos casos los datos no se tocan.
 - Con varias computadoras, **primero la PC principal** y después las demás ([Soporte y recuperación, 14.4](14-soporte-y-recuperacion.md#144-instalar-una-versión-nueva)).
 
 Cuando hay versión nueva, la barra de arriba muestra **Versión X disponible** (solo al administrador).

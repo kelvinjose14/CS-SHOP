@@ -401,15 +401,17 @@ async function renderUpdates(card, st) {
     available: `Hay una versión nueva: ${u.version}.`,
     downloading: `Descargando la versión ${u.version}… ${u.percent || 0}%`,
     ready: `La versión ${u.version} está lista para instalar.`,
+    scheduled: `La versión ${u.version} se instalará sola al cerrar el programa.`,
     error: u.error,
   }[u.status];
   setHTML(card, html`
     <h3>${icon('download')} Actualizaciones</h3>
     <p>Versión instalada: <b>${u.current}</b> · ${text}</p>
-    ${['available', 'ready'].includes(u.status) ? html`<p class="muted small">Al instalar, el programa se cierra y se abre en la versión nueva, sin perder datos. Con varias computadoras, actualice <b>primero la PC principal</b> y después las demás: todas deben tener la misma versión.</p>` : ''}
+    ${['available', 'ready', 'scheduled'].includes(u.status) ? html`<p class="muted small">Se instala sola, sin ventanas de instalación y sin perder datos. <b>Actualizar ahora</b>: el programa se cierra unos segundos y vuelve a abrir en la versión nueva. <b>Al cerrar el programa</b>: se descarga mientras sigue trabajando y se instala cuando cierre el programa, por ejemplo al final del día. Con varias computadoras, actualice <b>primero la PC principal</b> y después las demás: todas deben tener la misma versión.</p>` : ''}
     <div class="inline">
-      <button class="btn" id="upd-check" ${['disabled', 'checking', 'downloading'].includes(u.status) ? 'disabled' : ''}>Buscar ahora</button>
-      ${['available', 'ready'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Instalar la versión ${u.version}</button>` : ''}
+      <button class="btn" id="upd-check" ${['disabled', 'checking', 'downloading', 'scheduled'].includes(u.status) ? 'disabled' : ''}>Buscar ahora</button>
+      ${['available', 'ready'].includes(u.status) ? html`<button class="btn" id="upd-later">Al cerrar el programa</button>` : ''}
+      ${['available', 'ready', 'scheduled'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Actualizar ahora a la ${u.version}</button>` : ''}
     </div>`);
   const check = $('#upd-check', card);
   // Al buscar se ve que está buscando, y al terminar un aviso dice qué encontró.
@@ -429,9 +431,24 @@ async function renderUpdates(card, st) {
   };
   const install = $('#upd-install', card);
   if (install) install.onclick = async () => {
-    if (!(await confirmDialog(`Se instalará la versión ${u.version}. El programa se cerrará y volverá a abrir. ¿Instalar ahora?`, { okLabel: 'Instalar' }))) return;
-    install.disabled = true;
+    if (!(await confirmDialog(`El programa se cerrará unos segundos y volverá a abrir solo en la versión ${u.version}. Si hay una venta a medias, termínela antes. ¿Actualizar ahora?`, { okLabel: 'Actualizar ahora' }))) return;
+    $$('button', card).forEach((b) => (b.disabled = true));
     install.textContent = 'Descargando…';
-    try { await window.capsApi.updates.install(); } catch (e) { toast(e.message, 'error'); renderUpdates(card); }
+    try { await window.capsApi.updates.install({ when: 'now' }); install.textContent = 'Instalando…'; } catch (e) { toast(e.message, 'error'); renderUpdates(card); }
+  };
+  const later = $('#upd-later', card);
+  if (later) later.onclick = async () => {
+    $$('button', card).forEach((b) => (b.disabled = true));
+    later.textContent = 'Descargando…';
+    try {
+      const r = await window.capsApi.updates.install({ when: 'quit' });
+      renderUpdates(card, r);
+      toast(`Listo: la versión ${r.version} se instalará sola al cerrar el programa.`);
+      $$('.update-pill').forEach((x) => x.remove());
+      App.refreshUpdateBadge();
+    } catch (e) {
+      toast(e.message, 'error');
+      renderUpdates(card);
+    }
   };
 }

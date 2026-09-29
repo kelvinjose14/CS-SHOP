@@ -54,3 +54,32 @@ test('sin versión nueva, sin internet y en desarrollo', async () => {
   assert.equal((await dev.check()).status, 'disabled');
   await assert.rejects(dev.install(), /programa instalado/);
 });
+
+test('se instala en silencio: ahora (se cierra y vuelve a abrir solo) o al cerrar el programa', async () => {
+  // Por defecto, sin el asistente de instalación y volviendo a abrir el programa.
+  const silent = fakeUpdater({ latest: '1.6.2' });
+  silent.quitAndInstall = (...args) => { silent.quitArgs = args; };
+  const a = createUpdates({ updater: silent, currentVersion: '1.6.1' });
+  await a.check();
+  await a.install();
+  await new Promise((r) => setTimeout(r, 300));
+  assert.deepEqual(silent.quitArgs, [true, true], 'silencioso y vuelve a abrir');
+
+  // Al cerrar: descarga ya, no cierra nada, y electron-updater instala al salir.
+  const u = fakeUpdater({ latest: '1.6.2' });
+  let quits = 0;
+  const up = createUpdates({ updater: u, currentVersion: '1.6.1', quit: () => quits++ });
+  await up.check();
+  const st = await up.install({ when: 'quit' });
+  assert.equal(st.status, 'scheduled');
+  assert.equal(u.downloads, 1);
+  assert.equal(u.autoInstallOnAppQuit, true);
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(quits, 0, 'no cierra el programa');
+  assert.equal((await up.check()).status, 'scheduled', 'buscar de nuevo no pierde lo programado');
+  // Y si después decide actualizar ya, se puede.
+  await up.install({ when: 'now' });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(quits, 1);
+  assert.equal(u.downloads, 1, 'no descarga otra vez');
+});
