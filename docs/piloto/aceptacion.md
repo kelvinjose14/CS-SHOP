@@ -1,6 +1,6 @@
 # Lista de aceptación
 
-Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **138 requisitos**. Generada el 29/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
+Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **139 requisitos**. Generada el 29/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
 
 **Cómo se llena:**
 1. Imprímala (desde GitHub: botón **Raw** y luego imprimir, o abra el archivo en el navegador).
@@ -228,16 +228,17 @@ Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y 
 | RF-NUE-13 | Límite de crédito y deuda vencida (auditoría 2.3 y 2.4, DT-31) | Límite por cliente (0 = sin límite); una venta a crédito que lo pasa, o a quien tiene deuda vencida, la detiene el sistema: el vendedor no sigue y el administrador la autoriza. Solo el administrador desactiva clientes, y no si deben. Dónde: Clientes, Nueva venta, Configuración | ☐ | ☐ | |
 | RF-NUE-14 | Copia externa protegida con contraseña (auditoría 4.3, DT-35) | Opcional. Con contraseña, la copia de la memoria va cifrada, las copias sin cifrar se borran y restaurar pide la contraseña. Dónde: Configuración → Copias de seguridad | ☐ | ☐ | |
 | RF-NUE-15 | Dashboard ejecutivo (DT-36, DT-37) | Ventas, utilidad, margen, ticket promedio, cantidad de ventas y unidades por venta comparados con el período anterior y con el año anterior; pronóstico de cierre de mes; rotación, días de inventario y productos estancados; utilidad por producto, marca, categoría y vendedor. Solo el administrador. Dónde: Análisis → Dashboard ejecutivo | ☐ | ☐ | |
-| RF-NUE-16 | Modelos con variantes de color y talla (DT-36, DT-38) | Un modelo se crea con todas sus combinaciones desde una cuadrícula; cada variante tiene su SKU, código y existencia; el inventario se ve por variante o por modelo, con la cuadrícula color × talla; se agregan colores o tallas y se editan juntos nombre, categoría y precios. Los productos existentes se agrupan solos. Dónde: Inventario → Nuevo producto → Varios colores y tallas; Modelos | ☐ | ☐ | |
+| RF-NUE-16 | Modelos con variantes de color y talla (DT-36, DT-38, DT-45) | Un producto se crea con todas sus combinaciones marcando colores y tallas; cada variante tiene su SKU, código, existencia y stock mínimo, y no se repite la misma combinación; el stock total es la suma de las variantes; el inventario se ve por variante o por modelo, con la cuadrícula color × talla; al editar se agregan colores o tallas y los que se quitan se desactivan. Los productos existentes se agrupan solos. Dónde: Inventario → Nuevo producto, Editar producto; Modelos | ☐ | ☐ | |
 | RF-NUE-17 | Apartados con stock disponible (DT-36, DT-39) | Reservar gorras para un cliente hasta una fecha; se ven existencia, apartadas y disponible; la venta a otro cliente no toca lo apartado; se vende, se extiende o se cancela con motivo; al vencer las gorras vuelven a estar disponibles y el Inicio avisa. Dónde: Apartados; Nueva venta | ☐ | ☐ | |
 | RF-NUE-18 | Conteo cíclico sugerido (DT-36, DT-40) | Cada semana el sistema propone qué contar: lo que más se vende más seguido (A cada 7 días, B cada 30, C cada 90); lo contado sale de la lista aunque coincida. Dónde: Inventario → Conteo → Conteo sugerido | ☐ | ☐ | |
 | RF-NUE-19 | Ficha del cliente (CRM) (DT-36, DT-41) | Compras, gasto total y de 12 meses, ticket promedio, primera y última compra, cada cuántos días compra, lo que debe, lo que más compra (categorías, marcas, tallas, gorras), apartados activos y notas de seguimiento con fecha y usuario. El vendedor la ve sin costos ni utilidad. Dónde: Clientes → un cliente | ☐ | ☐ | |
 | RF-NUE-20 | Segmentos y cliente VIP (DT-41, DT-42) | Cada cliente es nuevo, frecuente, ocasional, en riesgo, perdido o sin compras; VIP automático por lo comprado en 12 meses, o a mano (solo el administrador); etiquetas libres; se filtra por segmento, VIP y etiqueta. Dónde: Clientes | ☐ | ☐ | |
 | RF-NUE-21 | Cumpleaños y listas para contactar (DT-42) | Cumpleaños (día y mes) en la ficha; cumpleaños de los próximos 30 días y de la semana en el Inicio; copiar los teléfonos de la lista filtrada. Dónde: Clientes → Cumpleaños, Copiar teléfonos; Inicio | ☐ | ☐ | |
+| RF-NUE-22 | Catálogos de marcas, categorías, colores y tallas; variante al vender (DT-45) | Marca con búsqueda y "+ Crear nueva marca"; categoría de una lista con "+ Crear nueva categoría"; colores (con su código de color) y tallas (con su orden) que se marcan con un clic y se pueden agregar; se renombran y desactivan en Configuración; lo que ya estaba escrito pasa a las listas al actualizar. Al vender un producto con variantes se elige color y talla y se ve lo disponible; solo baja esa variante. Dónde: Inventario → Nuevo producto; Configuración → Catálogo de productos; Nueva venta | ☐ | ☐ | |
 
 ## Acta de aceptación
 
-Requisitos verificados: ______ de 138. Con observaciones pendientes: ______.
+Requisitos verificados: ______ de 139. Con observaciones pendientes: ______.
 
 Con esta firma, el cliente declara que usó CAPS Shop en la tienda con datos reales durante el piloto, que los requisitos marcados **Sí** funcionan como se describe, y acepta el sistema para uso en producción. Las observaciones pendientes quedan anotadas arriba y en la bitácora, con su compromiso de corrección.
 

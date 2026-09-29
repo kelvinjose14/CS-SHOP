@@ -13,17 +13,17 @@ test('categoría en el producto y dashboard ejecutivo con comparaciones, pronós
   const st = await api(win, 'cash.status');
   if (!st.open) await api(win, 'cash.open', { amount: st.last_closed ? st.last_closed.counted_amount : 0 });
 
-  // Producto nuevo con categoría desde el formulario; la categoría ya usada se sugiere.
-  await api(win, 'products.save', { name: 'Gorra con categoría', category: 'Trucker', price_retail: 500 });
+  // Producto nuevo con categoría desde el formulario: se elige de la lista, escribiendo para filtrar.
   await go(win, 'products');
   await win.click('#p-new');
-  await win.waitForSelector(`${dialog} [name=category]`);
-  assert.ok(await win.$(`${dialog} #dl-categories option[value="Trucker"]`), 'sugiere las categorías usadas');
+  await win.waitForSelector(`${dialog} #pe-category-input`);
   await win.fill(`${dialog} [name=name]`, 'Snapback ejecutivo');
-  await win.fill(`${dialog} [name=category]`, 'Snapback');
+  await win.click(`${dialog} #pe-category-input`);
+  await win.fill(`${dialog} #pe-category-input`, 'snap');
+  await win.press(`${dialog} #pe-category-input`, 'Enter');
   await win.fill(`${dialog} [name=cost]`, '400');
   await win.fill(`${dialog} [name=price_retail]`, '1000');
-  await win.fill(`${dialog} [name=initial_stock]`, '10');
+  await win.fill(`${dialog} #pe-variants [data-stock]`, '10');
   await win.click(`${dialog} .modal-foot .btn.primary`);
   const id = await eventually(async () => (await api(win, 'products.list', { search: 'Snapback ejecutivo' }))[0]?.id);
   assert.equal((await api(win, 'products.get', { id })).category, 'Snapback');

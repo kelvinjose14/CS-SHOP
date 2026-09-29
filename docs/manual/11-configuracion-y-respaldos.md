@@ -27,6 +27,15 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 
 Cada cambio de configuración queda en el **Historial de movimientos**.
 
+**Catálogo de productos** (versión 1.7): las listas de **Marcas**, **Categorías**, **Colores** y **Tallas** del formulario de productos, con cuántos productos usan cada una.
+
+![Catálogo de productos](img/catalogo.jpg)
+
+- **Renombrar** corrige el nombre y lo cambia también en todos los productos que lo tienen.
+- **Color** cambia el color con que se muestra (solo en Colores).
+- **Desactivar** la quita de las opciones del formulario; los productos que ya la tienen no cambian. **Activar** la devuelve.
+- Para agregar, use los botones **+** del formulario del producto ([Inventario, 4.2](04-inventario.md#42-crear-un-producto-administrador)).
+
 La sección **Red** (compartir con otras computadoras, clave de conexión y lista de computadoras) se explica en [Varias computadoras en red](13-varias-computadoras.md#132-preparar-la-pc-principal).
 
 ## 11.2 Dónde están los datos

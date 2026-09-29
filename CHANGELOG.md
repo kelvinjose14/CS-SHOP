@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Agregado
+- **Nuevo producto, rehecho** (RF-NUE-22, DT-45, [manual 4.2](docs/manual/04-inventario.md#42-crear-un-producto-administrador)):
+  - **Marca** con búsqueda: se escribe parte del nombre y se elige (New Era, Mitchell & Ness, '47 Brand, Nike…); **+ Crear nueva marca** la agrega y la deja elegida.
+  - **Categoría** de una lista (Fitted, Snapback, Trucker, Dad Hat, Strapback, Adjustable, Beanie, Visera, Otro), con **+ Crear nueva categoría**.
+  - **Colores** y **tallas** que se marcan con un clic (✓), con **+ Agregar nuevo color** (con su color) y **+ Agregar talla**. Ya no se escriben separados por coma.
+  - **Variantes e inventario:** una fila por cada color y talla, con su existencia y código de barras, y el **stock total**. Sin colores ni tallas es una sola gorra; para una ajustable basta **Ajustable** u **One Size**.
+- **Editar producto** con todas sus variantes: marcar un color o talla nueva agrega sus variantes; quitarlo las desactiva (con aviso si tienen existencia). **Editar esta variante** cambia solo una combinación (SKU, código, costo, precios, color, talla, foto).
+- **Al vender** un producto con variantes se elige **color** y **talla**, viendo lo disponible de cada una; solo baja esa variante. También al apartar y al comprar.
+- **Configuración → Catálogo de productos:** renombrar (cambia el nombre en los productos), cambiar el color y desactivar marcas, categorías, colores y tallas.
+- Un producto no puede tener dos veces la misma combinación de color y talla.
+- La base pasa a la versión 9 al abrir: marcas, categorías, colores y tallas pasan a sus propias listas con lo que ya estaba escrito en los productos.
+
 ### Cambiado
 - **Las actualizaciones se instalan solas, sin ventanas de instalación** (DT-44). **Actualizar ahora** cierra el programa unos segundos y lo vuelve a abrir en la versión nueva; **Al cerrar el programa** la descarga mientras se trabaja y la instala cuando se cierra, por ejemplo al final del día. La barra de arriba dice **Versión X al cerrar**.
 

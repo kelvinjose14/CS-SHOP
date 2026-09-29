@@ -33,28 +33,31 @@ Menú **Inventario** → **Inventario**.
 
 ## 4.2 Crear un producto (administrador)
 
-**Inventario** → **Nuevo producto**.
+**Inventario** → **Nuevo producto**. Un solo formulario sirve para una gorra suelta o para un modelo con varios colores y tallas.
 
-![Nuevo producto](img/producto-nuevo.jpg)
+![Nuevo producto con colores y tallas](img/producto-variantes.jpg)
 
-Cree una ficha por cada combinación que se vende por separado: modelo, color y talla. Por ejemplo, "NY Yankees 59FIFTY Negro 7 1/4" y "NY Yankees 59FIFTY Azul marino 7 3/8" son dos productos.
-
-| Campo | Obligatorio | Nota |
+| Campo | Obligatorio | Cómo se llena |
 |---|:---:|---|
-| **Nombre** | ✔ | Ej. "Gorra NY Yankees 59FIFTY" |
-| **Marca**, **Modelo**, **Color**, **Talla** | | Ayudan a buscar y salen en el recibo. Las gorras con el mismo nombre, marca y modelo forman un **modelo** ([4.10](#410-modelos-con-colores-y-tallas-administrador)) |
-| **Categoría** | | El estilo: Snapback, Trucker, Fitted… Al escribir, sugiere las que ya existen. Sirve para ver ventas y utilidad por categoría en el [dashboard ejecutivo](09-contabilidad-y-reportes.md#91-dashboard-ejecutivo) |
-| **Código / SKU** | | Si lo deja vacío, el sistema asigna uno: `CS-00001`, `CS-00002`… No se puede repetir |
-| **Código de barras** | | Escanéelo con el lector. No se puede repetir |
+| **Nombre** | ✔ | Ej. "Gorra New York Yankees 59FIFTY" |
+| **Marca** | | Escriba parte del nombre y elija de la lista (New Era, Mitchell & Ness, '47 Brand, Nike…). Si no está, **+ Crear nueva marca** la agrega y la deja elegida |
+| **Modelo** | | Ej. 59FIFTY, 9FORTY |
+| **Categoría** | | Elija de la lista: Fitted, Snapback, Trucker, Dad Hat, Strapback, Adjustable, Beanie, Visera u Otro. **+ Crear nueva categoría** agrega otra. Sirve para ver ventas y utilidad por categoría en el [dashboard ejecutivo](09-contabilidad-y-reportes.md#91-dashboard-ejecutivo) |
+| **Colores** | | Un clic en cada color que tiene (quedan marcados con ✓). **+ Agregar nuevo color** crea otro, con su nombre y su color |
+| **Tallas** | | Un clic en cada talla (6 1/2 a 8, Ajustable, Snapback, One Size). **+ Agregar talla** crea otra |
+| **Variantes e inventario** | | Una fila por cada color y talla marcados. Escriba las unidades que tiene de cada una (0 si todavía no llegan) y, si quiere, su código de barras. Abajo se ve el **stock total** |
 | **Costo de compra** | | Luego se actualiza solo con cada compra ([costo promedio](../producto/reglas-de-negocio.md#1-costo-de-cada-gorra-costo-promedio)) |
-| **Precio al detalle** | ✔ (en pantalla) | Al escribirlo se muestra el margen. Aviso: si se deja vacío, hoy el sistema lo guarda en 0 sin avisar ([brecha anotada](../producto/objetivos.md#o5-brechas-funcionales)); revíselo siempre |
+| **Precio al detalle** | ✔ | Al escribirlo se muestra el margen |
 | **Precio al por mayor** | | Si queda vacío se guarda en 0: complételo si vende por mayor |
-| **Stock mínimo** | | Cuando la existencia llega a este número, el producto aparece en **Por reponer** |
-| **Existencia inicial** | | Solo al crear. Úsela para cargar lo que ya tiene |
+| **Stock mínimo** | | De cada variante. Cuando una llega a este número, aparece en **Por reponer** |
 | **Foto** | | Botón **Foto**. La imagen se reduce automáticamente |
 | **Notas** | | Texto libre |
 
-Pulse **Guardar**.
+Pulse **Guardar**. Se crea una **variante** por cada combinación de color y talla, cada una con su SKU (`CS-00001`, `CS-00002`…), su código de barras y su existencia ([4.10](#410-modelos-con-colores-y-tallas-administrador)).
+
+- **Sin color ni talla** (por ejemplo, una visera lisa): no marque nada; se guarda como una sola gorra.
+- **Gorra ajustable:** marque la talla **Ajustable** u **One Size**; no hace falta ninguna talla numérica.
+- **Solo tallas o solo colores:** marque solo esos; hay una fila por cada uno.
 
 ## 4.3 Ver y editar un producto
 
@@ -68,9 +71,13 @@ El detalle muestra:
 - El margen al detalle.
 - El **Historial de movimientos**: cada entrada y salida con fecha, cantidad, existencia resultante, detalle y usuario.
 
-- **Editar:** cambia datos y precios. Cada cambio de costo o precio queda en **Historial de movimientos** (menú **Análisis**) con el valor anterior y el nuevo. La existencia no se edita aquí: se cambia con compras, ventas o ajustes.
-- **Dar de baja:** en **Editar**, desmarque **Producto activo**. El producto deja de salir en ventas y búsquedas, pero conserva su historial. No se borran productos.
-  - Si todavía tiene existencia, el sistema lo avisa: esas unidades **siguen contando en el valor del inventario** (en el Inicio, "… de productos desactivados"), porque la mercancía sigue en la tienda. Si ya no están, haga antes un [ajuste de existencia](#44-ajustar-la-existencia-administrador) con el motivo.
+**Editar producto** abre el mismo formulario de 4.2 con todas sus variantes:
+- cambie nombre, marca, modelo, categoría, precios, stock mínimo o notas: se aplican a **todas las variantes**;
+- **marque un color o una talla nueva**: aparecen las filas nuevas para escribir su existencia;
+- **desmarque un color o una talla**: sus variantes aparecen tachadas como **Se desactiva**. No se borran, porque tienen ventas y movimientos; dejan de salir en la venta. Si todavía tienen existencia, el sistema lo avisa: siguen contando en el valor del inventario. Si ya no están en la tienda, haga antes un [ajuste de existencia](#44-ajustar-la-existencia-administrador). Si vuelve a marcarlo, se reactivan;
+- la existencia de las variantes que ya existen no se edita aquí: se cambia con compras, ventas o ajustes.
+
+**Editar esta variante** cambia solo esa combinación: su SKU, código de barras, costo, precios propios (por ejemplo, una talla 8 más cara), color, talla, foto o si está activa. Cada cambio de costo o precio queda en **Historial de movimientos** (menú **Análisis**) con el valor anterior y el nuevo.
 
 ## 4.4 Ajustar la existencia (administrador)
 
@@ -174,17 +181,9 @@ Primero salen las A y, dentro de cada letra, las que más tiempo llevan sin cont
 
 ## 4.10 Modelos con colores y tallas (administrador)
 
-Una gorra que se vende en varios colores y tallas es un **modelo**; cada combinación (Negro 7 1/4, Rojo 7…) es una **variante** con su propio SKU, código de barras y existencia. Se venden, compran y cuentan por variante, como cualquier producto.
+Una gorra que se vende en varios colores y tallas es un **modelo** (el producto); cada combinación (Negro 7 1/4, Rojo 7…) es una **variante** con su propio SKU, código de barras, existencia y stock mínimo. Se venden, compran, apartan y cuentan por variante: el sistema sabe exactamente cuántas hay de cada color y talla. La existencia del modelo es la suma de sus variantes.
 
-**Crear un modelo con todas sus variantes:**
-
-![Modelo con variantes](img/producto-variantes.jpg)
-
-1. **Inventario** → **Nuevo producto** → **Varios colores y tallas**.
-2. Escriba el nombre, la marca, el modelo, la categoría, el costo y los precios: son iguales para todas las variantes.
-3. En **Colores** y **Tallas**, escríbalos separados por coma. Aparece una cuadrícula con cada combinación.
-4. En cada casilla escriba las unidades que ya tiene de esa combinación (0 si todavía no llegan).
-5. **Guardar**. Se crean todas las combinaciones, cada una con su SKU. Las que no vende las puede desactivar después.
+Se crea y se edita con **Nuevo producto** y **Editar producto** ([4.2](#42-crear-un-producto-administrador) y [4.3](#43-ver-y-editar-un-producto)). Un modelo no puede tener dos veces la misma combinación: el sistema no lo permite.
 
 **Ver un modelo:** en **Inventario**, **Modelos** agrupa las variantes (colores, tallas, existencia total y apartadas). Al abrir un modelo, o **Ver modelo** desde una variante, se ve la cuadrícula:
 
@@ -192,10 +191,9 @@ Una gorra que se vende en varios colores y tallas es un **modelo**; cada combina
 
 - cada casilla es la existencia de esa combinación: **rojo** agotada, **amarillo** stock bajo, **gris** desactivada, y **−2** son unidades apartadas;
 - un clic en una casilla abre esa variante (para ajustar, editar o imprimir su etiqueta);
-- **Agregar colores o tallas** crea solo las combinaciones que faltan, con los mismos precios y costo;
-- **Editar modelo** cambia el nombre, la marca, el modelo o la categoría de todas las variantes, y, si se marca, el precio de todas.
+- **Editar producto** abre el formulario con todas las variantes.
 
-> El sistema arma los modelos solo: dos productos con el mismo nombre, marca y modelo (sin importar mayúsculas) son del mismo modelo. Al actualizar a la versión 1.5, los productos que ya tenía se agrupan así. Si a una variante se le cambia el nombre, pasa al modelo que corresponde.
+**Marcas, categorías, colores y tallas** son listas del sistema (**Configuración → Catálogo de productos**, [11.1](11-configuracion-y-respaldos.md#111-configuración)): así no hay "Snapback" y "snapback", ni "7 1/4" y "7-1/4". Al actualizar a la versión 1.7, lo que ya estaba escrito en los productos pasa a estas listas solo, con la primera forma en que se escribió.
 
 ## 4.11 Errores comunes
 
@@ -211,5 +209,6 @@ Una gorra que se vende en varios colores y tallas es un **modelo**; cada combina
 | **La existencia no cambia con este ajuste.** | El conteo es igual a la existencia actual: no hace falta ajustar |
 | **Existencia insuficiente de "…" (disponible: N).** | Una **Salida** no puede dejar la existencia en negativo |
 | **Motivo es obligatorio.** | Escriba el motivo del ajuste |
-| **La variante … está repetida.** | En la cuadrícula se escribió dos veces el mismo color o talla. Quite uno |
-| **Ya existe la variante … de "…". Agregue solo las que faltan.** | Ese modelo ya tiene esa combinación. Use **Agregar colores o tallas** desde el modelo |
+| **La variante … está repetida.** | La misma combinación de color y talla está dos veces. Quite una |
+| **Ya existe la variante … de "…".** | Ese producto ya tiene esa combinación de color y talla. Ábralo con **Editar producto** y marque solo lo que falta |
+| **Código de color inválido.** | Al agregar un color, elíjalo en el selector de color |

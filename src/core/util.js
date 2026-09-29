@@ -89,6 +89,24 @@ function modelKey({ name, brand, model } = {}) {
   return [name, brand, model].map((s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase()).join('|');
 }
 
+// Nombre de marca, categoría, color o talla para compararlo sin importar mayúsculas ni espacios (1.7).
+function catalogKey(name) {
+  return String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// Orden de una talla: las de gorra por su medida (6 1/2 … 8), luego XS…XXL, luego Ajustable,
+// Snapback y One Size, y al final cualquier otra.
+const LETTER_SIZES = ['xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl'];
+const FREE_SIZES = ['ajustable', 'snapback', 'one size'];
+function sizeOrder(name) {
+  const s = catalogKey(name);
+  const m = /^(\d+)(?:\s+(\d+)\/(\d+))?(?:["”]|\s*cm)?$/.exec(s);
+  if (m) return Number(m[1]) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+  if (LETTER_SIZES.includes(s)) return 50 + LETTER_SIZES.indexOf(s);
+  if (FREE_SIZES.includes(s)) return 100 + FREE_SIZES.indexOf(s);
+  return 200;
+}
+
 // Rango de fechas a partir de un período: dia, semana, mes, anio o personalizado.
 function periodRange({ period = 'mes', from, to, ref } = {}) {
   const base = ref ? new Date(`${ref}T12:00:00`) : new Date();
@@ -112,4 +130,4 @@ function periodRange({ period = 'mes', from, to, ref } = {}) {
   }
 }
 
-module.exports = { AppError, METHODS, now, today, addDays, round2, money, int, text, date, method, accountStatus, periodRange, modelKey };
+module.exports = { AppError, METHODS, now, today, addDays, round2, money, int, text, date, method, accountStatus, periodRange, modelKey, catalogKey, sizeOrder };

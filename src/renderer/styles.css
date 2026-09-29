@@ -460,3 +460,35 @@ body.printing .table tr.table-more { display: none; }
 .open-form { flex-wrap: wrap; }
 .open-form .field.wide { width: 360px; }
 .inline.nowrap { flex-wrap: nowrap; }
+
+/* Catálogos del producto (1.7): selector con búsqueda, opciones con un clic y tabla de variantes */
+.combo { position: relative; }
+.combo-field { position: relative; }
+.combo-field input { width: 100%; padding-right: 30px; }
+.combo-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); cursor: pointer; font-size: 12px; }
+.combo-list { max-height: 260px; }
+.combo-item { padding: 7px 12px; }
+.combo-item.selected { font-weight: 650; }
+.combo-item.active { background: var(--brand-soft); }
+.combo-create { color: var(--brand); border-top: 1px solid var(--line); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-opt { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.chip-opt:hover { border-color: #c9c9d1; }
+.chip-opt.on { border-color: var(--brand); background: var(--brand-soft); font-weight: 650; }
+.chip-opt:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.chip-check { color: var(--brand); font-weight: 800; }
+.chip-add { border-style: dashed; color: var(--brand); }
+.swatch { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .25); flex: none; vertical-align: -2px; }
+.swatch[data-empty="1"] { background: repeating-linear-gradient(45deg, #ddd 0 3px, #fff 3px 6px) !important; }
+.variants-table td, .variants-table th { vertical-align: middle; }
+.variants-table .qty-input { width: 72px; text-align: right; }
+.variants-table .barcode-input { width: 150px; }
+.variants-table tfoot td { font-weight: 700; }
+.variants-table tr.row-off td { text-decoration: line-through; color: var(--muted); }
+.variants-table tr.row-off td:last-child { text-decoration: none; }
+.span-all { grid-column: 1 / -1; }
+.grid-form.editor .grid-2 { overflow: visible; display: flow-root; display: grid; }
+.vc-box { display: flex; gap: 28px; align-items: flex-end; }
+.vc-box > div { display: flex; flex-direction: column; gap: 2px; }
+.vc-box b.big { font-size: 26px; line-height: 1.1; }
+.cat-list { margin-top: 12px; max-height: 360px; overflow-y: auto; }

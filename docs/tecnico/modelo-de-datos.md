@@ -1,7 +1,7 @@
 # Modelo de datos
 
 - **Motor:** SQLite a través de `node:sqlite`, en modo WAL (`src/core/db.js`). Es el mismo formato de archivo que escribía la versión 1.0.0 con sql.js, así que la base se abre tal cual.
-- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **8**.
+- **Esquema y migraciones:** `src/core/schema.js`. La versión se guarda en `PRAGMA user_version`; la actual es la **9**.
   - **1:** esquema inicial (versión 1.0.0).
   - **2:** computadoras en red. Tabla `terminals`, y columna `terminal_id` en `cash_sessions` y `audit_log`. Las cajas existentes pasan a la PC principal (id 1).
   - **3:** índices de las tablas de detalle (`sale_items`, `sale_payments`, `purchase_items`, `purchase_payments`, `returns`, `return_items`), más `purchases(supplier_id)` y `audit_log(action)`. Con 3 años de datos, la lista de ventas bajó de 16 s a 34 ms ([Rendimiento](rendimiento.md)).
@@ -15,6 +15,7 @@
   - **6:** `products.category` e índice (dashboard ejecutivo, versión 1.4.0), e índice `sales(user_id, date)` para la utilidad por vendedor.
   - **7:** inventario avanzado (versión 1.5.0): tabla `product_models` y `products.model_id` (DT-38); `products.last_counted_at` (conteo cíclico, DT-40); tablas `reservations` y `reservation_items` (apartados, DT-39). Es la primera migración escrita como función: agrupa los productos existentes con la misma clave que usa el programa (`modelKey` en `src/core/util.js`).
   - **8:** CRM (versión 1.6.0): `customers.birthday` ("MM-DD"), `customers.tags` (lista en JSON), `customers.vip_mode` (`auto` \| `si` \| `no`) y tabla `customer_notes` (DT-41, DT-42). Los segmentos y el VIP automático se calculan, no se guardan.
+  - **9:** catálogos de productos (versión 1.7.0, DT-45): tablas `brands`, `categories`, `colors` (`hex`) y `sizes` (`sort`), cada una con `name` único sin importar mayúsculas y `active`; `products.brand_id`, `category_id`, `color_id`, `size_id` y `product_models.brand_id`, `category_id`. Siembra las opciones iniciales (`CATALOG_SEEDS` en `schema.js`), pasa a los catálogos lo que estaba escrito en los productos y deja el texto con el nombre del catálogo. Índice único `ux_products_variant` sobre `(model_id, IFNULL(color_id, 0), IFNULL(size_id, 0))`: un modelo no repite una combinación. Si una base vieja tenía dos productos iguales, el segundo queda en un modelo aparte (clave `…#id`) para no perder nada. Cada fila de `products` es una **variante**; el modelo (`product_models`) es el producto que la agrupa.
 - **Migraciones:** al abrir la base, `migrate()` aplica en orden las que falten, dentro de una transacción: si una falla, no queda nada a medias. **Toda migración nueva se agrega al final de la lista `MIGRATIONS`; nunca se editan las ya publicadas.**
 - **Base más nueva que el programa:** no se abre. Sale **"Esta base de datos es de una versión más nueva de CAPS Shop…"**, para que una versión vieja no la dañe.
 - **Fechas:** texto en hora local. Formato `AAAA-MM-DD` en las columnas `date` y `due_date`, y `AAAA-MM-DD HH:MM:SS` en `created_at` y similares.

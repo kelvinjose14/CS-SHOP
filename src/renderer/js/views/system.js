@@ -161,6 +161,7 @@ App.register({
           <h3>Copias de seguridad</h3>
           <p class="muted">Las copias se hacen en la PC principal: ahí están todos los datos.</p>
         </div>`}
+        <div class="card" id="cat-card"></div>
         <div class="card" id="upd-card"></div>
         <div class="card">
           <h3>Soporte</h3>
@@ -192,6 +193,7 @@ App.register({
     };
     renderPrinter($('#prn-card', form));
     renderNetwork($('#net-card', form));
+    renderCatalog($('#cat-card', form));
     renderUpdates($('#upd-card', form));
     if (App.info.mode === 'principal') renderExternal($('#ext-box', form));
     $('#sp-diag', form).onclick = async () => {
@@ -388,6 +390,43 @@ async function renderExternal(box) {
     if (!(await confirmDialog('¿Dejar de hacer la copia fuera de esta computadora?', { danger: true, okLabel: 'Quitar' }))) return;
     run(() => window.capsApi.external.clear(), 'Copia externa desactivada.')();
   };
+}
+
+// Catálogo de productos (1.7): marcas, categorías, colores y tallas. Se agregan desde el formulario del
+// producto; aquí se corrigen nombres, se cambia el color y se quitan de las opciones (desactivar).
+const CATALOG_TABS = [['brands', 'Marcas'], ['categories', 'Categorías'], ['colors', 'Colores'], ['sizes', 'Tallas']];
+async function renderCatalog(card, tab = 'brands') {
+  const all = await api('catalog.list', { includeInactive: true });
+  const rows = all[tab];
+  setHTML(card, html`
+    <h3>${icon('tag')} Catálogo de productos</h3>
+    <p class="muted small">Las opciones del formulario de productos. Renombrar cambia también el nombre en los productos. Desactivar solo la quita de las opciones: los productos que ya la tienen no cambian.</p>
+    <div class="seg" id="cat-tabs">${CATALOG_TABS.map(([k, l]) => html`<button type="button" data-t="${k}" class="${k === tab ? 'active' : ''}">${l} <small class="muted">${all[k].filter((x) => x.active).length}</small></button>`)}</div>
+    <div class="table-wrap cat-list"><table class="table">
+      <thead><tr><th>Nombre</th><th class="text-right">Productos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rows.map((r) => html`<tr data-id="${r.id}" class="${r.active ? '' : 'inactive'}">
+        <td>${tab === 'colors' ? html`<span class="swatch" style="background:${r.hex || 'transparent'}" data-empty="${r.hex ? '' : '1'}"></span> ` : ''}${r.name}</td>
+        <td class="text-right">${Fmt.num(r.products)}</td>
+        <td>${r.active ? badge('activo', 'Activa') : badge('anulada', 'Desactivada')}</td>
+        <td class="text-right nowrap">
+          ${tab === 'colors' ? html`<label class="btn small" title="Cambiar el color">Color<input type="color" data-hex value="${r.hex || '#808080'}" hidden></label>` : ''}
+          <button type="button" class="btn small" data-rename>Renombrar</button>
+          <button type="button" class="btn small" data-toggle>${r.active ? 'Desactivar' : 'Activar'}</button>
+        </td></tr>`)}</tbody>
+    </table></div>`);
+  const redraw = () => renderCatalog(card, tab);
+  $$('#cat-tabs [data-t]', card).forEach((b) => (b.onclick = () => renderCatalog(card, b.dataset.t)));
+  $$('tr[data-id]', card).forEach((tr) => {
+    const r = rows.find((x) => x.id === Number(tr.dataset.id));
+    $('[data-rename]', tr).onclick = async () => {
+      const name = await promptDialog({ title: `Renombrar "${r.name}"`, label: 'Nombre nuevo' });
+      if (!name) return;
+      try { await api('catalog.update', { type: tab, id: r.id, name }); toast('Nombre cambiado.'); redraw(); } catch (e) { /* el aviso ya se mostró */ }
+    };
+    $('[data-toggle]', tr).onclick = () => api('catalog.update', { type: tab, id: r.id, active: !r.active }).then(redraw, () => {});
+    const hex = $('[data-hex]', tr);
+    if (hex) hex.onchange = () => api('catalog.update', { type: tab, id: r.id, hex: hex.value }).then(redraw, () => {});
+  });
 }
 
 // Actualizaciones: se buscan solas; instalar lo decide el administrador.

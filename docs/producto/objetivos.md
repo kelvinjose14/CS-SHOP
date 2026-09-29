@@ -13,8 +13,8 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 96 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel y las correcciones y controles de la auditoría;
-  - 26 de interfaz con la app real;
+  - 101 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel, catálogos de productos y las correcciones y controles de la auditoría;
+  - 28 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -240,7 +240,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | Plan del piloto: instalación, carga de datos, semana de uso y criterios | [Plan del piloto](../piloto/README.md) | Hecho |
 | Capacitación del dueño y del vendedor, con ejercicios comprobados | [Capacitación](../piloto/capacitacion.md) (los números los verifica `test/o6.test.js`) | Hecho |
 | Revisión diaria y registro de problemas | [Bitácora](../piloto/bitacora.md) | Hecho |
-| Lista de aceptación con todos los requisitos (138) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
+| Lista de aceptación con todos los requisitos (139) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
 | **Instalación en las PCs reales y carga de los datos reales** | [Plan, Día 0](../piloto/README.md#día-0-instalación-y-carga-de-datos) | **Pendiente (en la tienda)** |
 | **Capacitación** | [Capacitación](../piloto/capacitacion.md) | **Pendiente (en la tienda)** |
 | **Una semana de uso real** con revisión diaria | [Bitácora](../piloto/bitacora.md) | **Pendiente (en la tienda)** |
@@ -254,7 +254,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 
 ### O7. Gestión avanzada
 
-**Estado:** en curso. Pedido del dueño el 27/09/2026 (DT-36). Las tres primeras partes se publicaron juntas en la 1.6.0 (29/09/2026). El dueño decidió probarlas en la tienda antes de empezar la 1.7.0.
+**Estado:** en curso. Pedido del dueño el 27/09/2026 (DT-36). Las tres primeras partes se publicaron juntas en la 1.6.0 (29/09/2026). El dueño decidió probarlas en la tienda antes de empezar las compras inteligentes; mientras tanto pidió mejorar el formulario de productos (1.7.0).
 
 **Meta:** que el sistema no solo registre, sino que ayude a decidir: cómo va el negocio contra antes, qué mercancía sobra o falta, quiénes son los mejores clientes y cuánto comprar.
 
@@ -263,7 +263,8 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | **1.4.0** | Dashboard ejecutivo (RF-NUE-15, DT-37) | Indicadores comparados con el período anterior y el año anterior (ventas, utilidad, margen, ticket promedio, unidades por venta), pronóstico de cierre de mes, rotación, días de inventario, productos estancados, utilidad por producto, marca, categoría y vendedor. **Categoría** en el producto ([manual 9.1](../manual/09-contabilidad-y-reportes.md#91-dashboard-ejecutivo)) | Publicada en la 1.6.0 (29/09/2026) |
 | **1.5.0** | Inventario avanzado (RF-NUE-16 a 18, DT-38 a DT-40) | Modelos con variantes de color y talla (se crean en una cuadrícula; los productos actuales se agrupan solos), apartados con **existencia** y **disponible**, conteo cíclico sugerido. Sin lotes (DT-36) ([manual 4.10](../manual/04-inventario.md#410-modelos-con-colores-y-tallas-administrador), [3.5](../manual/03-ventas.md#35-apartados)) | Publicada en la 1.6.0 (29/09/2026) |
 | **1.6.0** | CRM de clientes (RF-NUE-19 a 21, DT-41 y DT-42) | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad ([manual 6.1](../manual/06-clientes-y-cobros.md#61-clientes)) | Publicada (29/09/2026) |
-| 1.7.0 | Compras inteligentes | Tiempo de reposición por proveedor, sugerencia "Compra N" por gorra con su explicación (velocidad de venta, stock disponible, mínimo, lo ya pedido) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
+| **1.7.0** | Productos con catálogos (RF-NUE-16 y 22, DT-45) | Marca con búsqueda y "+ Crear nueva marca", categoría de una lista, colores y tallas que se marcan con un clic, existencia por variante con el stock total, editar agregando o quitando colores y tallas, y al vender elegir color y talla con lo disponible. Catálogo en Configuración ([manual 4.2](../manual/04-inventario.md#42-crear-un-producto-administrador)) | En revisión |
+| 1.8.0 | Compras inteligentes | Tiempo de reposición por proveedor, sugerencia "Compra N" por gorra con su explicación (velocidad de venta, stock disponible, mínimo, lo ya pedido) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
 
 Pruebas de la 1.4.0: `test/ejecutivo.test.js`, `test/ui/ejecutivo.test.js` y la [medición de rendimiento](../tecnico/rendimiento.md#resultados-de-la-140-27092026). De la 1.5.0: `test/inventario15.test.js`, `test/ui/inventario15.test.js` y la [medición de la 1.5.0](../tecnico/rendimiento.md#resultados-de-la-150-29092026). De la 1.6.0: `test/crm.test.js` y `test/ui/crm.test.js`.
 

@@ -128,7 +128,8 @@ async function apiConfirm(name, params, { code, extra, title = 'Confirmar', okLa
 /* ---------- Avisos y diálogos ---------- */
 function toast(message, type = 'ok') {
   let box = $('#toasts');
-  if (!box) { box = el(html`<div id="toasts"></div>`); document.body.appendChild(box); }
+  // Al principio de la página: así la ventana abierta sigue siendo la última (se ve igual: z-index 100).
+  if (!box) { box = el(html`<div id="toasts"></div>`); document.body.prepend(box); }
   const t = el(html`<div class="toast ${type}">${message}</div>`);
   box.appendChild(t);
   setTimeout(() => t.classList.add('hide'), type === 'error' ? 5000 : 2800);

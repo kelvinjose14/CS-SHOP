@@ -23,6 +23,9 @@ Menú **Principal** → **Nueva venta**.
    - Con lector de código de barras: escanee la etiqueta y el producto se agrega solo. El lector escribe el código y pulsa Enter.
    - A mano: escriba parte del nombre, marca, color, talla o SKU. Elija con el ratón, o con las flechas y Enter.
    - Si escanea el mismo producto otra vez, sube la cantidad.
+   - **Producto con varios colores o tallas:** en el buscador sale una sola vez, con "N variantes". Al elegirlo se abre un cuadro para escoger el **Color** y la **Talla**; cada opción muestra entre paréntesis cuántas hay, y abajo se ve lo **Disponible**, el precio y el SKU. **Agregar** (o Enter) lo pone en la venta. Al cobrar, solo baja la existencia de ese color y esa talla. Con el lector no hace falta: la etiqueta ya es de una variante.
+
+   ![Elegir color y talla](img/venta-variante.jpg)
 2. **Ajustar cantidades** con **−** y **+**, o escribiendo el número. El ícono de papelera quita la línea.
 3. **Tipo de venta:** **Al detalle** o **Al por mayor**. Al cambiarlo, todos los precios pasan a la lista correspondiente.
 4. **Cliente:** déjelo en **Cliente general (contado)** o elija uno. Con el botón **+** registra un cliente nuevo sin salir de la venta.
