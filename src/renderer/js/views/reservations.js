@@ -113,7 +113,7 @@ async function reservationDetail(id, onChange) {
 
 // Nuevo apartado: el cliente, las gorras (con el buscador o el lector) y la fecha límite.
 async function reservationForm(onSaved) {
-  const customers = await api('customers.list');
+  const customers = await api('customers.options');
   const days = Number(App.settings.reservation_days) || 15;
   const d = new Date();
   d.setDate(d.getDate() + days);

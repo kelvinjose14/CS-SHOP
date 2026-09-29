@@ -7,18 +7,19 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.7.0)
+## Estado actual (versión 1.9.0)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 104 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel, catálogos de productos y las correcciones y controles de la auditoría;
-  - 28 de interfaz con la app real;
+  - 108 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel, catálogos de productos y las correcciones y controles de la auditoría;
+  - 33 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
 - Actualizaciones con aviso desde GitHub y copia diaria fuera de la PC, con fotos (O4).
+- Interfaz más rápida y moderna (1.8), ventas en espera, Ctrl + K, reposición, alertas y modo oscuro (1.9).
 - Guía de soporte y recuperación ([manual 14](../manual/14-soporte-y-recuperacion.md)).
 - Todos los hallazgos de la [auditoría de producción](../tecnico/auditoria.md) corregidos (1.2.0 y 1.3.0), salvo la firma del instalador, que depende del dueño.
 - Instalador de Windows generado y publicado automáticamente en GitHub.
@@ -241,7 +242,7 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | Plan del piloto: instalación, carga de datos, semana de uso y criterios | [Plan del piloto](../piloto/README.md) | Hecho |
 | Capacitación del dueño y del vendedor, con ejercicios comprobados | [Capacitación](../piloto/capacitacion.md) (los números los verifica `test/o6.test.js`) | Hecho |
 | Revisión diaria y registro de problemas | [Bitácora](../piloto/bitacora.md) | Hecho |
-| Lista de aceptación con todos los requisitos (139) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
+| Lista de aceptación con todos los requisitos (143) y el acta | [Lista de aceptación](../piloto/aceptacion.md), generada de Requisitos | Hecho |
 | **Instalación en las PCs reales y carga de los datos reales** | [Plan, Día 0](../piloto/README.md#día-0-instalación-y-carga-de-datos) | **Pendiente (en la tienda)** |
 | **Capacitación** | [Capacitación](../piloto/capacitacion.md) | **Pendiente (en la tienda)** |
 | **Una semana de uso real** con revisión diaria | [Bitácora](../piloto/bitacora.md) | **Pendiente (en la tienda)** |
@@ -264,8 +265,11 @@ Pruebas: `test/o5.test.js`, `test/import.test.js` y `test/ui/o5.test.js`.
 | **1.4.0** | Dashboard ejecutivo (RF-NUE-15, DT-37) | Indicadores comparados con el período anterior y el año anterior (ventas, utilidad, margen, ticket promedio, unidades por venta), pronóstico de cierre de mes, rotación, días de inventario, productos estancados, utilidad por producto, marca, categoría y vendedor. **Categoría** en el producto ([manual 9.1](../manual/09-contabilidad-y-reportes.md#91-dashboard-ejecutivo)) | Publicada en la 1.6.0 (29/09/2026) |
 | **1.5.0** | Inventario avanzado (RF-NUE-16 a 18, DT-38 a DT-40) | Modelos con variantes de color y talla (se crean en una cuadrícula; los productos actuales se agrupan solos), apartados con **existencia** y **disponible**, conteo cíclico sugerido. Sin lotes (DT-36) ([manual 4.10](../manual/04-inventario.md#410-productos-con-tallas-administrador), [3.5](../manual/03-ventas.md#35-apartados)) | Publicada en la 1.6.0 (29/09/2026) |
 | **1.6.0** | CRM de clientes (RF-NUE-19 a 21, DT-41 y DT-42) | Historial, frecuencia, gasto total, ticket promedio, cumpleaños, VIP automático o manual, etiquetas, notas, segmentos (nuevos, frecuentes, VIP, en riesgo, perdidos) y listas para contactar. El vendedor la ve sin costos ni utilidad ([manual 6.1](../manual/06-clientes-y-cobros.md#61-clientes)) | Publicada (29/09/2026) |
-| **1.7.0** | Productos con catálogos (RF-NUE-16 y 22, DT-45, DT-46) | Formulario simple: marca, modelo y categoría de listas cortas con "+ Crear…", tallas con un clic y existencia por talla, sin colores; montos con 2 decimales como máximo y la rueda del mouse ya no cambia los números; editar agregando o quitando tallas; al vender, elegir la talla con lo disponible. Catálogo en Configuración ([manual 4.2](../manual/04-inventario.md#42-crear-un-producto-administrador)) | En revisión |
-| 1.8.0 | Compras inteligentes | Tiempo de reposición por proveedor, sugerencia "Compra N" por gorra con su explicación (velocidad de venta, stock disponible, mínimo, lo ya pedido) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
+| **1.7.0** | Productos con catálogos (RF-NUE-16 y 22, DT-45, DT-46) | Formulario simple: marca, modelo y categoría de listas cortas con "+ Crear…", tallas con un clic y existencia por talla, sin colores; montos con 2 decimales como máximo y la rueda del mouse ya no cambia los números; editar agregando o quitando tallas; al vender, elegir la talla con lo disponible. Catálogo en Configuración ([manual 4.2](../manual/04-inventario.md#42-crear-un-producto-administrador)) | Publicada (29/09/2026) |
+| **1.8.0** | Interfaz más rápida y profesional (DT-47) | Sistema de diseño, menú contraíble, animaciones cortas, tablas por partes, venta por línea, producto por secciones, esqueletos de carga y estados vacíos ([arquitectura](../tecnico/arquitectura.md#interfaz-diseño-y-rendimiento-18-dt-47)) | Publicada en la 1.9.0 (29/09/2026) |
+| **1.9.0** | Vender y reponer más rápido (RF-NUE-23 a 26, DT-48) | Ventas en espera y varios carritos, buscador global con Ctrl + K, reposición según el ritmo de venta con "Crear compra", mercancía sin movimiento (30, 60 y 90 días), la campanita de alertas y el modo oscuro (DT-49) ([manual 3.1](../manual/03-ventas.md#31-hacer-una-venta), [4.6](../manual/04-inventario.md#46-reposición-qué-comprar-y-qué-no-se-mueve-administrador), [2.2](../manual/02-rutina-diaria.md#22-la-pantalla-de-inicio)) | Publicada (29/09/2026) |
+| 1.10.0 | Mayoristas | Cotizaciones que pasan a venta, precio especial por cliente, favoritos y más atajos en la venta, factura PDF carta | Pendiente |
+| Futuro | Compras inteligentes | Tiempo de reposición por proveedor, lo ya pedido en la sugerencia (la sugerencia por ritmo de venta llegó en la 1.9) y orden de compra sugerida por proveedor, que al recibirse se convierte en compra | Pendiente |
 
 Pruebas de la 1.4.0: `test/ejecutivo.test.js`, `test/ui/ejecutivo.test.js` y la [medición de rendimiento](../tecnico/rendimiento.md#resultados-de-la-140-27092026). De la 1.5.0: `test/inventario15.test.js`, `test/ui/inventario15.test.js` y la [medición de la 1.5.0](../tecnico/rendimiento.md#resultados-de-la-150-29092026). De la 1.6.0: `test/crm.test.js` y `test/ui/crm.test.js`.
 

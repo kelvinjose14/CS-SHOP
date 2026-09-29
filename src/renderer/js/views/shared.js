@@ -58,10 +58,15 @@ function productPicker(root, onPick, { placeholder = 'Buscar producto o escanear
       variants: vs, colors: [...new Set(vs.map((v) => v.color).filter(Boolean))], available: vs.reduce((s, v) => s + (v.available ?? v.stock), 0),
     }));
   };
+  // Al escribir rápido, solo cuenta la última búsqueda (una respuesta vieja no pisa a la nueva).
+  let seq = 0;
   const search = debounce(async () => {
     const q = input.value.trim();
+    const mine = ++seq;
     if (!q) return close();
-    items = group(await api('products.list', { search: q })).slice(0, 12);
+    const found = group(await api('products.list', { search: q })).slice(0, 12);
+    if (mine !== seq || input.value.trim() !== q) return;
+    items = found;
     active = 0;
     results.classList.remove('hidden');
     draw();

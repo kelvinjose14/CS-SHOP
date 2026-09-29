@@ -32,6 +32,27 @@ function customerList(ctx, { search = '', includeInactive = false, withBalance =
     .filter((c) => !tag || c.tags.some((x) => x.toLowerCase() === String(tag).toLowerCase()));
 }
 
+// Lista corta de clientes para elegir (venta, apartado, etiquetas): nombre, teléfono, lo que debe, lo
+// vencido y el límite. Una sola consulta agrupada, sin las métricas del CRM (1.8): la venta abre al instante.
+function customerOptions(ctx, { includeInactive = false } = {}) {
+  const rows = ctx.db.all(
+    `SELECT c.id, c.name, c.phone, c.credit_limit, c.tags, c.active,
+            COALESCE(b.balance, 0) AS balance, COALESCE(b.overdue, 0) AS overdue_balance
+       FROM customers c
+       LEFT JOIN (SELECT customer_id, SUM(balance) AS balance,
+                         SUM(CASE WHEN balance > 0 AND due_date < ? THEN balance ELSE 0 END) AS overdue
+                    FROM sales WHERE status <> 'anulada' AND customer_id IS NOT NULL GROUP BY customer_id) b ON b.customer_id = c.id
+      ${includeInactive ? '' : 'WHERE c.active = 1'}
+      ORDER BY c.name`,
+    [today()]
+  );
+  return rows.map((r) => {
+    let tags = [];
+    try { tags = r.tags ? JSON.parse(r.tags) : []; } catch { tags = []; }
+    return { ...r, tags: Array.isArray(tags) ? tags : [] };
+  });
+}
+
 function customerGet(ctx, { id }) {
   const row = ctx.db.get(`SELECT c.*, ${CUSTOMER_TOTALS} FROM customers c WHERE c.id = ?`, [today(), id]);
   if (!row) throw new AppError('Cliente no encontrado.');
@@ -244,6 +265,8 @@ function create(ctx, data) {
       ledger(ctx, { direction: 'in', amount, method: p.method, category: 'venta', refType: 'venta', refId: id, description: `Venta #${id}${customer ? ' - ' + customer.name : ''}`, date: saleDate });
     }
     if (reservation) reservations.markSold(ctx, reservation.id, id);
+    // Una venta en espera que se retomó y se cobró deja de estar en espera (1.9), en la misma operación.
+    if (data.held_id) ctx.db.run('DELETE FROM held_sales WHERE id = ?', [Number(data.held_id)]);
     audit(ctx, 'registrar_venta', 'venta', id, { total, tipo: saleType, pago: paymentType, cliente: customer ? customer.name : null, descuento: discount + lineDiscounts, ...(credit ? { credito_autorizado: credit } : {}), ...(reservation ? { apartado: reservation.id } : {}) });
     return id;
   });
@@ -455,4 +478,4 @@ function receivables(ctx, { customer_id, only_open = true } = {}) {
   );
 }
 
-module.exports = { customerList, customerGet, customerSave, customerOpening, create, list, get, pay, voidPayment, createReturn, voidSale, receivables };
+module.exports = { customerList, customerOptions, customerGet, customerSave, customerOpening, create, list, get, pay, voidPayment, createReturn, voidSale, receivables };

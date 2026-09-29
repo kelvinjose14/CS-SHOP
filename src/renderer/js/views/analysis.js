@@ -87,6 +87,7 @@ App.register({
         </div>
       </div>`));
     $$('[data-go]', page).forEach((a) => (a.onclick = (e) => { e.preventDefault(); App.go(a.dataset.go); }));
+    countUp($('.dash > .stats', page));
   },
 });
 
@@ -225,6 +226,7 @@ App.register({
             <div id="ex-table"></div>
           </div>
         </div>`);
+      countUp($('.kpis', box));
       renderTable();
       $$('#ex-tabs [data-t]', box).forEach((b) => (b.onclick = () => { state.tab = b.dataset.t; renderTable(); }));
       $('#ex-stagnant', box).onchange = (e) => { state.stagnant_days = Number(e.target.value); load(); };

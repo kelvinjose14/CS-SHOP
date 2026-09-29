@@ -15,6 +15,8 @@ const executive = require('./services/executive');
 const reservations = require('./services/reservations');
 const crm = require('./services/crm');
 const terminals = require('./services/terminals');
+const held = require('./services/held');
+const insights = require('./services/insights');
 
 const ALL = ['admin', 'vendedor'];
 const ADMIN = ['admin'];
@@ -69,6 +71,7 @@ const METHODS = {
   'payables.list': [ADMIN, purchases.payables],
 
   'customers.list': [ALL, sales.customerList],
+  'customers.options': [ALL, sales.customerOptions],
   'customers.get': [ALL, sales.customerGet],
   'customers.save': [ALL, sales.customerSave],
   'customers.opening': [ADMIN, sales.customerOpening],
@@ -82,6 +85,15 @@ const METHODS = {
   'sales.void': [ADMIN, sales.voidSale],
   'sales.voidPayment': [ADMIN, sales.voidPayment],
   'receivables.list': [ALL, sales.receivables],
+  // 1.9: ventas en espera, buscador global, reposición, sin movimiento y alertas (DT-48).
+  'sales.hold': [ALL, held.hold],
+  'sales.heldList': [ALL, held.list],
+  'sales.heldGet': [ALL, held.get],
+  'sales.heldDelete': [ALL, held.remove],
+  'search.global': [ALL, insights.search],
+  'products.restock': [ADMIN, insights.restock],
+  'products.stagnant': [ADMIN, insights.stagnant],
+  'alerts.list': [ALL, insights.alerts],
 
   'expenses.list': [ADMIN, finance.expenses.list],
   'expenses.create': [ADMIN, finance.expenses.create],

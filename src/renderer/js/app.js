@@ -3,7 +3,7 @@
 
 const NAV_ORDER = [
   'dashboard', 'pos', 'sales', 'reservations',
-  'products', 'movements', 'purchases', 'suppliers',
+  'products', 'restock', 'movements', 'purchases', 'suppliers',
   'customers', 'receivables', 'payables', 'expenses', 'cash',
   'executive', 'accounting', 'cashflow', 'reports', 'audit',
   'users', 'settings',
@@ -206,11 +206,11 @@ const App = {
         .filter((r) => r.group === g && !r.hidden && this.can(r))
         .sort((a, b) => NAV_ORDER.indexOf(a.id) - NAV_ORDER.indexOf(b.id));
       if (!items.length) return '';
-      return html`<div class="nav-group"><div class="nav-title">${g}</div>${items.map((r) => html`<a href="#" data-route="${r.id}">${icon(r.icon)}<span>${r.title}</span></a>`)}</div>`;
+      return html`<div class="nav-group"><div class="nav-title">${g}</div>${items.map((r) => html`<a href="#" data-route="${r.id}" title="${r.title}">${icon(r.icon)}<span>${r.title}</span></a>`)}</div>`;
     });
     setHTML(document.body, html`
       <aside class="sidebar">
-        <div class="brand"><img src="assets/logo.png" alt="CAPS._.SHOP"></div>
+        <div class="brand"><img src="assets/logo.png" alt="CAPS._.SHOP"><button class="icon-btn side-toggle" id="side-toggle" title="Contraer o expandir el menú" aria-label="Contraer o expandir el menú">${icon('panel')}</button></div>
         <nav>${nav}</nav>
         <div class="side-user">
           <div class="avatar">${this.user.name.slice(0, 1).toUpperCase()}</div>
@@ -221,36 +221,130 @@ const App = {
       </aside>
       <main class="main">
         <header class="topbar">
-          <h1 id="page-title"></h1>
-          <div class="topbar-right" id="topbar-right"></div>
+          <div class="crumb"><small id="page-group"></small><h1 id="page-title"></h1></div>
+          <button class="topbar-search" id="gsearch" type="button" title="Buscar productos, clientes, ventas o acciones (Ctrl + K)">${icon('search')}<span>Buscar o ir a…</span><kbd>Ctrl K</kbd></button>
+          <div class="topbar-tools">
+            <div class="topbar-right" id="topbar-right"></div>
+            <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="Cambiar entre modo claro y oscuro">${icon(Theme.dark() ? 'sun' : 'moon')}</button>
+            <button class="icon-btn bell" id="bell" type="button" title="Alertas" aria-label="Alertas">${icon('bell')}<span class="bell-count hidden" id="bell-count"></span></button>
+          </div>
         </header>
         <section id="page" class="page"></section>
       </main>`);
     $$('[data-route]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); this.go(a.dataset.route); }));
     $('#btn-logout').onclick = () => this.logout();
     $('#btn-password').onclick = () => this.changePasswordDialog();
+    // Menú contraído (solo iconos): se recuerda en esta PC. En ventanas angostas empieza contraído.
+    const pref = (() => { try { return localStorage.getItem('capsshop-menu'); } catch { return null; } })();
+    if (pref === 'contraido') document.body.classList.add('side-collapsed');
+    $('#gsearch').onclick = () => commandPalette();
+    $('#bell').onclick = () => this.showAlerts();
+    $('#theme-btn').onclick = () => Theme.toggle();
+    Theme.apply();
+    this.alertsAt = 0;
+    clearInterval(this.alertsTimer);
+    this.alertsTimer = setInterval(() => this.refreshAlerts(true), 120000);
+    $('#side-toggle').onclick = () => {
+      const narrow = window.matchMedia('(max-width: 1100px)').matches;
+      const cls = narrow ? 'side-expanded' : 'side-collapsed';
+      const on = document.body.classList.toggle(cls);
+      if (!narrow) try { localStorage.setItem('capsshop-menu', on ? 'contraido' : 'abierto'); } catch { /* sin almacenamiento */ }
+    };
   },
 
   async go(id, params = {}) {
     const route = this.routes.find((r) => r.id === id);
     if (!route || !this.can(route)) return;
     this.current = { id, params };
+    const nav = (this.navSeq = (this.navSeq || 0) + 1);
     clearBigTables();
     $$('[data-route]').forEach((a) => a.classList.toggle('active', a.dataset.route === (route.navAs || id)));
     $('#page-title').textContent = route.title;
-    setHTML($('#topbar-right'), '');
-    const page = $('#page');
-    page.className = `page page-${id}`;
-    setHTML(page, html`<div class="loading">Cargando…</div>`);
+    const navRoute = this.routes.find((r) => r.id === (route.navAs || id));
+    $('#page-group').textContent = (navRoute && navRoute.group) || '';
+    // Una página nueva en cada cambio de pantalla: si el usuario pasa rápido por varias, lo que termina
+    // de cargar una pantalla anterior queda en la página vieja (fuera de la vista) y no se mezcla.
+    const old = $('#page');
+    const page = el(html`<section id="page" class="page page-${id}"></section>`);
+    old.replaceWith(page);
+    // Si la pantalla tarda, un esqueleto con la forma de la página (no un "Cargando…" en blanco).
+    const main = page.parentElement;
+    $$('.page-skeleton', main).forEach((x) => x.remove());
+    const skeleton = setTimeout(() => {
+      if (this.navSeq !== nav || !page.isConnected) return;
+      main.appendChild(el(html`<div class="page-skeleton" aria-hidden="true"><div class="sk-row"><div class="sk sk-bar"></div></div><div class="sk-row"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div><div class="sk sk-table"></div></div>`));
+    }, 120);
     try {
-      page.innerHTML = '';
       await route.render(page, params);
     } catch (err) {
       console.error(err);
-      if (!SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') setHTML(page, html`<div class="error-box">${err.message}</div>`);
+      if (this.navSeq === nav && !SESSION_ERRORS.includes(err.code) && err.code !== 'OFFLINE') {
+        setHTML(page, html`<div class="empty-state">${html`<div class="es-icon">${icon('alert')}</div>`}<b>No se pudo abrir esta pantalla</b><p>${err.message}</p><button class="btn" type="button" id="page-retry">Intentar de nuevo</button></div>`);
+        const retry = $('#page-retry', page);
+        if (retry) retry.onclick = () => this.go(id, params);
+      }
+    } finally {
+      clearTimeout(skeleton);
     }
+    if (this.navSeq !== nav) return;
+    $$('.page-skeleton', main).forEach((x) => x.remove());
+    if (!reduceMotion()) page.classList.add('page-enter');
     this.refreshCashBadge();
     this.refreshUpdateBadge();
+    this.refreshAlerts();
+  },
+
+  /* ---------- Alertas (la campanita, 1.9) ---------- */
+  // Se piden al cambiar de pantalla (a lo sumo cada 30 s) y cada 2 minutos. El número cuenta las que el
+  // usuario todavía no vio; una alerta vuelve a ser nueva si cambia (por ejemplo, un agotado más).
+  seenKey() { return `capsshop-alertas-${this.user ? this.user.id : 0}`; },
+  seen() { try { return new Set(JSON.parse(localStorage.getItem(this.seenKey()) || '[]')); } catch { return new Set(); } },
+  async refreshAlerts(force = false) {
+    if (!this.user || !$('#bell')) return;
+    if (!force && Date.now() - this.alertsAt < 30000 && this.alerts) return this.drawBell();
+    this.alertsAt = Date.now();
+    try {
+      this.alerts = await api('alerts.list', null, { silent: true });
+      this.drawBell();
+    } catch { /* sin sesión o sin conexión: se intenta después */ }
+  },
+  drawBell() {
+    const count = $('#bell-count');
+    if (!count || !this.alerts) return;
+    const seen = this.seen();
+    const fresh = this.alerts.filter((a) => !seen.has(a.sig));
+    count.textContent = fresh.length > 9 ? '9+' : String(fresh.length);
+    count.classList.toggle('hidden', !fresh.length);
+    count.classList.toggle('urgent', fresh.some((a) => a.level === 'danger'));
+    $('#bell').title = this.alerts.length ? `${this.alerts.length} ${this.alerts.length === 1 ? 'alerta' : 'alertas'}` : 'Sin alertas';
+  },
+  async showAlerts() {
+    const old = $('.alerts-panel');
+    if (old) return old.remove();
+    await this.refreshAlerts(true);
+    const list = this.alerts || [];
+    const seen = this.seen();
+    const panel = el(html`
+      <div class="alerts-panel" role="dialog" aria-label="Alertas">
+        <div class="ap-head"><b>Alertas</b><small class="muted">${list.length ? `${list.length} ${list.length === 1 ? 'activa' : 'activas'}` : ''}</small></div>
+        ${list.length ? html`<div class="ap-list">${list.map((a, i) => html`
+          <button type="button" class="ap-item ${a.level} ${seen.has(a.sig) ? '' : 'new'}" data-i="${i}">
+            <span class="ap-icon">${icon(a.icon || 'alert')}</span>
+            <span class="ap-text"><b>${a.title}</b><small>${a.detail}${a.amount ? ` · ${Fmt.money(a.amount)}` : ''}</small></span>
+            ${icon('chevron')}
+          </button>`)}</div>`
+          : html`<div class="empty-state"><div class="es-icon">${icon('check')}</div><b>Todo en orden</b><p>No hay alertas por ahora.</p></div>`}
+      </div>`);
+    document.body.appendChild(panel);
+    // Abrir la lista las da por vistas (el número se apaga hasta que algo cambie).
+    try { localStorage.setItem(this.seenKey(), JSON.stringify(list.map((a) => a.sig))); } catch { /* sin almacenamiento */ }
+    this.drawBell();
+    $$('[data-i]', panel).forEach((b) => (b.onclick = () => { const a = list[Number(b.dataset.i)]; panel.remove(); this.go(a.route, a.params || {}); }));
+    const away = (e) => {
+      if (!panel.isConnected) return document.removeEventListener('mousedown', away, true);
+      if (!panel.contains(e.target) && !e.target.closest('#bell')) { panel.remove(); document.removeEventListener('mousedown', away, true); }
+    };
+    document.addEventListener('mousedown', away, true);
   },
 
   // Aviso de versión nueva, solo para el administrador (él decide cuándo instalar).
@@ -259,10 +353,13 @@ const App = {
     try {
       const u = await window.capsApi.updates.status();
       const box = $('#topbar-right');
-      if (!box || $('.update-pill', box) || !['available', 'downloading', 'ready', 'scheduled'].includes(u.status)) return;
+      if (!box) return;
+      const old = $('.update-pill', box);
+      if (!['available', 'downloading', 'ready', 'scheduled'].includes(u.status)) { if (old) old.remove(); return; }
       const pill = el(html`<button class="cash-pill update-pill" title="Hay una versión nueva">${icon('download')} ${u.status === 'scheduled' ? `Versión ${u.version} al cerrar` : `Versión ${u.version} disponible`}</button>`);
+      if (old && old.outerHTML === pill.outerHTML) return;
       pill.onclick = () => this.go('settings');
-      box.prepend(pill);
+      if (old) old.replaceWith(pill); else box.prepend(pill);
     } catch { /* sin actualizaciones */ }
   },
 
@@ -275,13 +372,15 @@ const App = {
       const st = await api('cash.status', null, { silent: true });
       const box = $('#topbar-right');
       if (!box) return;
-      const old = $('.cash-pill:not(.update-pill)', box);
-      if (old) old.remove();
-      const pill = el(st.open
+      const markup = st.open
         ? html`<button class="cash-pill open" title="Caja abierta">${icon('cash')} Caja abierta · ${Fmt.money(st.open.expected)}</button>`
-        : html`<button class="cash-pill closed" title="Caja cerrada">${icon('cash')} Caja cerrada</button>`);
+        : html`<button class="cash-pill closed" title="Caja cerrada">${icon('cash')} Caja cerrada</button>`;
+      const old = $('.cash-pill:not(.update-pill)', box);
+      // Igual que antes: no se toca (sin parpadeo al cambiar de pantalla).
+      if (old && old.outerHTML === el(markup).outerHTML) return;
+      const pill = el(markup);
       pill.onclick = () => this.go('cash');
-      box.appendChild(pill);
+      if (old) old.replaceWith(pill); else box.appendChild(pill);
     } catch { /* sin sesión */ }
   },
 
@@ -308,6 +407,100 @@ const App = {
     });
   },
 };
+
+/* ---------- Buscador global y acciones rápidas (Ctrl + K, 1.9) ---------- */
+// Una sola barra: escriba para buscar gorras, clientes, ventas (por número o cliente) y proveedores, o
+// elija una acción ("Nueva venta", "Nuevo producto"…). Flechas para moverse, Enter para abrir, Esc para cerrar.
+function paletteActions() {
+  const admin = App.isAdmin();
+  const acts = [
+    { label: 'Nueva venta', hint: 'Punto de venta', icon: 'cart', run: () => App.go('pos') },
+    admin && { label: 'Nuevo producto', hint: 'Inventario', icon: 'plus', run: async () => { await App.go('products'); productEditor(null, () => App.reload()); } },
+    { label: 'Nuevo cliente', hint: 'Clientes', icon: 'users', run: () => customerForm(null, () => App.current && App.current.id === 'customers' && App.reload()) },
+    admin && { label: 'Nueva compra', hint: 'Compras', icon: 'truck', run: () => App.go('purchase-new') },
+    admin && { label: 'Qué comprar (reposición)', hint: 'Inventario', icon: 'restock', run: () => App.go('restock') },
+    { label: 'Nuevo apartado', hint: 'Apartados', icon: 'bookmark', run: async () => { await App.go('reservations'); const b = $('#rs-new'); if (b) b.click(); } },
+  ].filter(Boolean);
+  const routes = App.routes.filter((r) => !r.hidden && App.can(r)).map((r) => ({ label: `Ir a ${r.title}`, hint: r.group, icon: r.icon, run: () => App.go(r.id) }));
+  return [...acts, ...routes];
+}
+
+function commandPalette() {
+  if ($('.palette-back.modal-back')) return; // la que se está yendo (animación) no cuenta
+  const acts = paletteActions();
+  const box = el(html`
+    <div class="modal-back palette-back">
+      <div class="palette" role="dialog" aria-label="Buscar">
+        <div class="pal-input">${icon('search')}<input id="pal-q" placeholder="Buscar gorra, cliente, venta (V-123), proveedor o una acción…" autocomplete="off"><kbd>Esc</kbd></div>
+        <div class="pal-list" id="pal-list"></div>
+        <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Ctrl K</kbd> abrir desde cualquier pantalla</span></div>
+      </div>
+    </div>`);
+  document.body.appendChild(box);
+  const input = $('#pal-q', box);
+  const listEl = $('#pal-list', box);
+  let items = [];
+  let active = 0;
+  let seq = 0;
+  const close = () => { document.removeEventListener('keydown', onKey, true); leave(box); };
+  const reload = () => App.reload();
+  const norm = (x) => plainText(x);
+  const draw = (groups) => {
+    items = groups.flatMap((g) => g.items);
+    active = Math.min(active, Math.max(0, items.length - 1));
+    let i = 0;
+    setHTML(listEl, items.length ? groups.filter((g) => g.items.length).map((g) => html`
+      <div class="pal-group">${g.title}</div>
+      ${g.items.map((it) => html`<div class="pal-item ${i === active ? 'active' : ''}" data-i="${i++}">
+        <span class="pal-icon">${it.thumb || icon(it.icon || 'chevron')}</span>
+        <span class="pal-text"><b>${it.label}</b>${it.hint ? html`<small>${it.hint}</small>` : ''}</span>
+        ${it.side ? html`<span class="pal-side">${it.side}</span>` : ''}
+      </div>`)}`) : html`<div class="picker-empty">Sin resultados para "${input.value.trim()}".</div>`);
+    $$('[data-i]', listEl).forEach((d) => {
+      d.onmousemove = () => { if (active !== Number(d.dataset.i)) { active = Number(d.dataset.i); mark(); } };
+      d.onclick = () => pick(items[Number(d.dataset.i)]);
+    });
+  };
+  const mark = () => $$('[data-i]', listEl).forEach((d) => d.classList.toggle('active', Number(d.dataset.i) === active));
+  const pick = (it) => { if (!it) return; close(); it.run(); };
+  const localActs = (q) => acts.filter((a) => !q || norm(`${a.label} ${a.hint}`).includes(q)).slice(0, q ? 6 : 8);
+  const search = debounce(async () => {
+    const raw = input.value.trim();
+    const q = norm(raw);
+    const mine = ++seq;
+    const groups = [{ title: 'Acciones', items: localActs(q) }];
+    if (raw.length < 2) { active = 0; return draw(groups); }
+    const r = await api('search.global', { q: raw }, { silent: true }).catch(() => null);
+    if (mine !== seq || !r) return;
+    groups.push(
+      { title: 'Productos', items: r.products.map((p) => ({ label: p.name, hint: [p.brand, p.model, p.color, p.size, p.sku].filter(Boolean).join(' · '), thumb: productThumb(p, 28), side: html`${Fmt.money(p.price_retail)}<small class="${(p.available ?? p.stock) <= 0 ? 'text-danger' : ''}">Disp. ${p.available ?? p.stock}</small>`, run: () => productDetail(p.id, reload) })) },
+      { title: 'Clientes', items: r.customers.map((c) => ({ label: c.name, hint: c.phone || '', icon: 'user', run: () => customerDetail(c.id, reload) })) },
+      { title: 'Ventas', items: r.sales.map((x) => ({ label: `${Fmt.saleNo(x.id)}${x.customer_name ? ` · ${x.customer_name}` : ''}`, hint: `${Fmt.date(x.date)} · ${STATUS_LABELS[x.status] || x.status}`, icon: 'receipt', side: Fmt.money(x.total), run: () => saleDetail(x.id, reload) })) },
+      { title: 'Proveedores', items: r.suppliers.map((x) => ({ label: x.name, hint: x.phone || '', icon: 'factory', run: () => supplierDetail(x.id, reload) })) },
+    );
+    groups[0].items = groups[0].items.slice(0, 3);
+    active = 0;
+    draw(groups);
+  }, 200);
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, items.length - 1); mark(); scrollActive(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); mark(); scrollActive(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(items[active]); }
+  };
+  const scrollActive = () => { const d = $('.pal-item.active', listEl); if (d) d.scrollIntoView({ block: 'nearest' }); };
+  document.addEventListener('keydown', onKey, true);
+  box.addEventListener('mousedown', (e) => { if (e.target === box) close(); });
+  input.addEventListener('input', search);
+  draw([{ title: 'Acciones', items: localActs('') }]);
+  input.focus();
+}
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k' && App.user && $('#gsearch')) {
+    e.preventDefault();
+    commandPalette();
+  }
+});
 
 // Cabecera de página con botones de acción.
 function toolbar(page, { left = '', right = '' } = {}) {

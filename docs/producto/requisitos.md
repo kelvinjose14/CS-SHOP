@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.7.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo, el inventario avanzado y el CRM de clientes (O7). Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.9.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo, el inventario avanzado y el CRM de clientes (O7). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 
@@ -18,7 +18,7 @@ Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.m
 |---|---:|---:|---:|---:|
 | Funcionales (pedido original) | 103 | 102 | 1 | 0 |
 | No funcionales | 14 | 12 | 1 | 1 |
-| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31, DT-35, DT-36 y DT-45) | 22 | 22 | 0 | 0 |
+| Nuevos detectados (aprobados, DT-24, DT-25, DT-28, DT-30, DT-31, DT-35, DT-36, DT-45 y DT-48) | 26 | 26 | 0 | 0 |
 
 
 > Lo funcional pedido y los requisitos nuevos están completos. **Lo que separa al sistema de producción** es: el instalador firmado (falta el certificado, DT-18) y la prueba en la tienda con Windows 10/11 y datos reales (O6).
@@ -223,12 +223,12 @@ Criterio de aceptación: cada reporte se genera por período cuando aplica, y se
 | RNF-10 | Actualizaciones | Instalar una versión nueva sin perder datos, idealmente automática | Cumple: busca sola y avisa; el administrador instala con un botón, en silencio: ahora (se cierra y vuelve a abrir solo) o al cerrar el programa (DT-19, DT-44). Instalar encima conserva los datos (lo prueba el CI) |
 | RNF-11 | Diagnóstico de errores | Los errores quedan en un archivo de registro para el soporte | Cumple: registro de 14 días y **Guardar diagnóstico** en Configuración → Soporte |
 | RNF-12 | Español y pesos dominicanos | Interfaz en español, formato RD$ | Cumple |
-| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 104 pruebas de lógica, 28 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
+| RNF-13 | Pruebas automáticas | Lógica e interfaz probadas en cada cambio (CI) | Cumple: 108 pruebas de lógica, 33 de interfaz con la app real, rendimiento y el instalador, en Linux y Windows |
 | RNF-14 | Documentación | Manual de uso, requisitos, reglas y documentación técnica | Cumple con este documento |
 
 ## 3. Requisitos nuevos detectados
 
-Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md). RF-NUE-15 a 21 los pidió el dueño (DT-36, [O7](objetivos.md#o7-gestión-avanzada)), y RF-NUE-22 también (DT-45).
+Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicieron en [O5](objetivos.md#o5-brechas-funcionales), salvo RF-NUE-09, que se hizo en O4. RF-NUE-10 lo pidió el dueño para el piloto (DT-25, O6). RF-NUE-11 a 14 salieron de la [auditoría de producción](../tecnico/auditoria.md). RF-NUE-15 a 21 los pidió el dueño (DT-36, [O7](objetivos.md#o7-gestión-avanzada)), y RF-NUE-22 a 26 también (DT-45, DT-48).
 
 | ID | Requisito | Criterio de aceptación | Estado | Dónde |
 |---|---|---|---|---|
@@ -254,6 +254,10 @@ Surgieron al revisar el sistema. RF-NUE-01 a 09 se aprobaron (DT-24) y se hicier
 | RF-NUE-20 | Segmentos y cliente VIP (DT-41, DT-42) | Cada cliente es nuevo, frecuente, ocasional, en riesgo, perdido o sin compras; VIP automático por lo comprado en 12 meses, o a mano (solo el administrador); etiquetas libres; se filtra por segmento, VIP y etiqueta | Cumple (1.6.0) | **Clientes** |
 | RF-NUE-21 | Cumpleaños y listas para contactar (DT-42) | Cumpleaños (día y mes) en la ficha; cumpleaños de los próximos 30 días y de la semana en el Inicio; copiar los teléfonos de la lista filtrada | Cumple (1.6.0) | Clientes → **Cumpleaños**, **Copiar teléfonos**; Inicio |
 | RF-NUE-22 | Catálogos de marcas, modelos, categorías y tallas; formulario simple; variante al vender (DT-45, DT-46) | Marca, modelo y categoría de listas con 5 opciones al empezar y "+ Crear nueva marca" / "nuevo modelo" / "nueva categoría", que guarda, elige y no repite (sin importar mayúsculas ni espacios); tallas con un clic; sin colores; montos con 2 decimales como máximo; la rueda del mouse no cambia los números; se renombran y desactivan en Configuración; lo que ya estaba escrito pasa a las listas al actualizar. Al vender un producto con varias tallas se elige la talla y se ve lo disponible; solo baja esa | Cumple (1.7.0) | Inventario → **Nuevo producto**; Configuración → **Catálogo de productos**; Nueva venta |
+| RF-NUE-23 | Ventas en espera y varios carritos (DT-48) | Un carrito se deja en espera (botón o F4) y se atiende a otro cliente; los carritos en espera se ven arriba de la venta y se retoman con un clic, con el cliente, el tipo, el descuento, la nota y las líneas, y la existencia de hoy. Cobrarla la quita de la espera; también se puede descartar. Se guardan en la base: no se pierden al cerrar y se ven desde otras PCs | Cumple (1.9.0) | Nueva venta → **Poner en espera**, barra **Carritos** |
+| RF-NUE-24 | Buscador global y acciones rápidas (DT-48) | Una barra (arriba, o Ctrl + K desde cualquier pantalla) busca productos, clientes, ventas (por número o cliente) y proveedores (solo el administrador), y ofrece acciones como Nueva venta, Nuevo producto, Nuevo cliente o Nueva compra; se usa con el teclado | Cumple (1.9.0) | Barra superior **Buscar o ir a…**, Ctrl + K |
+| RF-NUE-25 | Reposición según el ritmo de venta y mercancía sin movimiento (DT-48) | Por cada gorra: vendidas en los últimos 15/30/60/90 días, por semana, para cuántos días alcanza y cuántas comprar para cubrir 15 a 60 días más su mínimo; "Crear compra con estas cantidades" abre la compra. Sin movimiento: gorras con existencia que no se venden hace 30, 60 o 90 días, con el dinero parado al costo | Cumple (1.9.0) | Inventario → **Reposición** |
+| RF-NUE-26 | Alertas del sistema (DT-48) | Campanita en la barra superior con agotados, stock bajo, crédito vencido, clientes que deben, apartados vencidos, compras vencidas o por vencer, sin movimiento en 60 días y depósitos por verificar; cuenta las nuevas, cada una lleva a su pantalla; el vendedor no ve las de proveedores ni costos | Cumple (1.9.0) | Barra superior, **campanita** |
 
 ## 4. Fuera de alcance
 

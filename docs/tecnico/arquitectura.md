@@ -99,6 +99,18 @@ Carpeta de datos: `%APPDATA%\CAPS Shop\data`. En pruebas se cambia con la variab
 | `fotos/` | Imágenes de productos (JPEG reducido a 600 px). La base guarda solo el nombre del archivo |
 | `respaldos/` | Copia diaria automática al abrir el programa (`VACUUM INTO`, consistente); se conservan 30. Solo en la PC principal |
 
+## Interfaz: diseño y rendimiento (1.8, DT-47)
+
+- **Sistema de diseño en `styles.css`:** colores, tipografía, radios, sombras y tiempos de animación en variables (`:root`). Botón, campo, tarjeta, tabla, ventana, aviso, estado vacío y esqueleto de carga comparten esas variables. Las animaciones duran 120–260 ms, usan `transform` y `opacity`, y se apagan con la opción de Windows "menos movimiento" (`prefers-reduced-motion`).
+- **Tablas (`table()` en `lib.js`):**
+  - Se dibujan las primeras 60 filas y el resto al bajar (`IntersectionObserver`), hasta 1,000. Más allá sigue "Mostrar todas". Los totales, el Excel y el PDF usan todas las filas.
+  - Al volver a cargar una tabla que ya está en pantalla, `setHTML` cambia solo las celdas distintas (por la clave `data-key`), y la celda modificada se ilumina un momento.
+- **Caché en memoria (`api()`):** los datos que cambian poco (`catalog.list`, `customers.options`) se guardan 60 s. Cualquier operación del mismo módulo que cambia datos los descarta.
+- **Navegación:** cada pantalla se dibuja en una página nueva. Si se cambia rápido de pantalla, lo que termina de cargar una anterior no se mezcla. Si una pantalla tarda más de 120 ms, se ve un esqueleto con su forma; al terminar entra con un fundido corto. Un error muestra el mensaje y "Intentar de nuevo" en la página, sin trabar el menú.
+- **Punto de venta:** el carrito es una fila por línea. Agregar, cambiar la cantidad o quitar toca solo esa fila, y todo se calcula en la pantalla hasta cobrar. La lista de clientes sale de `customers.options`: una consulta agrupada, 5 veces más rápida que `customers.list`.
+- **Modo oscuro (DT-49):** `Theme` en `lib.js` pone `data-theme` en `<html>` antes de dibujar. `styles.css` redefine las variables bajo `:root[data-theme="dark"]` y fuerza los colores claros al imprimir.
+- **Formatos:** `Intl.NumberFormat` se crea una sola vez. Las fotos de los productos cargan al aparecer (`loading="lazy"`).
+
 ## Seguridad
 
 - **Ventana:** `contextIsolation`, `sandbox` y sin `nodeIntegration`. La interfaz solo ve `window.capsApi`.
