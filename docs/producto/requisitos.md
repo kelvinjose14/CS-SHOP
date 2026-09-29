@@ -8,7 +8,7 @@ Especificación de lo que debe hacer CAPS Shop. Parte del pedido original del cl
 - **Falta**: no está hecho.
 - **Sin verificar**: no se ha medido.
 
-Estado a la versión **1.6.1**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo, el inventario avanzado y el CRM de clientes (O7). Actualice este documento cada vez que cambie algo.
+Estado a la versión **1.7.0**, que incluye los objetivos O2 (varias computadoras en red), O3 (calidad para producción), O4 (instalación y operación), O5 (brechas funcionales), lo preparado para el piloto (O6), los controles de la [auditoría de producción](../tecnico/auditoria.md) el dashboard ejecutivo, el inventario avanzado y el CRM de clientes (O7). Actualice este documento cada vez que cambie algo.
 
 Las reglas exactas de cálculo están en [Reglas de negocio](reglas-de-negocio.md). El plan para lo que falta está en [Objetivos](objetivos.md).
 

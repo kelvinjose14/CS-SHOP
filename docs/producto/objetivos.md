@@ -7,7 +7,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.6.1)
+## Estado actual (versión 1.7.0)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
@@ -26,6 +26,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - **Inventario avanzado**: modelos con colores y tallas, apartados con stock disponible y conteo cíclico sugerido (1.5.0).
 - **CRM de clientes**: ficha con compras, frecuencia y lo que más compra, segmentos, VIP, etiquetas, notas y cumpleaños (1.6.0).
 - **Excel con formato** en todas las exportaciones: la franja de la tienda con el período, montos y fechas como números, totales y filtros (1.6.1, DT-43).
+- **Productos con un formulario simple:** marca, modelo y categoría de listas cortas con "+ Crear…", tallas con un clic y existencia por talla; montos con 2 decimales y la rueda del mouse ya no cambia los números. Las actualizaciones se instalan solas, ahora o al cerrar el programa (1.7.0, DT-44 a DT-46).
 
 **Lo que NO está listo para producción:**
 

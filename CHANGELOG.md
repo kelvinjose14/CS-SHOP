@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.7.0] - 2026-09-29
+
+Productos con un formulario simple (marca, modelo, categoría y tallas) y actualizaciones sin ventanas de instalación. Se instala encima de la 1.6.1 o desde Configuración → Actualizaciones; la base pasa sola a la versión 10 sin perder datos.
+
 ### Agregado
 - **Nuevo producto, más simple** (RF-NUE-22, DT-45, DT-46, [manual 4.2](docs/manual/04-inventario.md#42-crear-un-producto-administrador)): Nombre; Marca y Modelo; Categoría y Tallas; Costo y Precio detalle; Precio por mayor y Stock mínimo (empieza en 2); Notas.
   - **Marca**, **Modelo** y **Categoría** son listas que empiezan con pocas opciones (New Era, Mitchell & Ness, Goorin Bros., Nike, Adidas; 59FIFTY, 9FIFTY, 9FORTY, 39THIRTY, 9TWENTY; Fitted, Snapback, Trucker, Ajustable, Dad Hat). **+ Crear nueva marca**, **+ Crear nuevo modelo** y **+ Crear nueva categoría** la guardan, la dejan elegida y sale en los próximos productos. No se repiten: "new era" y "NEW  ERA" son la misma. El modelo no depende de la marca.
@@ -210,6 +214,7 @@ Primera versión. Funciona en una sola computadora ([límites](docs/tecnico/arqu
 - **Respaldos:** automáticos diarios, manuales y restauración.
 - **Instalador:** para Windows, generado por CI y publicado en GitHub Releases.
 
+[1.7.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.7.0
 [1.6.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.1
 [1.6.0]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.6.0
 [1.3.1]: https://github.com/kelvinjose14/CS-SHOP/releases/tag/v1.3.1
