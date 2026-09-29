@@ -33,7 +33,7 @@ Menú **Inventario** → **Inventario**.
 
 ## 4.2 Crear un producto (administrador)
 
-**Inventario** → **Nuevo producto**. Es un formulario corto:
+**Inventario** → **Nuevo producto**. Es un formulario corto, en cuatro secciones: **Información general**, **Inventario**, **Precios** (muestra el margen al detalle mientras escribe) y **Otros** (foto y notas):
 
 ![Nuevo producto](img/producto-variantes.jpg)
 

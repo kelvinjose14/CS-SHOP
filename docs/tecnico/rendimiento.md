@@ -116,7 +116,28 @@ Con la migración 8. Las métricas del CRM de todos los clientes salen de una so
 | Cumpleaños de los próximos 30 días | 8.3 |
 | Inicio (administrador / vendedor), con los cumpleaños de la semana | 27.5 / 20.7 |
 
+## Interfaz de la 1.8 (29/09/2026)
+
+Hasta aquí se medía la base. En la 1.8 se midió también cuánto tarda **la pantalla** en abrir, con la aplicación real sobre la base de 3 años (Electron en Linux sin aceleración gráfica, más lento que una PC de la tienda). La base ya respondía en menos de 50 ms; lo que tardaba era dibujar.
+
+| Pantalla | Antes (ms) | Después (ms) | Elementos dibujados, antes → después |
+|---|---:|---:|---|
+| Nueva venta | 95 | 12 | Clientes: `customers.options` en vez de `customers.list` (32 → 5 ms) |
+| Inventario | 264 | 91 | 3,118 → ~1,200 (60 filas de entrada) |
+| Caja (historial de cierres) | 100 | 34 | 15,038 → 1,840 |
+| Movimientos de inventario | 16 | 3 | 14,054 → 1,736 |
+| Clientes | 80 | 60 | 6,665 → 2,038 |
+
+Lo que se hizo:
+- Tablas por partes: 60 filas de entrada y el resto al bajar.
+- Formatos de número creados una sola vez.
+- Sin el selector `:has()` en elementos de tabla.
+- Carrito de venta por línea.
+- Caché de catálogos y de clientes.
+
+La operación **Clientes para elegir (venta, apartado)** agregada a `npm run test:perf` tarda 5.9 ms.
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.
-- **Historial de movimientos y listas largas:** desde la 1.2.0 traen todas las filas del período. La pantalla dibuja las primeras 1,000 y ofrece **Mostrar todas**; los totales, el CSV y el PDF usan todas.
+- **Historial de movimientos y listas largas:** desde la 1.2.0 traen todas las filas del período. La pantalla dibuja las primeras 60, agrega más al bajar hasta 1,000 y ofrece **Mostrar todas**; los totales, el CSV y el PDF usan todas.

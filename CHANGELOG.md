@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Cambiado
+- **Interfaz más rápida y moderna** (DT-47). Todo funciona igual; cambia cómo se ve y cuánto tarda:
+  - **Diseño unificado:** los mismos colores, letras, bordes y sombras en botones, campos, tarjetas, tablas, ventanas y avisos. Los colores fuertes quedan para acciones, estados y alertas.
+  - **Menú lateral contraíble** (solo iconos, con el nombre al pasar el mouse); se recuerda en cada PC. En la ventana más chica empieza contraído. Arriba se ve la sección y el nombre de la pantalla.
+  - **Animaciones cortas y suaves:** ventanas que aparecen y se van con un fundido, avisos con ✓ o ✗, líneas del carrito que entran y salen, el total que "late" al cambiar, los indicadores del Inicio que cuentan hasta su valor, barras del gráfico que crecen. Con "menos movimiento" de Windows se apagan.
+  - **Tablas más ligeras:** las listas largas muestran las primeras filas al instante y cargan el resto al bajar. Al editar un producto cambia solo su fila, que se ilumina un momento.
+  - **Nueva venta al instante:** agregar una gorra, cambiar la cantidad o quitarla toca solo esa línea, sin redibujar el carrito. Muestra cuántos artículos lleva. La lista de clientes se abre 5 veces más rápido.
+  - **Nuevo producto por secciones:** Información general, Inventario, Precios (con el margen al detalle en vivo) y Otros (foto y notas).
+  - **Cargas y errores:** si una pantalla tarda, se ve su forma mientras carga, en vez de una página en blanco. Si falla, un mensaje con "Intentar de nuevo". Las listas vacías explican qué hacer ("No hay productos todavía" con el botón para crear el primero).
+  - Medido con 3 años de datos: Nueva venta abre en 12 ms (antes 95), Inventario en 91 ms (antes 264), Caja en 34 ms (antes 100). Movimientos y Caja dibujan 1,700 elementos en vez de 14,000.
+
 ## [1.7.0] - 2026-09-29
 
 Productos con un formulario simple (marca, modelo, categoría y tallas) y actualizaciones sin ventanas de instalación. Se instala encima de la 1.6.1 o desde Configuración → Actualizaciones; la base pasa sola a la versión 10 sin perder datos.

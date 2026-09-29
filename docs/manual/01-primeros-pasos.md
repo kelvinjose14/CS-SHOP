@@ -41,6 +41,8 @@ El sistema viene con dos usuarios:
 
 Para cambiar la contraseña más adelante, use el ícono de persona al pie del menú izquierdo. Para salir, use el ícono de salida al lado.
 
+El botón que está al lado del logo **contrae el menú**: quedan solo los iconos (al pasar el mouse se ve el nombre) y la pantalla gana espacio. Púlselo otra vez para abrirlo. Cada PC recuerda cómo lo dejó. Si la ventana es chica, el menú empieza contraído.
+
 ## 1.4 Configurar el negocio
 
 Vaya a **Configuración** (menú **Sistema**).

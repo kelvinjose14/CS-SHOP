@@ -61,7 +61,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `network.test.js` | Dos instancias: principal y conectada, venta, caja de la otra PC, fotos por la red, sin conexión y reconexión |
 | `setup.test.js` | Instalación nueva en la ventana más pequeña; cambio obligatorio de contraseña; copia y restauración; diagnóstico sin secretos; fotos que faltan; copia fuera de la PC y aviso del Inicio |
 | `o5.test.js` | Depósito al banco, saldo inicial, aportes, importar desde CSV, etiquetas, impresora de recibos, historial en español y recuperar la contraseña con el código |
-| `auditoria.test.js` | Tablas de más de 1,000 filas (aviso, totales y "Mostrar todas"), anular un movimiento de caja y un abono, y un producto sin precio en la venta |
+| `auditoria.test.js` | Tablas grandes: 60 filas de entrada y el resto al bajar, aviso a partir de 1,000, totales y "Mostrar todas", anular un movimiento de caja y un abono, y un producto sin precio en la venta |
 | `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
 | `controles.test.js` | Motivo al abrir la caja, depósitos por verificar desde el aviso del Inicio, crédito autorizado por el administrador, compra a costo 0 confirmada, cliente con deuda que no se desactiva, CSV sin fórmulas, ninguna pantalla desbordada a 1,100 px, navegación bloqueada, y copia externa con contraseña y su restauración |
 | `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
