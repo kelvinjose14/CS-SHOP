@@ -1,14 +1,13 @@
 # 6. Clientes y cobros
 
-**Para qué sirve:** conocer a los clientes (qué compran, cada cuánto y quién dejó de venir), vender a crédito y controlar quién debe, cuánto y cuándo vence.
+**Para qué sirve:** registrar a los clientes, vender a crédito y controlar quién debe, cuánto y cuándo vence.
 
 **Quién:**
 
 | Acción | Vendedor | Administrador |
 |---|:---:|:---:|
-| Registrar y editar clientes, cumpleaños, etiquetas y notas de seguimiento | ✔ | ✔ |
-| Ver la ficha del cliente (compras, gasto, frecuencia, lo que más compra) | ✔ sin costos ni utilidad | ✔ |
-| Marcar o quitar el VIP a mano | ✘ | ✔ |
+| Registrar y editar clientes | ✔ | ✔ |
+| Ver la ficha del cliente (datos, crédito, compras y pagos) | ✔ sin costos ni utilidad | ✔ |
 | Desactivar o reactivar clientes y ponerles límite de crédito | ✘ | ✔ |
 | Autorizar una venta a crédito que pasa el límite o a quien tiene deuda vencida | ✘ | ✔ |
 | Vender a crédito | ✔ | ✔ |
@@ -21,26 +20,9 @@ Menú **Finanzas** → **Clientes**.
 
 ![Clientes](img/clientes.jpg)
 
-- **Nuevo cliente:** **Nombre** (obligatorio), **Teléfono**, **Cédula / RNC**, **Correo**, **Dirección**, **Cumpleaños** (día y mes, por ejemplo 15/08), **Etiquetas** (separadas por coma: "mayorista, Santiago") y **Notas**. También se puede crear desde **Nueva venta** con el botón **+** junto al cliente.
-- La lista muestra de cada cliente su **segmento**, cuántas **compras** hizo, el **gasto total**, el **ticket promedio**, la **última compra** (y hace cuántos días), lo que **debe** y su **cumpleaños**. La ★ marca a los VIP; debajo del nombre van sus etiquetas.
-- Arriba se filtra por **segmento** (con cuántos hay en cada uno) y por **etiqueta**; el buscador también encuentra por etiqueta.
-- **Cumpleaños** muestra quién cumple en los próximos 30 días. **Copiar teléfonos** copia los teléfonos de los clientes que se están viendo, para pegarlos en WhatsApp o en una lista de difusión. **Exportar** los guarda en Excel con todos los datos.
+- **Nuevo cliente:** **Nombre** (obligatorio), **Teléfono**, **Cédula / RNC**, **Correo**, **Dirección** y **Notas**. También se puede crear desde **Nueva venta** con el botón **+** junto al cliente.
+- La lista muestra de cada cliente su teléfono, su cédula o RNC, lo que **debe** (en rojo si está vencido) y su **límite de crédito**. El buscador encuentra por nombre, teléfono o cédula. **Exportar** la guarda en Excel.
 - Al pulsar un cliente se abre su **ficha** ([ver abajo](#la-ficha-del-cliente)).
-
-**Segmentos** (el sistema los calcula solo, con las ventas que no son saldos iniciales):
-
-| Segmento | Quién es |
-|---|---|
-| **Nuevo** | Empezó a comprar en los últimos 30 días y todavía no tiene 3 compras en el año |
-| **Frecuente** | 3 compras o más en los últimos 12 meses |
-| **Ocasional** | Compra de vez en cuando |
-| **En riesgo** | Lleva sin comprar más del doble de lo que normalmente tarda entre compras (al menos 45 días) |
-| **Perdido** | Lleva sin comprar más del triple de lo normal (al menos 90 días) |
-| **Sin compras** | Registrado, pero todavía no ha comprado |
-
-**VIP:** el cliente que compró **RD$ 25,000 o más en los últimos 12 meses** (se cambia en **Configuración** → **Cliente VIP**; 0 = sin VIP automático). El administrador puede marcarlo a mano en **Editar** → **Cliente VIP**: **Automático**, **Sí, siempre** o **No**.
-
-> Para recuperar clientes: filtre **En riesgo** o **Perdidos**, pulse **Copiar teléfonos** y escríbales con una oferta. Anote en la ficha lo que respondió cada uno.
 - **Límite de crédito** (administrador): en **Editar**, lo máximo que el cliente puede deber. **0 = sin límite** (así se crean).
 - **Dar de baja un cliente** (administrador): en **Editar** desmarque **Activo**. No se borran clientes.
   - No se puede si el cliente **debe**: primero cobre o anule lo pendiente.
@@ -48,14 +30,10 @@ Menú **Finanzas** → **Clientes**.
 
 ### La ficha del cliente
 
-![Ficha del cliente](img/ficha-cliente.jpg)
-
-- **Arriba:** el segmento, la ★ VIP, sus etiquetas y su cumpleaños (y cuánto falta, si es pronto).
-- **Números:** compras, gasto total, gasto de los últimos 12 meses, ticket promedio, primera y última compra, **cada cuántos días compra**, lo que debe, lo vencido y su límite de crédito.
-- **Lo que más compra:** las categorías, marcas, tallas y gorras que más lleva, en unidades. Sirve para ofrecerle lo que le gusta.
+- **Datos:** teléfono, cédula o RNC, correo y dirección.
+- **Crédito:** lo que debe, lo vencido, su límite de crédito, lo vendido a crédito y lo pagado.
 - **Apartados activos**, si tiene.
-- **Notas de seguimiento:** escriba lo que se habló ("le escribí; viene el sábado") y pulse **Agregar nota**. Quedan con la fecha y quién la escribió, la más nueva primero.
-- Después, todas sus **compras** y su **historial de pagos**, como antes.
+- Todas sus **compras** y su **historial de pagos**, con los abonos que se pueden anular (administrador).
 
 El vendedor ve la misma ficha: son montos de lo que el cliente pagó, nunca costos ni utilidad.
 

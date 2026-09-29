@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Cambiado
+- **Clientes** muestra los datos de contacto y de crédito: la lista con teléfono, cédula o RNC, lo que debe y el límite de crédito, y la ficha con el crédito, los apartados, las compras y los pagos (DT-50).
+
 ## [1.9.0] - 2026-09-29
 
 Interfaz más rápida y moderna, ventas en espera con varios carritos, buscador global con Ctrl + K, reposición según el ritmo de venta, campanita de alertas y modo oscuro. Se instala encima de la 1.7.0 o desde Configuración → Actualizaciones; los datos se conservan y la base pasa sola a la versión 11.

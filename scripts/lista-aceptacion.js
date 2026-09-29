@@ -48,6 +48,8 @@ function parse(md) {
     if (m && header) {
       const c = cells(line);
       const col = (re) => header.findIndex((x) => re.test(x));
+      // Los módulos opcionales apagados de fábrica (DT-50) no los verifica ni firma el cliente.
+      if (col(/estado/) >= 0 && /módulo opcional/i.test(c[col(/estado/)])) continue;
       const what = c[col(/requisito|reporte/)] || '';
       const how = IN_STORE[m[1]] || (col(/criterio/) >= 0 ? c[col(/criterio/)] : '');
       let where = col(/dónde/) >= 0 ? c[col(/dónde/)] : '';

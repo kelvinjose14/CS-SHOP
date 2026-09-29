@@ -94,6 +94,35 @@ function userForm(u, onSaved) {
   });
 }
 
+// Opciones del técnico (DT-50): Ctrl + Alt + Shift + M en Configuración. No hay botón ni menú, y el cambio
+// no va al historial: el cliente no ve que existe el CRM hasta que se lo activen.
+function bindTechOptions(form) {
+  const onKey = (e) => {
+    if (!form.isConnected) return document.removeEventListener('keydown', onKey);
+    if (!(e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyM') || $('.modal-back')) return;
+    e.preventDefault();
+    modal({
+      title: 'Opciones del técnico',
+      width: 520,
+      body: html`<p class="muted">Funciones que se activan cuando el cliente las contrata. Se aplican a todas las PCs.</p>
+        <label class="check"><input type="checkbox" id="tech-crm" ${App.crm() ? 'checked' : ''}> CRM de clientes: ficha con compras, segmentos, VIP, etiquetas, notas de seguimiento y cumpleaños</label>`,
+      actions: [
+        { label: 'Cancelar' },
+        {
+          label: 'Guardar', primary: true,
+          onClick: async ({ body }) => {
+            await api('settings.modules', { crm: $('#tech-crm', body).checked });
+            await App.loadSettings();
+            toast('Opciones guardadas.');
+            App.reload();
+          },
+        },
+      ],
+    });
+  };
+  document.addEventListener('keydown', onKey);
+}
+
 App.register({
   id: 'settings', title: 'Configuración', icon: 'gear', group: 'Sistema', roles: ['admin'],
   async render(page) {
@@ -125,7 +154,7 @@ App.register({
             <label class="field"><span>Descuento máximo del vendedor (%)</span><input name="seller_max_discount_pct" type="number" min="0" max="100" value="${s.seller_max_discount_pct}"></label>
             <label class="field"><span>Días que dura un apartado</span><input name="reservation_days" type="number" min="1" max="180" value="${s.reservation_days}"></label>
             <label class="field"><span>Gorras por conteo cíclico (cada semana)</span><input name="cycle_count_size" type="number" min="1" max="500" value="${s.cycle_count_size}"></label>
-            <label class="field"><span>Cliente VIP: compras de los últimos 12 meses desde (0 = sin VIP automático)</span><input name="vip_min_spend" type="number" min="0" step="100" value="${s.vip_min_spend}"></label>
+            ${App.crm() ? html`<label class="field"><span>Cliente VIP: compras de los últimos 12 meses desde (0 = sin VIP automático)</span><input name="vip_min_spend" type="number" min="0" step="100" value="${s.vip_min_spend}"></label>` : ''}
             <label class="check"><input type="checkbox" name="require_open_cash" ${s.require_open_cash === '1' ? 'checked' : ''}> Exigir caja abierta para movimientos en efectivo</label>
             <label class="check"><input type="checkbox" name="allow_negative_stock" ${s.allow_negative_stock === '1' ? 'checked' : ''}> Permitir vender sin existencia (inventario negativo)</label>
             <label class="check"><input type="checkbox" name="seller_can_receive_payments" ${s.seller_can_receive_payments === '1' ? 'checked' : ''}> El vendedor puede registrar abonos de clientes</label>
@@ -192,6 +221,7 @@ App.register({
       await App.loadSettings();
       toast('Configuración guardada.');
     };
+    bindTechOptions(form);
     renderPrinter($('#prn-card', form));
     renderNetwork($('#net-card', form));
     renderTheme($('#theme-card', form));

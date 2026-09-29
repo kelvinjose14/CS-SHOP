@@ -27,6 +27,7 @@ const METHODS = {
   'users.save': [ADMIN, users.save],
   'settings.get': [ALL, users.settingsGet],
   'settings.save': [ADMIN, users.settingsSave],
+  'settings.modules': [ADMIN, users.modulesSave],
   'recovery.status': [ADMIN, users.recoveryStatus],
   'recovery.create': [ADMIN, users.recoveryCreate],
 

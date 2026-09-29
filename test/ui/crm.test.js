@@ -10,6 +10,13 @@ const dialog = '.modal-back:last-child';
 test('cliente con cumpleaños hoy, etiquetas y VIP; segmentos, notas y aviso en el Inicio', async (t) => {
   const { win, errors } = await launch(t, dataDir({ demo: true }), { width: 1100, height: 760 });
   await login(win, 'admin', 'admin123');
+  // El CRM viene apagado; el técnico lo enciende con Ctrl + Alt + Shift + M en Configuración (DT-50).
+  await go(win, 'settings');
+  await win.keyboard.press('Control+Alt+Shift+KeyM');
+  await win.check(`${dialog} #tech-crm`);
+  await win.click(`${dialog} .modal-foot .btn.primary`);
+  assert.ok(await eventually(async () => (await api(win, 'settings.get')).crm_enabled === '1'));
+  await win.waitForSelector('#page [name=vip_min_spend]');
   const st = await api(win, 'cash.status');
   if (!st.open) await api(win, 'cash.open', { amount: st.last_closed ? st.last_closed.counted_amount : 0 });
   const now = new Date();
@@ -65,6 +72,9 @@ test('cliente con cumpleaños hoy, etiquetas y VIP; segmentos, notas y aviso en 
 
 test('el vendedor ve la ficha y agrega notas, pero no cambia el VIP', async (t) => {
   const { win, errors } = await launch(t, dataDir({ demo: true }));
+  await login(win, 'admin', 'admin123');
+  await api(win, 'settings.modules', { crm: true });
+  await win.evaluate(() => App.logout());
   await login(win, 'vendedor', 'vendedor123');
   const cu = (await api(win, 'customers.list', {})).find((c) => c.purchases > 0);
   await go(win, 'customers');
@@ -78,5 +88,29 @@ test('el vendedor ve la ficha y agrega notas, pero no cambia el VIP', async (t) 
   await win.click(`${dialog} .modal-foot .btn:has-text("Editar")`);
   await win.waitForSelector(`${dialog} [name=birthday]`);
   assert.equal(await win.$(`${dialog} [name=vip_mode]`), null);
+  assert.deepEqual(errors, []);
+});
+
+test('sin CRM (de fábrica): Clientes solo con contacto y crédito, y nada de cumpleaños ni VIP', async (t) => {
+  const { win, errors } = await launch(t, dataDir({ demo: true }));
+  await login(win, 'admin', 'admin123');
+  await go(win, 'customers');
+  for (const sel of ['#c-seg', '#c-tag', '#c-bdays', '#c-phones']) assert.equal(await win.$$eval(sel, (x) => x.length), 0, sel);
+  const heads = await win.$$eval('#page thead th', (th) => th.map((x) => x.textContent.trim()));
+  assert.deepEqual(heads, ['Cliente', 'Teléfono', 'Cédula/RNC', 'Debe', 'Límite de crédito']);
+  await win.click('#page tbody tr[data-idx]');
+  await win.waitForSelector(`${dialog} .kv`);
+  for (const sel of ['.fav-grid', '#cd-note', '.badge.has-icon']) assert.equal(await win.$$eval(`${dialog} ${sel}`, (x) => x.length), 0, sel);
+  assert.doesNotMatch(await text(win, dialog), /VIP|Segmento|Cumpleaños|seguimiento|Lo que más compra/);
+  await win.keyboard.press('Escape');
+  await win.click('#c-new');
+  await win.waitForSelector(`${dialog} [name=name]`);
+  for (const n of ['birthday', 'tags', 'vip_mode']) assert.equal(await win.$$eval(`${dialog} [name=${n}]`, (x) => x.length), 0, n);
+  await win.keyboard.press('Escape');
+  await go(win, 'dashboard');
+  assert.equal(await win.$$eval('#dash-birthdays', (x) => x.length), 0);
+  await go(win, 'settings');
+  assert.equal(await win.$$eval('#page [name=vip_min_spend]', (x) => x.length), 0);
+  assert.doesNotMatch(await text(win, '#page'), /CRM|VIP/);
   assert.deepEqual(errors, []);
 });

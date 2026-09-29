@@ -199,7 +199,7 @@ function dashboard(ctx) {
     top_products: topProducts(ctx, { period: 'mes', limit: 10 }).rows,
     series: last30,
     reservations_expired: reservations.expiredCount(db),
-    // Cumpleaños de esta semana (1.6), para felicitar o mandar una oferta.
+    // Cumpleaños de esta semana (1.6), para felicitar o mandar una oferta. Vacío si el CRM está apagado (DT-50).
     birthdays: crm.birthdays(ctx, { days: 7 }).map(({ id, name, phone, birthday, birthday_in, vip }) => ({ id, name, phone, birthday, birthday_in, vip })),
   };
   if (isAdmin(ctx)) {
