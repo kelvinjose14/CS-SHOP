@@ -3,7 +3,7 @@
 // su cumpleaños, etiquetas y notas de seguimiento. Todo son ventas (lo que pagó), nunca costos ni
 // utilidad: el vendedor también ve la ficha (DT-36).
 const { AppError, now, today, addDays, round2, text } = require('../util');
-const { audit, getSetting } = require('./common');
+const { audit, getSetting, crmEnabled } = require('./common');
 
 const SEGMENT_LABELS = {
   nuevo: 'Nuevo', frecuente: 'Frecuente', ocasional: 'Ocasional', en_riesgo: 'En riesgo', perdido: 'Perdido', sin_compras: 'Sin compras',
@@ -141,6 +141,7 @@ function addNote(ctx, { customer_id, text: body }) {
 
 // Cumpleaños de los próximos días (hoy incluido), del más cercano al más lejano.
 function birthdays(ctx, { days = 30 } = {}) {
+  if (!crmEnabled(ctx.db)) return [];
   const limit = Math.min(Math.max(Number(days) || 30, 0), 366);
   const rows = ctx.db.all("SELECT id, name, phone, birthday, tags, vip_mode FROM customers WHERE active = 1 AND birthday IS NOT NULL AND birthday <> ''");
   return enrich(ctx, rows).filter((c) => c.birthday_in !== null && c.birthday_in <= limit).sort((a, b) => a.birthday_in - b.birthday_in || a.name.localeCompare(b.name, 'es'));

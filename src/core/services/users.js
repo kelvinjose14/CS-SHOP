@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const { AppError, now, text } = require('../util');
-const { audit, getSetting, getSettings, setSetting, DEFAULT_SETTINGS } = require('./common');
+const { audit, getSetting, getSettings, setSetting, DEFAULT_SETTINGS, CRM_KEY, crmEnabled } = require('./common');
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
@@ -143,7 +143,13 @@ function save(ctx, data) {
 }
 
 function settingsGet(ctx) {
-  return getSettings(ctx.db);
+  return { ...getSettings(ctx.db), crm_enabled: crmEnabled(ctx.db) ? '1' : '0' };
+}
+
+// Opciones del técnico (DT-50): encender o apagar el CRM. No va al historial, para que el cliente no lo vea.
+function modulesSave(ctx, { crm } = {}) {
+  setSetting(ctx.db, CRM_KEY, crm ? '1' : '0');
+  return { crm: crmEnabled(ctx.db) };
 }
 
 // Nombres legibles para el historial (RF-NUE-08).
@@ -193,7 +199,7 @@ function settingsSave(ctx, values) {
     }
     if (Object.keys(changes).length) audit(ctx, 'editar_configuracion', 'configuracion', null, changes);
   });
-  return getSettings(ctx.db);
+  return settingsGet(ctx);
 }
 
-module.exports = { recoveryStatus, recoveryCreate, recover, hashPassword, verifyPassword, ensureDefaultUsers, login, changeOwnPassword, list, save, settingsGet, settingsSave, publicUser };
+module.exports = { recoveryStatus, recoveryCreate, recover, hashPassword, verifyPassword, ensureDefaultUsers, login, changeOwnPassword, list, save, settingsGet, settingsSave, modulesSave, publicUser };

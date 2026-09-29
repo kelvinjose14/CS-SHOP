@@ -619,8 +619,9 @@ function returnForm(s, onChange) {
 
 async function customerForm(c, onSaved) {
   c = c || {};
+  const crm = App.crm();
   // Etiquetas ya usadas, para sugerirlas (1.6).
-  const all = await api('customers.options', { includeInactive: true }).catch(() => []);
+  const all = crm ? await api('customers.options', { includeInactive: true }).catch(() => []) : [];
   const tags = [...new Set(all.flatMap((x) => x.tags || []))].sort((a, b) => a.localeCompare(b, 'es'));
   modal({
     title: c.id ? 'Editar cliente' : 'Nuevo cliente',
@@ -632,12 +633,12 @@ async function customerForm(c, onSaved) {
         <label class="field"><span>Cédula / RNC</span><input name="document" value="${c.document || ''}"></label>
         <label class="field"><span>Correo</span><input name="email" type="email" value="${c.email || ''}"></label>
         <label class="field"><span>Dirección</span><input name="address" value="${c.address || ''}"></label>
-        <label class="field"><span>Cumpleaños (día/mes)</span><input name="birthday" value="${Fmt.bday(c.birthday)}" placeholder="Ej. 15/08"></label>
+        ${crm ? html`<label class="field"><span>Cumpleaños (día/mes)</span><input name="birthday" value="${Fmt.bday(c.birthday)}" placeholder="Ej. 15/08"></label>
         <label class="field"><span>Etiquetas (separadas por coma)</span><input name="tags" id="cf-tags" value="${(c.tags || []).join(', ')}" list="dl-ctags" placeholder="Ej. mayorista, fitted, Santiago"></label>
-        <datalist id="dl-ctags">${tags.map((t) => html`<option value="${[...(c.tags || []), t].join(', ')}">`)}</datalist>
+        <datalist id="dl-ctags">${tags.map((t) => html`<option value="${[...(c.tags || []), t].join(', ')}">`)}</datalist>` : ''}
         <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${c.notes || ''}</textarea></label>
         ${App.isAdmin() ? html`<label class="field"><span>Límite de crédito (0 = sin límite)</span><input name="credit_limit" type="number" min="0" step="0.01" value="${c.credit_limit || 0}"></label>
-          <label class="field"><span>Cliente VIP</span><select name="vip_mode">${options([['auto', 'Automático (según lo que compra)'], ['si', 'Sí, siempre'], ['no', 'No']], c.vip_mode || 'auto')}</select></label>` : ''}
+          ${crm ? html`<label class="field"><span>Cliente VIP</span><select name="vip_mode">${options([['auto', 'Automático (según lo que compra)'], ['si', 'Sí, siempre'], ['no', 'No']], c.vip_mode || 'auto')}</select></label>` : ''}` : ''}
         ${c.id && App.isAdmin() ? html`<label class="check"><input type="checkbox" name="active" ${c.active ? 'checked' : ''}> Activo</label>` : ''}
       </div>`,
     actions: [
@@ -700,23 +701,31 @@ function birthdaysDialog() {
 App.register({
   id: 'customers', title: 'Clientes', icon: 'users', group: 'Finanzas',
   async render(page, params = {}) {
-    const f = { search: '', segment: params.segment || '', tag: '' };
+    const crm = App.crm();
+    const f = { search: '', segment: crm ? params.segment || '' : '', tag: '' };
     let includeInactive = false;
     const tb = toolbar(page, {
-      left: html`<div class="search">${icon('search')}<input id="c-search" placeholder="Buscar por nombre, teléfono, cédula o etiqueta…"></div>
-        <select id="c-tag"></select>
+      left: html`<div class="search">${icon('search')}<input id="c-search" placeholder="${crm ? 'Buscar por nombre, teléfono, cédula o etiqueta…' : 'Buscar por nombre, teléfono o cédula…'}"></div>
+        ${crm ? html`<select id="c-tag"></select>` : ''}
         ${App.isAdmin() ? html`<label class="check"><input type="checkbox" id="c-inactive"> Ver desactivados</label>` : ''}`,
-      right: html`<button class="btn" id="c-bdays">${icon('gift')} Cumpleaños</button><button class="btn" id="c-phones">${icon('copy')} Copiar teléfonos</button><button class="btn" id="c-export">${icon('download')} Exportar</button><button class="btn primary" id="c-new">${icon('plus')} Nuevo cliente</button>`,
+      right: html`${crm ? html`<button class="btn" id="c-bdays">${icon('gift')} Cumpleaños</button><button class="btn" id="c-phones">${icon('copy')} Copiar teléfonos</button>` : ''}<button class="btn" id="c-export">${icon('download')} Exportar</button><button class="btn primary" id="c-new">${icon('plus')} Nuevo cliente</button>`,
     });
     const segBox = el(html`<div class="seg seg-wrap" id="c-seg"></div>`);
-    tb.after(segBox);
     const help = el(html`<p class="muted small" id="c-seg-help"></p>`);
-    segBox.after(help);
+    if (crm) { tb.after(segBox); segBox.after(help); }
     const box = el(html`<div class="card"></div>`);
     page.appendChild(box);
     let all = [];
     let rows = [];
-    const cols = [
+    // Sin CRM (DT-50): solo contacto y crédito.
+    const basicCols = [
+      { key: 'name', label: 'Cliente', cls: 'col-product', render: (r) => html`<b>${r.name}</b>${r.address ? html`<div class="muted small">${r.address}</div>` : ''}`, csv: (r) => r.name },
+      { key: 'phone', label: 'Teléfono', render: (r) => r.phone || html`<span class="muted">—</span>`, csv: (r) => r.phone || '' },
+      { key: 'document', label: 'Cédula/RNC', render: (r) => r.document || html`<span class="muted">—</span>`, csv: (r) => r.document || '' },
+      { key: 'balance', label: 'Debe', money: true, total: true, render: (r) => (r.balance > 0 ? html`<b class="${r.overdue ? 'text-danger' : ''}">${Fmt.money(r.balance)}</b>` : html`<span class="muted">—</span>`), csv: (r) => r.balance },
+      { key: 'credit_limit', label: 'Límite de crédito', money: true, render: (r) => (r.credit_limit > 0 ? Fmt.money(r.credit_limit) : html`<span class="muted">Sin límite</span>`), csv: (r) => r.credit_limit },
+    ];
+    const crmCols = [
       { key: 'name', label: 'Cliente', cls: 'col-product', render: (r) => html`${vipStar(r)} <b>${r.name}</b>${r.phone ? html`<div class="muted small">${r.phone}</div>` : ''}${(r.tags || []).length ? html`<div>${tagChips(r)}</div>` : ''}`, csv: (r) => r.name },
       { key: 'segment', label: 'Segmento', render: segBadge, csv: (r) => STATUS_LABELS[r.segment] },
       { key: 'purchases', label: 'Compras', num: true, total: true },
@@ -726,36 +735,43 @@ App.register({
       { key: 'balance', label: 'Debe', money: true, total: true, render: (r) => (r.balance > 0 ? html`<b class="${r.overdue ? 'text-danger' : ''}">${Fmt.money(r.balance)}</b>` : html`<span class="muted">—</span>`), csv: (r) => r.balance },
       { key: 'birthday', label: 'Cumpleaños', render: (r) => (r.birthday ? html`${Fmt.bday(r.birthday)}${r.birthday_in <= 7 ? html` <span class="badge info">${Fmt.bdayIn(r.birthday_in)}</span>` : ''}` : ''), csv: (r) => Fmt.bday(r.birthday) },
     ];
+    const cols = crm ? crmCols : basicCols;
     // Solo en el Excel: los datos de contacto y de crédito completos.
-    const csvCols = [...cols,
+    const csvCols = !crm ? [...basicCols, { key: 'email', label: 'Correo' }, { key: 'address', label: 'Dirección' }] : [...cols,
       { key: 'phone', label: 'Teléfono' }, { key: 'email', label: 'Correo' }, { key: 'document', label: 'Cédula/RNC' },
       { key: 'tags', label: 'Etiquetas', csv: (r) => (r.tags || []).join(', ') }, { key: 'vip', label: 'VIP', csv: (r) => (r.vip ? 'sí' : 'no') },
       { key: 'spent_12m', label: 'Gasto 12 meses', money: true }, { key: 'interval_days', label: 'Compra cada (días)' },
       { key: 'credit_limit', label: 'Límite de crédito', money: true }];
     const draw = () => {
-      const count = (k) => (k === '' ? all.length : all.filter((c) => (k === 'vip' ? c.vip : c.segment === k)).length);
-      setHTML(segBox, SEGMENTS.map(([k, l]) => html`<button data-s="${k}" class="${k === f.segment ? 'active' : ''}">${l} <small>${count(k)}</small></button>`));
-      $$('[data-s]', segBox).forEach((b) => (b.onclick = () => { f.segment = b.dataset.s; draw(); }));
-      help.textContent = f.segment === 'vip' ? `VIP: compró ${Fmt.money(Number(App.settings.vip_min_spend) || 0)} o más en los últimos 12 meses, o lo marcó el administrador.` : SEGMENT_HELP[f.segment] || '';
+      if (crm) {
+        const count = (k) => (k === '' ? all.length : all.filter((c) => (k === 'vip' ? c.vip : c.segment === k)).length);
+        setHTML(segBox, SEGMENTS.map(([k, l]) => html`<button data-s="${k}" class="${k === f.segment ? 'active' : ''}">${l} <small>${count(k)}</small></button>`));
+        $$('[data-s]', segBox).forEach((b) => (b.onclick = () => { f.segment = b.dataset.s; draw(); }));
+        help.textContent = f.segment === 'vip' ? `VIP: compró ${Fmt.money(Number(App.settings.vip_min_spend) || 0)} o más en los últimos 12 meses, o lo marcó el administrador.` : SEGMENT_HELP[f.segment] || '';
+      }
       const q = f.search.trim().toLowerCase();
       rows = all.filter((c) => (!f.segment || (f.segment === 'vip' ? c.vip : c.segment === f.segment))
         && (!f.tag || (c.tags || []).includes(f.tag))
-        && (!q || [c.name, c.phone, c.document, ...(c.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(q)));
+        && (!q || [c.name, c.phone, c.document, ...(crm ? c.tags || [] : [])].filter(Boolean).join(' ').toLowerCase().includes(q)));
       setHTML(box, table({ columns: cols, rows, clickable: true, empty: 'No hay clientes con este filtro.', rowClass: (r) => (r.active ? '' : 'inactive') }));
       onRowClick(box, rows, (r) => customerDetail(r.id, load));
     };
     const load = async () => {
       all = await api('customers.list', { includeInactive });
-      const tags = [...new Set(all.flatMap((c) => c.tags || []))].sort((a, b) => a.localeCompare(b, 'es'));
-      setHTML($('#c-tag', tb), options(tags, f.tag, { empty: 'Todas las etiquetas' }));
+      if (crm) {
+        const tags = [...new Set(all.flatMap((c) => c.tags || []))].sort((a, b) => a.localeCompare(b, 'es'));
+        setHTML($('#c-tag', tb), options(tags, f.tag, { empty: 'Todas las etiquetas' }));
+      }
       draw();
     };
     $('#c-search', tb).oninput = debounce((e) => { f.search = e.target.value; draw(); });
-    $('#c-tag', tb).onchange = (e) => { f.tag = e.target.value; draw(); };
+    if (crm) {
+      $('#c-tag', tb).onchange = (e) => { f.tag = e.target.value; draw(); };
+      $('#c-bdays', tb).onclick = birthdaysDialog;
+      $('#c-phones', tb).onclick = () => copyPhones(rows);
+    }
     if ($('#c-inactive', tb)) $('#c-inactive', tb).onchange = (e) => { includeInactive = e.target.checked; load(); };
     $('#c-new', tb).onclick = () => customerForm(null, load);
-    $('#c-bdays', tb).onclick = birthdaysDialog;
-    $('#c-phones', tb).onclick = () => copyPhones(rows);
     $('#c-export', tb).onclick = () => exportExcel('clientes', csvCols, rows);
     await load();
   },
@@ -783,30 +799,31 @@ async function customerDetail(id, onChange) {
       }),
     });
   }
+  const crm = App.crm();
   const fav = (title, list) => html`<div><h5>${title}</h5>${list.length ? html`<ol>${list.map((x) => html`<li>${x.name} <small>· ${x.units}</small></li>`)}</ol>` : html`<small>Sin datos</small>`}</div>`;
   const m = modal({
     title: c.name,
     width: 960,
     body: html`
-      <div class="crm-head">
+      ${crm ? html`<div class="crm-head">
         ${c.vip ? html`<span class="badge warn has-icon">${icon('star')} VIP</span>` : ''}
         ${segBadge(c)}
         ${tagChips(c)}
         ${c.birthday ? html`<span class="badge info has-icon">${icon('gift')} ${Fmt.bday(c.birthday)}${c.birthday_in <= 30 ? ` · ${Fmt.bdayIn(c.birthday_in)}` : ''}</span>` : ''}
         ${c.active ? '' : badge('anulada', 'Desactivado')}
-      </div>
+      </div>` : c.active ? '' : html`<div class="crm-head">${badge('anulada', 'Desactivado')}</div>`}
       <div class="kv cols-4">
         <div><span>Teléfono</span><b>${c.phone || '—'}</b></div>
         <div><span>Cédula/RNC</span><b>${c.document || '—'}</b></div>
         <div><span>Correo</span><b>${c.email || '—'}</b></div>
         <div><span>Dirección</span><b>${c.address || '—'}</b></div>
-        <div><span>Compras</span><b>${Fmt.num(c.purchases)}</b></div>
+        ${crm ? html`<div><span>Compras</span><b>${Fmt.num(c.purchases)}</b></div>
         <div><span>Gasto total</span><b>${Fmt.money(c.spent)}</b></div>
         <div><span>Últimos 12 meses</span><b>${Fmt.money(c.spent_12m)}</b></div>
         <div><span>Ticket promedio</span><b>${Fmt.money(c.avg_ticket)}</b></div>
         <div><span>Primera compra</span><b>${c.first_purchase ? Fmt.date(c.first_purchase) : '—'}</b></div>
         <div><span>Última compra</span><b>${c.last_purchase ? `${Fmt.date(c.last_purchase)} (${Fmt.ago(c.days_since)})` : '—'}</b></div>
-        <div><span>Compra cada</span><b>${c.interval_days ? `${c.interval_days} días` : '—'}</b></div>
+        <div><span>Compra cada</span><b>${c.interval_days ? `${c.interval_days} días` : '—'}</b></div>` : ''}
         <div><span>Balance pendiente</span><b class="${c.balance > 0 ? 'text-danger' : ''}">${Fmt.money(c.balance)}</b></div>
         <div><span>Vencido</span><b class="${c.overdue_balance > 0 ? 'text-danger' : ''}">${Fmt.money(c.overdue_balance)}</b></div>
         <div><span>Límite de crédito</span><b>${c.credit_limit > 0 ? Fmt.money(c.credit_limit) : 'Sin límite'}</b></div>
@@ -814,13 +831,13 @@ async function customerDetail(id, onChange) {
         <div><span>Pagado (crédito)</span><b>${Fmt.money(c.credit_paid)}</b></div>
       </div>
       ${c.notes ? html`<p class="muted">${c.notes}</p>` : ''}
-      <h4 class="section-title">Lo que más compra <small class="muted">— unidades</small></h4>
-      <div class="fav-grid">${fav('Categorías', c.favorites.categories)}${fav('Marcas', c.favorites.brands)}${fav('Tallas', c.favorites.sizes)}${fav('Gorras', c.favorites.products)}</div>
+      ${crm ? html`<h4 class="section-title">Lo que más compra <small class="muted">— unidades</small></h4>
+      <div class="fav-grid">${fav('Categorías', c.favorites.categories)}${fav('Marcas', c.favorites.brands)}${fav('Tallas', c.favorites.sizes)}${fav('Gorras', c.favorites.products)}</div>` : ''}
       ${c.reservations.length ? html`<h4 class="section-title">${icon('bookmark')} Apartados activos</h4>
         <ul class="notes-log">${c.reservations.map((r) => html`<li><small>${Fmt.resNo(r.id)} · vence ${Fmt.date(r.expires_on)}</small>${r.summary}</li>`)}</ul>` : ''}
-      <h4 class="section-title">Notas de seguimiento</h4>
+      ${crm ? html`<h4 class="section-title">Notas de seguimiento</h4>
       <div class="note-add"><textarea id="cd-note" rows="2" placeholder="Ej. Le escribí por WhatsApp; viene el sábado por la NY roja"></textarea><button class="btn" id="cd-note-add">${icon('plus')} Agregar nota</button></div>
-      ${c.notes_log.length ? html`<ul class="notes-log">${c.notes_log.map((n) => html`<li><small>${Fmt.datetime(n.created_at)} · ${n.user_name || ''}</small>${n.text}</li>`)}</ul>` : html`<p class="muted small">Todavía no hay notas.</p>`}
+      ${c.notes_log.length ? html`<ul class="notes-log">${c.notes_log.map((n) => html`<li><small>${Fmt.datetime(n.created_at)} · ${n.user_name || ''}</small>${n.text}</li>`)}</ul>` : html`<p class="muted small">Todavía no hay notas.</p>`}` : ''}
       <h4 class="section-title">Compras del cliente</h4>
       ${table({
         columns: [
@@ -850,7 +867,7 @@ async function customerDetail(id, onChange) {
       })}`,
     actions,
   });
-  $('#cd-note-add', m.body).onclick = async () => {
+  if (crm) $('#cd-note-add', m.body).onclick = async () => {
     const text = $('#cd-note', m.body).value.trim();
     if (!text) return toast('Escriba la nota.', 'error');
     await api('customers.addNote', { customer_id: id, text });

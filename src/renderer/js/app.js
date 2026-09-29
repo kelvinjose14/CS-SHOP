@@ -45,6 +45,11 @@ const App = {
     Fmt.currency = this.settings.currency || 'RD$';
   },
 
+  // El CRM viene apagado y lo enciende el técnico (DT-50). Apagado, Clientes muestra solo contacto y crédito.
+  crm() {
+    return !!this.settings && this.settings.crm_enabled === '1';
+  },
+
   // Nombre de esta PC y, si está conectada, a qué principal.
   pcLabel() {
     const i = this.info;

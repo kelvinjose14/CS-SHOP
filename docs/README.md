@@ -23,7 +23,7 @@ Versión documentada: **1.3.1** (26/09/2026, para el piloto en la tienda). Los c
 | 3 | [Ventas](manual/03-ventas.md) | Cobrar, recibo, historial, devoluciones, anulaciones y apartados |
 | 4 | [Inventario](manual/04-inventario.md) | Productos, modelos con colores y tallas, fotos, códigos, ajustes, importar desde Excel, etiquetas, conteo (y conteo sugerido) y qué reponer |
 | 5 | [Compras y proveedores](manual/05-compras-y-proveedores.md) | Registrar compras, pagar a proveedores y cuentas por pagar |
-| 6 | [Clientes y cobros](manual/06-clientes-y-cobros.md) | Ficha del cliente (CRM), segmentos, VIP y cumpleaños; ventas a crédito, abonos y cuentas por cobrar |
+| 6 | [Clientes y cobros](manual/06-clientes-y-cobros.md) | Clientes, ventas a crédito, abonos y cuentas por cobrar |
 | 7 | [Caja](manual/07-caja.md) | Abrir, entradas, depósitos al banco, retiros y cierre |
 | 8 | [Gastos e ingresos](manual/08-gastos-e-ingresos.md) | Gastos, otros ingresos y aportes del dueño |
 | 9 | [Contabilidad y reportes](manual/09-contabilidad-y-reportes.md) | Dashboard ejecutivo, ganancias, flujo de dinero, los 15 reportes y exportar a Excel |
@@ -56,6 +56,7 @@ Versión documentada: **1.3.1** (26/09/2026, para el piloto en la tienda). Los c
 - [Seguridad](tecnico/seguridad.md)
 - [Auditoría de producción](tecnico/auditoria.md): hallazgos del 26/09/2026 y su estado
 - [Rendimiento](tecnico/rendimiento.md)
+- [Módulo CRM de clientes](tecnico/modulo-crm.md): opcional, apagado de fábrica; cómo se enciende
 
 ## Convenciones de esta documentación
 

@@ -90,6 +90,10 @@ test('conteo: solo el administrador', async () => {
 test('la lista de aceptación del piloto tiene exactamente los requisitos de requisitos.md', () => {
   const ids = (file) => new Set((fs.readFileSync(path.join(__dirname, '..', file), 'utf8').match(/^\| RN?F-[A-Z]*-?\d+/gm) || []).map((x) => x.slice(2)));
   const req = ids('docs/producto/requisitos.md');
+  // Los módulos opcionales apagados de fábrica (DT-50) no van en la lista que firma el cliente.
+  const optional = (fs.readFileSync(path.join(__dirname, '..', 'docs/producto/requisitos.md'), 'utf8').match(/^\| RN?F-[A-Z]*-?\d+ \|.*módulo opcional.*$/gm) || []).map((l) => l.split(' ')[1]);
+  assert.deepEqual(optional, ['RF-NUE-19', 'RF-NUE-20', 'RF-NUE-21']);
+  for (const id of optional) req.delete(id);
   const acc = ids('docs/piloto/aceptacion.md');
   assert.ok(req.size > 100);
   assert.deepEqual([...acc].sort(), [...req].sort(), 'Ejecute node scripts/lista-aceptacion.js');

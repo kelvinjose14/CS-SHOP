@@ -35,6 +35,7 @@ async function store() {
   };
   login();
   const call = (n, p) => admin.call(n, p);
+  call('settings.modules', { crm: true }); // viene apagado (DT-50)
   call('cash.open', { amount: 0 });
   const fitted = call('products.save', { name: 'Gorra fitted', brand: 'New Era', category: 'Fitted', size: '7 1/4', cost: 500, price_retail: 1000, initial_stock: 500 });
   const trucker = call('products.save', { name: 'Trucker', brand: 'Otto', category: 'Trucker', size: 'Ajustable', cost: 200, price_retail: 500, initial_stock: 500 });
@@ -128,4 +129,32 @@ test('segmentos, frecuencia, VIP, favoritos, notas y cumpleaños de la semana', 
   assert.deepEqual(call('reports.dashboard').birthdays.map((c) => c.name), ['Ana']);
   assert.throws(() => call('customers.save', { id: marta, name: 'Marta', birthday: '30/02' }), /no existe/);
   void nadie;
+});
+
+test('el CRM viene apagado: sin cumpleaños, solo el administrador lo enciende y no queda en el historial (DT-50)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'capsshop-crm-off-'));
+  const db = await openDatabase(path.join(dir, 'test.db'));
+  const api = createApi(db);
+  const admin = client(api);
+  const seller = client(api);
+  admin.login({ username: 'admin', password: 'admin123' });
+  seller.login({ username: 'vendedor', password: 'vendedor123' });
+  const t = new Date();
+  const dm = `${t.getDate()}/${t.getMonth() + 1}`;
+  admin.call('customers.save', { name: 'Ana', birthday: dm });
+  assert.equal(admin.call('settings.get').crm_enabled, '0');
+  assert.equal(seller.call('settings.get').crm_enabled, '0');
+  assert.deepEqual(admin.call('customers.birthdays', { days: 30 }), []);
+  assert.deepEqual(admin.call('reports.dashboard').birthdays, []);
+  assert.throws(() => seller.call('settings.modules', { crm: true }), /permiso|administrador/i);
+  const before = db.get('SELECT COUNT(*) AS n FROM audit_log').n;
+  assert.deepEqual(admin.call('settings.modules', { crm: true }), { crm: true });
+  assert.equal(admin.call('settings.get').crm_enabled, '1');
+  assert.equal(admin.call('customers.birthdays', { days: 30 }).length, 1);
+  assert.equal(db.get('SELECT COUNT(*) AS n FROM audit_log').n, before, 'no deja rastro en el historial');
+  // Guardar la configuración no toca el interruptor.
+  admin.call('settings.save', { business_name: 'Otra', crm_enabled: '0', _mod_crm: '0' });
+  assert.equal(admin.call('settings.get').crm_enabled, '1');
+  admin.call('settings.modules', { crm: false });
+  assert.deepEqual(admin.call('customers.birthdays', { days: 30 }), []);
 });

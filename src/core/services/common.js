@@ -125,4 +125,11 @@ function isAdmin(ctx) {
   return ctx.user && ctx.user.role === 'admin';
 }
 
-module.exports = { DEFAULT_SETTINGS, fmtMoney, getSetting, getSettings, setSetting, audit, ledger, changeStock, openCashSession, isAdmin };
+// Módulo CRM (DT-50): viene apagado y solo lo enciende el técnico. La clave empieza con "_" para que no salga en settings.get.
+const CRM_KEY = '_mod_crm';
+function crmEnabled(db) {
+  const row = db.get('SELECT value FROM settings WHERE key = ?', [CRM_KEY]);
+  return !!row && row.value === '1';
+}
+
+module.exports = { DEFAULT_SETTINGS, CRM_KEY, crmEnabled, fmtMoney, getSetting, getSettings, setSetting, audit, ledger, changeStock, openCashSession, isAdmin };
