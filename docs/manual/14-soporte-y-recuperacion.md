@@ -45,14 +45,14 @@ Sin copia externa, es más directo mover la carpeta completa ([Configuración y 
 
 ## 14.4 Instalar una versión nueva
 
-1. El administrador ve en la barra de arriba **Versión X disponible**. En **Configuración → Actualizaciones** están la versión instalada, **Buscar ahora** e **Instalar la versión X**.
-2. **Actualice primero la PC principal.** Hágalo con la tienda tranquila: el programa se cierra, se instala y se vuelve a abrir. Los datos no se tocan.
+1. El administrador ve en la barra de arriba **Versión X disponible**. En **Configuración → Actualizaciones** están la versión instalada, **Buscar ahora**, **Al cerrar el programa** y **Actualizar ahora a la X** ([11.7](11-configuracion-y-respaldos.md#117-actualizaciones)).
+2. **Actualice primero la PC principal.** Con **Actualizar ahora**, el programa se cierra unos segundos y vuelve a abrir solo, sin ventanas de instalación; hágalo con la tienda tranquila. Con **Al cerrar el programa**, se instala sola al cerrar al final del día. Los datos no se tocan.
 3. Después, cada computadora conectada:
-   - Con el administrador: **Configuración → Actualizaciones → Instalar**.
+   - Con el administrador: **Configuración → Actualizaciones → Actualizar ahora** o **Al cerrar el programa**.
    - Sin sesión: la pantalla de entrada dice **La PC principal tiene la versión X y esta computadora la Y…** y muestra **Actualizar esta PC**. Cualquiera puede pulsarlo.
 4. Antes de actualizar, conviene hacer **Copiar ahora** en la copia externa.
 
-Nada se descarga ni se instala sin que se pida. Si Windows muestra **"Windows protegió su PC"** al instalar, pulse **Más información → Ejecutar de todas formas**: el instalador todavía no está firmado.
+Nada se descarga ni se instala sin que se pida. Si Windows muestra **"Windows protegió su PC"** al instalar desde el archivo `.exe`, pulse **Más información → Ejecutar de todas formas**: el instalador todavía no está firmado. Las actualizaciones desde el programa se instalan en silencio.
 
 ## 14.5 Pedir ayuda al soporte
 

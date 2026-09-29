@@ -1,6 +1,7 @@
 'use strict';
 const { AppError, now, today, addDays, round2, money, int, text, modelKey } = require('../util');
 const { audit, changeStock, isAdmin, getSetting } = require('./common');
+const catalog = require('./catalog');
 
 const MOVEMENT_LABELS = {
   inicial: 'Inventario inicial',
@@ -17,8 +18,10 @@ const MOVEMENT_LABELS = {
 
 const missing = (field) => { throw new AppError(`${field} es obligatorio.`); };
 const orZero = (v) => (v === undefined || v === null || v === '' ? 0 : v);
-const cost4 = (v) => {
-  money(orZero(v), 'Costo'); // valida
+// El costo promedio guarda 4 decimales (sale de las compras). Uno escrito a mano lleva a lo sumo 2; el
+// que ya estaba guardado se acepta tal cual (same).
+const cost4 = (v, { same = false } = {}) => {
+  money(orZero(v), 'Costo', { decimals: !same });
   return Math.round(Number(orZero(v)) * 10000) / 10000;
 };
 
@@ -53,28 +56,30 @@ function withStock(ctx, p) {
 function list(ctx, { search = '', status = 'todos', includeInactive = false, model_id } = {}) {
   const where = [];
   const params = [today(), 0];
-  if (!includeInactive) where.push('active = 1');
-  if (model_id) { where.push('model_id = ?'); params.push(model_id); }
+  if (!includeInactive) where.push('p.active = 1');
+  if (model_id) { where.push('p.model_id = ?'); params.push(model_id); }
   if (search) {
     const q = `%${search.trim()}%`;
-    where.push('(name LIKE ? OR brand LIKE ? OR model LIKE ? OR category LIKE ? OR color LIKE ? OR size LIKE ? OR sku LIKE ? OR barcode LIKE ?)');
+    where.push('(p.name LIKE ? OR p.brand LIKE ? OR p.model LIKE ? OR p.category LIKE ? OR p.color LIKE ? OR p.size LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)');
     params.push(q, q, q, q, q, q, q, q);
   }
-  const avail = '(stock - COALESCE(rv.qty, 0))';
+  const avail = '(p.stock - COALESCE(rv.qty, 0))';
   if (status === 'agotado') where.push(`${avail} <= 0`);
-  if (status === 'bajo') where.push(`${avail} > 0 AND ${avail} <= min_stock`);
-  if (status === 'reponer') where.push(`${avail} <= min_stock`);
+  if (status === 'bajo') where.push(`${avail} > 0 AND ${avail} <= p.min_stock`);
+  if (status === 'reponer') where.push(`${avail} <= p.min_stock`);
   if (status === 'apartado') where.push('COALESCE(rv.qty, 0) > 0');
   const rows = ctx.db.all(
-    `SELECT p.*, COALESCE(rv.qty, 0) AS reserved FROM products p LEFT JOIN ${RESERVED_SQL} rv ON rv.product_id = p.id
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY name, color, size`,
+    `SELECT p.*, COALESCE(rv.qty, 0) AS reserved, c.hex AS color_hex, z.sort AS size_sort
+       FROM products p LEFT JOIN ${RESERVED_SQL} rv ON rv.product_id = p.id
+       LEFT JOIN colors c ON c.id = p.color_id LEFT JOIN sizes z ON z.id = p.size_id
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY p.name, p.color, IFNULL(z.sort, 999), p.size`,
     params
   );
   return rows.map((p) => withStock(ctx, p));
 }
 
 function get(ctx, { id }) {
-  const p = ctx.db.get('SELECT * FROM products WHERE id = ?', [id]);
+  const p = ctx.db.get('SELECT p.*, c.hex AS color_hex FROM products p LEFT JOIN colors c ON c.id = p.color_id WHERE p.id = ?', [id]);
   if (!p) throw new AppError('Producto no encontrado.');
   const variants = p.model_id ? ctx.db.value('SELECT COUNT(*) FROM products WHERE model_id = ?', [p.model_id]) : 1;
   return withStock(ctx, { ...p, reserved: reservedQty(ctx.db, p.id), variants });
@@ -96,21 +101,33 @@ function nextSku(db) {
   return sku;
 }
 
+// Marca, modelo, categoría, color y talla: por su clave del catálogo (el formulario) o por el nombre
+// (importar, o una PC con la versión anterior), que se busca o se agrega al catálogo (1.7, DT-45). El
+// modelo va solo por nombre y queda escrito como en el catálogo ("59fifty" → "59FIFTY").
+function catalogFields(ctx, data) {
+  const out = {};
+  for (const [type, t] of Object.entries(catalog.TYPES)) {
+    const r = catalog.resolve(ctx, type, { id: t.idColumn ? data[t.idColumn] : undefined, name: data[t.column] });
+    if (t.idColumn) out[t.idColumn] = r.id;
+    out[t.column] = r.name;
+  }
+  return out;
+}
+
+const variantLabel = (f) => [f.color, f.size].filter(Boolean).join(' · ') || 'sin color ni talla';
+
 function save(ctx, data) {
+  const oldCost = data.id ? ctx.db.value('SELECT cost FROM products WHERE id = ?', [data.id]) : null;
   const fields = {
     name: text(data.name, 'Nombre', { required: true, max: 120 }),
-    brand: text(data.brand, 'Marca', { max: 80 }),
     model: text(data.model, 'Modelo', { max: 80 }),
-    category: text(data.category, 'Categoría', { max: 60 }),
-    color: text(data.color, 'Color', { max: 60 }),
-    size: text(data.size, 'Talla', { max: 30 }),
     sku: text(data.sku, 'SKU', { max: 60 }),
     barcode: text(data.barcode, 'Código de barras', { max: 60 }),
     // El costo promedio guarda 4 decimales para no acumular errores de redondeo.
-    cost: cost4(data.cost),
+    cost: cost4(data.cost, { same: oldCost !== null && oldCost !== undefined && Number(orZero(data.cost)) === oldCost }),
     // Un producto sin precio al detalle se vendería en 0 (RF-NUE-07).
-    price_retail: orZero(data.price_retail) === 0 && data.price_retail !== 0 ? missing('Precio al detalle') : money(data.price_retail, 'Precio al detalle', { allowZero: false }),
-    price_wholesale: money(orZero(data.price_wholesale), 'Precio al por mayor'),
+    price_retail: orZero(data.price_retail) === 0 && data.price_retail !== 0 ? missing('Precio al detalle') : money(data.price_retail, 'Precio al detalle', { allowZero: false, decimals: true }),
+    price_wholesale: money(orZero(data.price_wholesale), 'Precio al por mayor', { decimals: true }),
     min_stock: int(orZero(data.min_stock), 'Stock mínimo'),
     notes: text(data.notes, 'Notas', { max: 1000 }),
   };
@@ -118,7 +135,13 @@ function save(ctx, data) {
   if (data.active !== undefined) fields.active = data.active ? 1 : 0;
 
   return ctx.db.tx(() => {
-    fields.model_id = ensureModel(ctx.db, fields);
+    Object.assign(fields, catalogFields(ctx, data));
+    const current = data.id ? ctx.db.value('SELECT model_id FROM products WHERE id = ?', [data.id]) : data.model_id || null;
+    fields.model_id = ensureModel(ctx.db, fields, current);
+    // Un modelo no puede tener dos veces la misma combinación de color y talla.
+    const twin = ctx.db.get('SELECT id, sku FROM products WHERE model_id = ? AND IFNULL(color_id, 0) = ? AND IFNULL(size_id, 0) = ? AND id <> ?',
+      [fields.model_id, fields.color_id || 0, fields.size_id || 0, data.id || 0]);
+    if (twin) throw new AppError(`Ya existe la variante ${variantLabel(fields)} de "${fields.name}" (SKU ${twin.sku}).`);
     if (!fields.sku) fields.sku = nextSku(ctx.db);
     if (ctx.db.get('SELECT id FROM products WHERE sku = ? AND id <> ?', [fields.sku, data.id || 0])) throw new AppError('Ya existe un producto con ese SKU.');
     if (fields.barcode && ctx.db.get('SELECT id FROM products WHERE barcode = ? AND id <> ?', [fields.barcode, data.id || 0])) {
@@ -150,14 +173,17 @@ function save(ctx, data) {
 // Un modelo reúne las variantes (color y talla) que tienen el mismo nombre, marca y modelo. Se arma solo
 // al guardar: si se cambia el nombre de una variante, pasa al modelo que corresponde.
 
-function ensureModel(db, f) {
+function ensureModel(db, f, currentId = null) {
   const key = modelKey(f);
-  const found = db.get('SELECT id FROM product_models WHERE key = ?', [key]);
+  // Un producto repetido de una base vieja quedó en su propio modelo ("clave#id", migración 9): se queda ahí.
+  const current = currentId ? db.get('SELECT id, key FROM product_models WHERE id = ?', [currentId]) : null;
+  const found = current && current.key.startsWith(`${key}#`) ? current : db.get('SELECT id FROM product_models WHERE key = ?', [key]);
+  const values = { name: f.name, brand: f.brand || null, model: f.model || null, brand_id: f.brand_id || null, category_id: f.category_id || null };
   if (found) {
-    db.run('UPDATE product_models SET name = ?, brand = ?, model = ? WHERE id = ?', [f.name, f.brand || null, f.model || null, found.id]);
+    db.run('UPDATE product_models SET name = ?, brand = ?, model = ?, brand_id = ?, category_id = ? WHERE id = ?', [...Object.values(values), found.id]);
     return found.id;
   }
-  return db.insert('product_models', { key, name: f.name, brand: f.brand || null, model: f.model || null, created_at: now() });
+  return db.insert('product_models', { key, ...values, created_at: now() });
 }
 
 function dropEmptyModel(db, id) {
@@ -182,31 +208,37 @@ function compareSizes(a, b) {
 
 const variantKey = (color, size) => `${String(color ?? '').trim().toLowerCase()}|${String(size ?? '').trim().toLowerCase()}`;
 
-function cleanVariants(variants) {
+// Variantes de un modelo: cada una con color y talla (por clave del catálogo o por nombre), sin repetir.
+function cleanVariants(ctx, variants) {
   if (!Array.isArray(variants) || !variants.length) throw new AppError('Agregue al menos un color o una talla.');
   if (variants.length > 300) throw new AppError('Son demasiadas variantes para un modelo (máximo 300).');
   const seen = new Set();
   return variants.map((v) => {
-    const color = text(v.color, 'Color', { max: 60 });
-    const size = text(v.size, 'Talla', { max: 30 });
-    const k = variantKey(color, size);
-    if (seen.has(k)) throw new AppError(`La variante ${[color, size].filter(Boolean).join(' · ') || 'sin color ni talla'} está repetida.`);
+    const color = catalog.resolve(ctx, 'colors', { id: v.color_id, name: v.color });
+    const size = catalog.resolve(ctx, 'sizes', { id: v.size_id, name: v.size });
+    const k = `${color.id || 0}|${size.id || 0}`;
+    if (seen.has(k)) throw new AppError(`La variante ${variantLabel({ color: color.name, size: size.name })} está repetida.`);
     seen.add(k);
-    return { color, size, initial_stock: v.initial_stock, barcode: v.barcode, sku: v.sku };
+    return { color_id: color.id, color: color.name, size_id: size.id, size: size.name, initial_stock: v.initial_stock, min_stock: v.min_stock, barcode: v.barcode, sku: v.sku };
   });
 }
 
-// Crea un modelo con todas sus variantes de una vez (la cuadrícula color × talla del formulario).
+// Crea un modelo con todas sus variantes de una vez (colores × tallas del formulario, cada una con su
+// existencia inicial).
 function createModel(ctx, data) {
-  const variants = cleanVariants(data.variants);
   return ctx.db.tx(() => {
-    const existing = ctx.db.all('SELECT color, size FROM products WHERE model_id = (SELECT id FROM product_models WHERE key = ?)', [modelKey(data)]);
-    const taken = new Set(existing.map((e) => variantKey(e.color, e.size)));
-    const clash = variants.find((v) => taken.has(variantKey(v.color, v.size)));
-    if (clash) throw new AppError(`Ya existe la variante ${[clash.color, clash.size].filter(Boolean).join(' · ')} de "${data.name}". Agregue solo las que faltan.`);
+    const variants = cleanVariants(ctx, data.variants);
     const common = {};
-    for (const k of ['name', 'brand', 'model', 'category', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes', 'photo']) if (data[k] !== undefined) common[k] = data[k];
-    const ids = variants.map((v) => save(ctx, { ...common, ...v }));
+    for (const k of ['name', 'brand', 'brand_id', 'model', 'category', 'category_id', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes', 'photo']) if (data[k] !== undefined) common[k] = data[k];
+    Object.assign(common, catalogFields(ctx, { ...common, color: null, size: null }));
+    for (const k of ['color_id', 'color', 'size_id', 'size']) delete common[k];
+    const existing = data.model_id || ctx.db.value('SELECT id FROM product_models WHERE key = ?', [modelKey(common)]);
+    if (existing) {
+      const taken = new Set(ctx.db.all('SELECT color_id, size_id FROM products WHERE model_id = ?', [existing]).map((e) => `${e.color_id || 0}|${e.size_id || 0}`));
+      const clash = variants.find((v) => taken.has(`${v.color_id || 0}|${v.size_id || 0}`));
+      if (clash) throw new AppError(`Ya existe la variante ${variantLabel(clash)} de "${common.name}". Agregue solo las que faltan.`);
+    }
+    const ids = variants.map((v) => save(ctx, { ...common, ...v, model_id: existing || undefined, min_stock: v.min_stock ?? common.min_stock }));
     const modelId = ctx.db.value('SELECT model_id FROM products WHERE id = ?', [ids[0]]);
     audit(ctx, 'crear_modelo', 'producto', ids[0], { modelo: data.name, variantes: ids.length });
     return { model_id: modelId, ids };
@@ -217,8 +249,8 @@ function createModel(ctx, data) {
 function addVariants(ctx, { model_id, variants }) {
   const base = ctx.db.get('SELECT * FROM products WHERE model_id = ? ORDER BY active DESC, id LIMIT 1', [model_id]);
   if (!base) throw new AppError('Modelo no encontrado.');
-  const { id, sku, barcode, color, size, stock, active, created_at, updated_at, model_id: m, last_counted_at, ...common } = base;
-  return createModel(ctx, { ...common, variants });
+  const { id, sku, barcode, color, size, color_id, size_id, stock, active, created_at, updated_at, model_id: m, last_counted_at, ...common } = base;
+  return createModel(ctx, { ...common, model_id, variants });
 }
 
 // Cambia lo que comparten todas las variantes. Los precios solo si se pide (apply_prices): una talla
@@ -227,8 +259,14 @@ function updateModel(ctx, data) {
   const variants = ctx.db.all('SELECT * FROM products WHERE model_id = ? ORDER BY id', [data.id]);
   if (!variants.length) throw new AppError('Modelo no encontrado.');
   return ctx.db.tx(() => {
+    // Marca y categoría: por clave (el formulario) o por nombre (una PC con la versión anterior).
+    const brand = catalog.resolve(ctx, 'brands', { id: data.brand_id, name: data.brand });
+    const category = catalog.resolve(ctx, 'categories', { id: data.category_id, name: data.category });
     for (const v of variants) {
-      const next = { ...v, name: data.name, brand: data.brand, model: data.model, category: data.category };
+      const next = { ...v, name: data.name, model: data.model, brand_id: brand.id, brand: brand.name, category_id: category.id, category: category.name };
+      if (data.notes !== undefined) next.notes = data.notes;
+      // El costo escrito en el formulario se aplica a todas; si no cambió, cada una conserva el suyo.
+      if (data.cost !== undefined && data.cost !== '' && data.cost !== null) next.cost = data.cost;
       if (data.apply_prices) Object.assign(next, { price_retail: data.price_retail, price_wholesale: data.price_wholesale });
       if (data.min_stock !== undefined && data.min_stock !== '') next.min_stock = data.min_stock;
       delete next.photo;
@@ -247,7 +285,10 @@ function modelGet(ctx, { id }) {
   const variants = list(ctx, { model_id: id, includeInactive: true });
   const colors = [];
   for (const v of [...variants].sort((a, b) => a.id - b.id)) if (!colors.includes(v.color || '')) colors.push(v.color || '');
-  const sizes = [...new Set(variants.map((v) => v.size || ''))].sort(compareSizes);
+  // Tallas en el orden del catálogo (6 1/2 … 8, Ajustable, One Size); las que no están en él, al final.
+  const sortOf = new Map(variants.map((v) => [v.size || '', v.size_sort ?? 999]));
+  const sizes = [...new Set(variants.map((v) => v.size || ''))].sort((a, b) => sortOf.get(a) - sortOf.get(b) || compareSizes(a, b));
+  const palette = Object.fromEntries(variants.filter((v) => v.color).map((v) => [v.color, v.color_hex || null]));
   const cells = {};
   for (const v of variants) cells[variantKey(v.color, v.size)] = v.id;
   const sum = (k) => variants.filter((v) => v.active).reduce((s, v) => s + v[k], 0);
@@ -258,6 +299,7 @@ function modelGet(ctx, { id }) {
     variants,
     colors,
     sizes,
+    palette,
     cells,
     stock: sum('stock'),
     reserved: sum('reserved'),
@@ -517,10 +559,40 @@ function summary(ctx) {
   return out;
 }
 
-// Marcas y categorías ya usadas, para sugerirlas al escribir y no terminar con "Snapback" y "snapback".
+// Marcas y categorías del catálogo (lo usan las PCs con una versión anterior de la pantalla).
 function facets(ctx) {
-  const distinct = (col) => ctx.db.all(`SELECT ${col} AS v, COUNT(*) AS n FROM products WHERE ${col} IS NOT NULL AND ${col} <> '' GROUP BY ${col} COLLATE NOCASE ORDER BY ${col} COLLATE NOCASE`).map((r) => r.v);
-  return { brands: distinct('brand'), categories: distinct('category') };
+  const c = catalog.list(ctx);
+  return { brands: c.brands.map((b) => b.name), categories: c.categories.map((b) => b.name) };
 }
 
-module.exports = { list, get, findByCode, facets, save, createModel, addVariants, updateModel, modelGet, models, cycleCount, reservedQty, compareSizes, RESERVED_SQL, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };
+// Guardar un producto editado con todas sus variantes, de una vez (1.7): los datos comunes, las
+// combinaciones nuevas de color y talla, y las que se quitan (se desactivan) o se vuelven a poner.
+function saveModel(ctx, { id, add = [], deactivate = [], activate = [], ...data }) {
+  return ctx.db.tx(() => {
+    const modelId = updateModel(ctx, { id, ...data });
+    if (add.length) addVariants(ctx, { model_id: modelId, variants: add });
+    const own = new Set(ctx.db.all('SELECT id FROM products WHERE model_id = ?', [modelId]).map((r) => r.id));
+    const mine = (ids) => ids.filter((x) => own.has(Number(x)));
+    if (mine(deactivate).length) setActive(ctx, { ids: mine(deactivate), active: false });
+    if (mine(activate).length) setActive(ctx, { ids: mine(activate), active: true });
+    return modelId;
+  });
+}
+
+// Activar o desactivar varias variantes de un modelo (al quitar un color o una talla en el formulario).
+// No se borran: tienen ventas y movimientos. Desactivadas dejan de aparecer en la venta.
+function setActive(ctx, { ids, active }) {
+  if (!Array.isArray(ids) || !ids.length) throw new AppError('No hay variantes para cambiar.');
+  return ctx.db.tx(() => {
+    for (const id of ids) {
+      const p = ctx.db.get('SELECT id, name, color, size FROM products WHERE id = ?', [id]);
+      if (!p) throw new AppError('Producto no encontrado.');
+      ctx.db.run('UPDATE products SET active = ?, updated_at = ? WHERE id = ?', [active ? 1 : 0, now(), id]);
+      audit(ctx, active ? 'activar_producto' : 'desactivar_producto', 'producto', id, { producto: [p.name, p.color, p.size].filter(Boolean).join(' · ') });
+    }
+    return ids.length;
+  });
+}
+
+module.exports = {
+  setActive, saveModel, list, get, findByCode, facets, save, createModel, addVariants, updateModel, modelGet, models, cycleCount, reservedQty, compareSizes, RESERVED_SQL, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };

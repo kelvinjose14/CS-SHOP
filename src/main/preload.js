@@ -44,7 +44,7 @@ contextBridge.exposeInMainWorld('capsApi', {
   updates: {
     status: () => unwrap(ipcRenderer.invoke('update:status')),
     check: () => unwrap(ipcRenderer.invoke('update:check')),
-    install: () => unwrap(ipcRenderer.invoke('update:install')),
+    install: (opts) => unwrap(ipcRenderer.invoke('update:install', opts)),
   },
   external: {
     status: () => unwrap(ipcRenderer.invoke('backup:externalStatus')),

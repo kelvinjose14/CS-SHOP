@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { AppError } = require('./util');
 const users = require('./services/users');
 const products = require('./services/products');
+const catalog = require('./services/catalog');
 const purchases = require('./services/purchases');
 const sales = require('./services/sales');
 const finance = require('./services/finance');
@@ -43,6 +44,11 @@ const METHODS = {
   'products.addVariants': [ADMIN, products.addVariants],
   'products.updateModel': [ADMIN, products.updateModel],
   'products.cycleCount': [ADMIN, products.cycleCount],
+  'products.setActive': [ADMIN, products.setActive],
+  'products.saveModel': [ADMIN, products.saveModel],
+  'catalog.list': [ALL, catalog.list],
+  'catalog.create': [ADMIN, catalog.create],
+  'catalog.update': [ADMIN, catalog.update],
   'reservations.list': [ALL, reservations.list],
   'reservations.get': [ALL, reservations.get],
   'reservations.create': [ALL, reservations.create],

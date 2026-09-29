@@ -161,6 +161,7 @@ App.register({
           <h3>Copias de seguridad</h3>
           <p class="muted">Las copias se hacen en la PC principal: ahí están todos los datos.</p>
         </div>`}
+        <div class="card" id="cat-card"></div>
         <div class="card" id="upd-card"></div>
         <div class="card">
           <h3>Soporte</h3>
@@ -192,6 +193,7 @@ App.register({
     };
     renderPrinter($('#prn-card', form));
     renderNetwork($('#net-card', form));
+    renderCatalog($('#cat-card', form));
     renderUpdates($('#upd-card', form));
     if (App.info.mode === 'principal') renderExternal($('#ext-box', form));
     $('#sp-diag', form).onclick = async () => {
@@ -390,6 +392,40 @@ async function renderExternal(box) {
   };
 }
 
+// Catálogo de productos (1.7): marcas, categorías, colores y tallas. Se agregan desde el formulario del
+// producto; aquí se corrigen nombres, se cambia el color y se quitan de las opciones (desactivar).
+const CATALOG_TABS = [['brands', 'Marcas'], ['models', 'Modelos'], ['categories', 'Categorías'], ['sizes', 'Tallas']];
+async function renderCatalog(card, tab = 'brands') {
+  const all = await api('catalog.list', { includeInactive: true });
+  const rows = all[tab];
+  setHTML(card, html`
+    <h3>${icon('tag')} Catálogo de productos</h3>
+    <p class="muted small">Las opciones del formulario de productos. Renombrar cambia también el nombre en los productos. Desactivar solo la quita de las opciones: los productos que ya la tienen no cambian.</p>
+    <div class="seg" id="cat-tabs">${CATALOG_TABS.map(([k, l]) => html`<button type="button" data-t="${k}" class="${k === tab ? 'active' : ''}">${l} <small class="muted">${all[k].filter((x) => x.active).length}</small></button>`)}</div>
+    <div class="table-wrap cat-list"><table class="table">
+      <thead><tr><th>Nombre</th><th class="text-right">Productos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rows.map((r) => html`<tr data-id="${r.id}" class="${r.active ? '' : 'inactive'}">
+        <td>${r.name}</td>
+        <td class="text-right">${Fmt.num(r.products)}</td>
+        <td>${r.active ? badge('activo', 'Activa') : badge('anulada', 'Desactivada')}</td>
+        <td class="text-right nowrap">
+          <button type="button" class="btn small" data-rename>Renombrar</button>
+          <button type="button" class="btn small" data-toggle>${r.active ? 'Desactivar' : 'Activar'}</button>
+        </td></tr>`)}</tbody>
+    </table></div>`);
+  const redraw = () => renderCatalog(card, tab);
+  $$('#cat-tabs [data-t]', card).forEach((b) => (b.onclick = () => renderCatalog(card, b.dataset.t)));
+  $$('tr[data-id]', card).forEach((tr) => {
+    const r = rows.find((x) => x.id === Number(tr.dataset.id));
+    $('[data-rename]', tr).onclick = async () => {
+      const name = await promptDialog({ title: `Renombrar "${r.name}"`, label: 'Nombre nuevo' });
+      if (!name) return;
+      try { await api('catalog.update', { type: tab, id: r.id, name }); toast('Nombre cambiado.'); redraw(); } catch (e) { /* el aviso ya se mostró */ }
+    };
+    $('[data-toggle]', tr).onclick = () => api('catalog.update', { type: tab, id: r.id, active: !r.active }).then(redraw, () => {});
+  });
+}
+
 // Actualizaciones: se buscan solas; instalar lo decide el administrador.
 async function renderUpdates(card, st) {
   const u = st || (await window.capsApi.updates.status());
@@ -397,27 +433,58 @@ async function renderUpdates(card, st) {
     disabled: 'Las actualizaciones funcionan en el programa instalado.',
     idle: 'Todavía no se buscó.',
     checking: 'Buscando…',
-    none: 'Tiene la versión más reciente.',
+    none: `Tiene la versión más reciente${u.checked_at ? ` (revisado a las ${new Date(u.checked_at).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' })})` : ''}.`,
     available: `Hay una versión nueva: ${u.version}.`,
     downloading: `Descargando la versión ${u.version}… ${u.percent || 0}%`,
     ready: `La versión ${u.version} está lista para instalar.`,
+    scheduled: `La versión ${u.version} se instalará sola al cerrar el programa.`,
     error: u.error,
   }[u.status];
   setHTML(card, html`
     <h3>${icon('download')} Actualizaciones</h3>
     <p>Versión instalada: <b>${u.current}</b> · ${text}</p>
-    ${['available', 'ready'].includes(u.status) ? html`<p class="muted small">Al instalar, el programa se cierra y se abre en la versión nueva, sin perder datos. Con varias computadoras, actualice <b>primero la PC principal</b> y después las demás: todas deben tener la misma versión.</p>` : ''}
+    ${['available', 'ready', 'scheduled'].includes(u.status) ? html`<p class="muted small">Se instala sola, sin ventanas de instalación y sin perder datos. <b>Actualizar ahora</b>: el programa se cierra unos segundos y vuelve a abrir en la versión nueva. <b>Al cerrar el programa</b>: se descarga mientras sigue trabajando y se instala cuando cierre el programa, por ejemplo al final del día. Con varias computadoras, actualice <b>primero la PC principal</b> y después las demás: todas deben tener la misma versión.</p>` : ''}
     <div class="inline">
-      <button class="btn" id="upd-check" ${['disabled', 'checking', 'downloading'].includes(u.status) ? 'disabled' : ''}>Buscar ahora</button>
-      ${['available', 'ready'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Instalar la versión ${u.version}</button>` : ''}
+      <button class="btn" id="upd-check" ${['disabled', 'checking', 'downloading', 'scheduled'].includes(u.status) ? 'disabled' : ''}>Buscar ahora</button>
+      ${['available', 'ready'].includes(u.status) ? html`<button class="btn" id="upd-later">Al cerrar el programa</button>` : ''}
+      ${['available', 'ready', 'scheduled'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Actualizar ahora a la ${u.version}</button>` : ''}
     </div>`);
   const check = $('#upd-check', card);
-  check.onclick = async () => renderUpdates(card, await window.capsApi.updates.check());
+  // Al buscar se ve que está buscando, y al terminar un aviso dice qué encontró.
+  check.onclick = async () => {
+    check.disabled = true;
+    check.textContent = 'Buscando…';
+    try {
+      const r = await window.capsApi.updates.check();
+      renderUpdates(card, r);
+      if (r.status === 'none') toast(`No hay versiones nuevas: la ${r.current} es la más reciente.`);
+      else if (['available', 'ready'].includes(r.status)) toast(`Hay una versión nueva: ${r.version}.`);
+      else if (r.status === 'error') toast(r.error, 'error');
+    } catch (e) {
+      toast(e.message, 'error');
+      renderUpdates(card);
+    }
+  };
   const install = $('#upd-install', card);
   if (install) install.onclick = async () => {
-    if (!(await confirmDialog(`Se instalará la versión ${u.version}. El programa se cerrará y volverá a abrir. ¿Instalar ahora?`, { okLabel: 'Instalar' }))) return;
-    install.disabled = true;
+    if (!(await confirmDialog(`El programa se cerrará unos segundos y volverá a abrir solo en la versión ${u.version}. Si hay una venta a medias, termínela antes. ¿Actualizar ahora?`, { okLabel: 'Actualizar ahora' }))) return;
+    $$('button', card).forEach((b) => (b.disabled = true));
     install.textContent = 'Descargando…';
-    try { await window.capsApi.updates.install(); } catch (e) { toast(e.message, 'error'); renderUpdates(card); }
+    try { await window.capsApi.updates.install({ when: 'now' }); install.textContent = 'Instalando…'; } catch (e) { toast(e.message, 'error'); renderUpdates(card); }
+  };
+  const later = $('#upd-later', card);
+  if (later) later.onclick = async () => {
+    $$('button', card).forEach((b) => (b.disabled = true));
+    later.textContent = 'Descargando…';
+    try {
+      const r = await window.capsApi.updates.install({ when: 'quit' });
+      renderUpdates(card, r);
+      toast(`Listo: la versión ${r.version} se instalará sola al cerrar el programa.`);
+      $$('.update-pill').forEach((x) => x.remove());
+      App.refreshUpdateBadge();
+    } catch (e) {
+      toast(e.message, 'error');
+      renderUpdates(card);
+    }
   };
 }

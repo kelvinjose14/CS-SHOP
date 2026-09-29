@@ -1,6 +1,6 @@
 'use strict';
 // Esquema de la base de datos y migraciones versionadas (PRAGMA user_version).
-const { AppError, modelKey } = require('./util');
+const { AppError, modelKey, catalogKey, sizeOrder } = require('./util');
 
 const MIGRATIONS = [
   // v1: esquema inicial
@@ -423,7 +423,127 @@ const MIGRATIONS = [
   );
   CREATE INDEX ix_customer_notes ON customer_notes(customer_id, id);
   `,
+
+  // v9: catálogos de productos (versión 1.7). Marcas, categorías, colores (con su código de color) y
+  // tallas (con su orden) pasan a tablas propias, y cada producto guarda sus claves. Cada producto sigue
+  // siendo una variante (color + talla) de su modelo; una misma combinación no puede repetirse en un
+  // modelo. Los textos de siempre (brand, category, color, size) se conservan con el nombre del catálogo
+  // para búsquedas, etiquetas y reportes.
+  (db) => {
+    db.exec(`
+    CREATE TABLE brands (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+    CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+    CREATE TABLE colors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, hex TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+    CREATE TABLE sizes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, sort REAL NOT NULL DEFAULT 200, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
+    ALTER TABLE products ADD COLUMN brand_id INTEGER REFERENCES brands(id);
+    ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);
+    ALTER TABLE products ADD COLUMN color_id INTEGER REFERENCES colors(id);
+    ALTER TABLE products ADD COLUMN size_id INTEGER REFERENCES sizes(id);
+    ALTER TABLE product_models ADD COLUMN brand_id INTEGER REFERENCES brands(id);
+    ALTER TABLE product_models ADD COLUMN category_id INTEGER REFERENCES categories(id);
+    CREATE INDEX ix_products_brand_id ON products(brand_id);
+    CREATE INDEX ix_products_category_id ON products(category_id);
+    `);
+    const t = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const ids = { brands: new Map(), categories: new Map(), colors: new Map(), sizes: new Map() };
+    const add = (table, name, extra = {}) => {
+      const k = catalogKey(name);
+      if (!k) return null;
+      if (!ids[table].has(k)) ids[table].set(k, db.insert(table, { name: String(name).trim().replace(/\s+/g, ' '), ...extra, active: 1, created_at: t }));
+      return ids[table].get(k);
+    };
+    for (const b of CATALOG_SEEDS.brands) add('brands', b);
+    for (const c of CATALOG_SEEDS.categories) add('categories', c);
+    for (const [name, hex] of CATALOG_SEEDS.colors) add('colors', name, { hex });
+    for (const s of CATALOG_SEEDS.sizes) add('sizes', s, { sort: sizeOrder(s) });
+    // Lo que ya estaba escrito en los productos entra al catálogo tal como se escribió la primera vez.
+    for (const p of db.all('SELECT id, brand, category, color, size FROM products ORDER BY id')) {
+      const set = {
+        brand_id: add('brands', p.brand),
+        category_id: add('categories', p.category),
+        color_id: add('colors', p.color, { hex: null }),
+        size_id: add('sizes', p.size, { sort: sizeOrder(p.size) }),
+      };
+      db.run('UPDATE products SET brand_id = ?, category_id = ?, color_id = ?, size_id = ? WHERE id = ?', [set.brand_id, set.category_id, set.color_id, set.size_id, p.id]);
+    }
+    // El texto de cada producto queda igual al nombre del catálogo ("snapback" → "Snapback").
+    db.exec(`
+    UPDATE products SET brand = (SELECT name FROM brands WHERE id = brand_id) WHERE brand_id IS NOT NULL;
+    UPDATE products SET category = (SELECT name FROM categories WHERE id = category_id) WHERE category_id IS NOT NULL;
+    UPDATE products SET color = (SELECT name FROM colors WHERE id = color_id) WHERE color_id IS NOT NULL;
+    UPDATE products SET size = (SELECT name FROM sizes WHERE id = size_id) WHERE size_id IS NOT NULL;
+    UPDATE product_models SET brand_id = (SELECT brand_id FROM products p WHERE p.model_id = product_models.id AND brand_id IS NOT NULL ORDER BY p.id LIMIT 1),
+                              category_id = (SELECT category_id FROM products p WHERE p.model_id = product_models.id AND category_id IS NOT NULL ORDER BY p.id LIMIT 1);
+    `);
+    // Si una base vieja tiene dos productos con el mismo nombre, color y talla (por ejemplo, cargados dos
+    // veces con distinto SKU), el segundo queda en un modelo aparte: no se pierde nada y la regla se cumple.
+    const dups = db.all(`SELECT p.id, p.model_id, m.key FROM products p JOIN product_models m ON m.id = p.model_id
+      WHERE EXISTS (SELECT 1 FROM products q WHERE q.model_id = p.model_id AND IFNULL(q.color_id, 0) = IFNULL(p.color_id, 0)
+                    AND IFNULL(q.size_id, 0) = IFNULL(p.size_id, 0) AND q.id < p.id)`);
+    for (const d of dups) {
+      const model = db.get('SELECT * FROM product_models WHERE id = ?', [d.model_id]);
+      const newId = db.insert('product_models', { key: `${d.key}#${d.id}`, name: model.name, brand: model.brand, model: model.model, brand_id: model.brand_id, category_id: model.category_id, created_at: t });
+      db.run('UPDATE products SET model_id = ? WHERE id = ?', [newId, d.id]);
+    }
+    db.exec('CREATE UNIQUE INDEX ux_products_variant ON products(model_id, IFNULL(color_id, 0), IFNULL(size_id, 0)) WHERE model_id IS NOT NULL;');
+  },
+
+  // v10: formulario de productos simple (1.7). Catálogo de modelos (59FIFTY, 9FORTY…), que no depende de
+  // la marca; el producto guarda el nombre del modelo como siempre. Marcas y categorías quedan con pocas
+  // opciones al empezar: las de la lista inicial que ningún producto usa se desactivan (no se borran;
+  // se activan de nuevo al crearlas desde el formulario o en Configuración).
+  (db) => {
+    db.exec('CREATE TABLE models (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);');
+    const t = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const clean = (s) => String(s).trim().replace(/\s+/g, ' ');
+    const models = new Map();
+    const addModel = (name) => {
+      const k = catalogKey(name);
+      if (k && !models.has(k)) models.set(k, { id: db.insert('models', { name: clean(name), active: 1, created_at: t }), name: clean(name) });
+      return models.get(k);
+    };
+    for (const m of QUICK_OPTIONS.models) addModel(m);
+    for (const p of db.all('SELECT id, model FROM products WHERE model IS NOT NULL ORDER BY id')) {
+      const m = addModel(p.model);
+      if (m && m.name !== p.model) db.run('UPDATE products SET model = ? WHERE id = ?', [m.name, p.id]);
+    }
+    for (const r of db.all('SELECT id, model FROM product_models WHERE model IS NOT NULL')) {
+      const m = models.get(catalogKey(r.model));
+      if (m && m.name !== r.model) db.run('UPDATE product_models SET model = ? WHERE id = ?', [m.name, r.id]);
+    }
+    const hasCategory = db.all('SELECT name FROM categories').some((c) => catalogKey(c.name) === 'ajustable');
+    if (!hasCategory) db.insert('categories', { name: 'Ajustable', active: 1, created_at: t });
+    for (const [table, column] of [['brands', 'brand_id'], ['categories', 'category_id']]) {
+      const keep = new Set(QUICK_OPTIONS[table].map(catalogKey));
+      const seeded = new Set(CATALOG_SEEDS[table].map(catalogKey));
+      for (const r of db.all(`SELECT id, name FROM ${table} WHERE active = 1`)) {
+        const k = catalogKey(r.name);
+        if (!seeded.has(k) || keep.has(k)) continue;
+        if (db.value(`SELECT COUNT(*) FROM products WHERE ${column} = ?`, [r.id])) continue;
+        db.run(`UPDATE ${table} SET active = 0 WHERE id = ?`, [r.id]);
+      }
+    }
+  },
 ];
+
+// Opciones con las que empieza el formulario de productos (v10).
+const QUICK_OPTIONS = {
+  brands: ['New Era', 'Mitchell & Ness', 'Goorin Bros.', 'Nike', 'Adidas'],
+  models: ['59FIFTY', '9FIFTY', '9FORTY', '39THIRTY', '9TWENTY'],
+  categories: ['Fitted', 'Snapback', 'Trucker', 'Ajustable', 'Dad Hat'],
+};
+
+// Opciones iniciales de los catálogos (v9). El dueño agrega más desde el formulario del producto.
+const CATALOG_SEEDS = {
+  brands: ['New Era', 'Mitchell & Ness', "'47 Brand", 'Nike', 'Adidas', 'Jordan', 'Puma', 'Champion', 'Goorin Bros.', 'Von Dutch', 'Flexfit', 'Yupoong', 'Richardson', 'Supreme', 'Fear of God / Essentials', 'Otra', 'Sin marca'],
+  categories: ['Fitted', 'Snapback', 'Trucker', 'Dad Hat', 'Strapback', 'Adjustable', 'Beanie', 'Visera', 'Otro'],
+  colors: [
+    ['Negro', '#000000'], ['Blanco', '#FFFFFF'], ['Rojo', '#FF0000'], ['Azul', '#1E5BD8'], ['Azul marino', '#1B2A4A'],
+    ['Verde', '#2E7D32'], ['Gris', '#9E9E9E'], ['Beige', '#D8C3A5'], ['Marrón', '#6D4C41'], ['Crema', '#F3E9D2'],
+    ['Amarillo', '#FBC02D'], ['Naranja', '#EF6C00'], ['Rosado', '#EC407A'], ['Morado', '#7B1FA2'], ['Vino', '#7B1E2B'],
+  ],
+  sizes: ['6 1/2', '6 5/8', '6 3/4', '6 7/8', '7', '7 1/8', '7 1/4', '7 3/8', '7 1/2', '7 5/8', '7 3/4', '7 7/8', '8', 'Ajustable', 'Snapback', 'One Size'],
+};
 
 // Reglas de la base (v5): cada una es un par de disparadores (al insertar y al modificar) que rechazan
 // la operación completa si la fila no cumple la condición.
@@ -449,4 +569,4 @@ function migrate(db, migrations = MIGRATIONS) {
   }
 }
 
-module.exports = { migrate, MIGRATIONS, SCHEMA_VERSION: MIGRATIONS.length };
+module.exports = { migrate, MIGRATIONS, SCHEMA_VERSION: MIGRATIONS.length, CATALOG_SEEDS, QUICK_OPTIONS };

@@ -1,11 +1,12 @@
 'use strict';
 // Actualizaciones desde GitHub Releases, con aviso: nada se descarga ni se instala sin que el
-// administrador lo pida (decisión del dueño, 25/09/2026). El actualizador se recibe de afuera
-// (electron-updater en la app, uno falso en las pruebas).
+// administrador lo pida (decisión del dueño, 25/09/2026). Se instala en silencio, sin el asistente
+// de instalación: ahora (el programa se cierra y vuelve a abrir solo) o al cerrar el programa (DT-44).
+// El actualizador se recibe de afuera (electron-updater en la app, uno falso en las pruebas).
 
 const EVERY = 6 * 60 * 60 * 1000;
 
-function createUpdates({ updater, currentVersion, enabled = true, log, quit = () => updater.quitAndInstall(false, true) }) {
+function createUpdates({ updater, currentVersion, enabled = true, log, quit = () => updater.quitAndInstall(true, true) }) {
   const state = { status: enabled ? 'idle' : 'disabled', version: null, percent: 0, error: null, checked_at: null };
   let timer = null;
 
@@ -36,7 +37,7 @@ function createUpdates({ updater, currentVersion, enabled = true, log, quit = ()
   const api = {
     status: () => ({ ...state, current: currentVersion }),
     async check() {
-      if (!enabled || ['checking', 'downloading'].includes(state.status)) return api.status();
+      if (!enabled || ['checking', 'downloading', 'scheduled'].includes(state.status)) return api.status();
       state.checked_at = new Date().toISOString();
       try {
         await updater.checkForUpdates();
@@ -47,8 +48,9 @@ function createUpdates({ updater, currentVersion, enabled = true, log, quit = ()
       }
       return api.status();
     },
-    // Descarga (si falta) e instala: el programa se cierra y se abre en la versión nueva.
-    async install() {
+    // Descarga (si falta) e instala en silencio. when 'now': el programa se cierra y vuelve a abrir
+    // en la versión nueva. when 'quit': se instala cuando se cierre el programa.
+    async install({ when = 'now' } = {}) {
       if (!enabled) throw Object.assign(new Error('Las actualizaciones solo funcionan en el programa instalado.'), { userFacing: true, code: 'UPDATE' });
       if (state.status === 'available') {
         state.status = 'downloading';
@@ -59,7 +61,13 @@ function createUpdates({ updater, currentVersion, enabled = true, log, quit = ()
           throw Object.assign(new Error(state.error), { userFacing: true, code: 'UPDATE' });
         }
       }
-      if (state.status !== 'ready') throw Object.assign(new Error('No hay una versión nueva lista para instalar.'), { userFacing: true, code: 'UPDATE' });
+      if (!['ready', 'scheduled'].includes(state.status)) throw Object.assign(new Error('No hay una versión nueva lista para instalar.'), { userFacing: true, code: 'UPDATE' });
+      if (when === 'quit') {
+        updater.autoInstallOnAppQuit = true;
+        state.status = 'scheduled';
+        if (log) log.info('actualización', `La versión ${state.version} se instalará al cerrar el programa`);
+        return api.status();
+      }
       if (log) log.info('actualización', `Instalando la versión ${state.version}`);
       setTimeout(quit, 200);
       return api.status();

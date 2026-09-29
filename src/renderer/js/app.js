@@ -93,7 +93,7 @@ const App = {
         if (!['available', 'ready'].includes(u.status)) throw new Error(u.error || 'No hay una versión más nueva publicada. Si la PC principal tiene una versión más vieja, actualice la principal.');
         upd.textContent = `Descargando la versión ${u.version}…`;
         await window.capsApi.updates.install();
-        upd.textContent = 'Instalando: el programa se cerrará y volverá a abrir.';
+        upd.textContent = 'Instalando: el programa se cerrará y volverá a abrir solo.';
       } catch (err) {
         $('.login-error').textContent = err.message;
         upd.disabled = false;
@@ -259,8 +259,8 @@ const App = {
     try {
       const u = await window.capsApi.updates.status();
       const box = $('#topbar-right');
-      if (!box || $('.update-pill', box) || !['available', 'downloading', 'ready'].includes(u.status)) return;
-      const pill = el(html`<button class="cash-pill update-pill" title="Hay una versión nueva">${icon('download')} Versión ${u.version} disponible</button>`);
+      if (!box || $('.update-pill', box) || !['available', 'downloading', 'ready', 'scheduled'].includes(u.status)) return;
+      const pill = el(html`<button class="cash-pill update-pill" title="Hay una versión nueva">${icon('download')} ${u.status === 'scheduled' ? `Versión ${u.version} al cerrar` : `Versión ${u.version} disponible`}</button>`);
       pill.onclick = () => this.go('settings');
       box.prepend(pill);
     } catch { /* sin actualizaciones */ }
@@ -275,7 +275,7 @@ const App = {
       const st = await api('cash.status', null, { silent: true });
       const box = $('#topbar-right');
       if (!box) return;
-      const old = $('.cash-pill', box);
+      const old = $('.cash-pill:not(.update-pill)', box);
       if (old) old.remove();
       const pill = el(st.open
         ? html`<button class="cash-pill open" title="Caja abierta">${icon('cash')} Caja abierta · ${Fmt.money(st.open.expected)}</button>`

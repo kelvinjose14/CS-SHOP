@@ -150,4 +150,4 @@ async function validateDatabaseFile(file) {
   }
 }
 
-module.exports = { openDatabase, validateDatabaseFile };
+module.exports = { openDatabase, validateDatabaseFile, Database };

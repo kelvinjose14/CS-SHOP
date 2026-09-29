@@ -27,6 +27,15 @@ Menú **Sistema** → **Configuración**. Pulse **Guardar configuración** al te
 
 Cada cambio de configuración queda en el **Historial de movimientos**.
 
+**Catálogo de productos** (versión 1.7): las listas de **Marcas**, **Modelos**, **Categorías** y **Tallas** del formulario de productos, con cuántos productos usan cada una.
+
+![Catálogo de productos](img/catalogo.jpg)
+
+- **Renombrar** corrige el nombre y lo cambia también en todos los productos que lo tienen.
+- **Desactivar** la quita de las opciones del formulario; los productos que ya la tienen no cambian. **Activar** la devuelve.
+- Al empezar, las listas traen pocas opciones (5 marcas, 5 modelos y 5 categorías); las de la lista larga anterior quedan desactivadas si ningún producto las usa, y se pueden activar aquí.
+- Para agregar, use los botones **+** del formulario del producto ([Inventario, 4.2](04-inventario.md#42-crear-un-producto-administrador)).
+
 La sección **Red** (compartir con otras computadoras, clave de conexión y lista de computadoras) se explica en [Varias computadoras en red](13-varias-computadoras.md#132-preparar-la-pc-principal).
 
 ## 11.2 Dónde están los datos
@@ -125,13 +134,11 @@ En una computadora conectada, el diagnóstico muestra a qué PC principal está 
 
 **Configuración → Actualizaciones** (administrador) muestra la versión instalada y si hay una más nueva. El programa busca solo al abrirse y cada 6 horas, pero **no descarga ni instala nada sin que usted lo pida**.
 
-- **Buscar ahora:** busca en el momento. Necesita internet.
-- **Instalar la versión X:**
-  - descarga la versión nueva;
-  - cierra el programa;
-  - la instala y lo vuelve a abrir.
+- **Buscar ahora:** busca en el momento; mientras busca dice "Buscando…" y al terminar un aviso indica si hay una versión nueva. Necesita internet.
+- **Actualizar ahora a la X:** descarga la versión nueva, cierra el programa unos segundos y **vuelve a abrirlo solo**, ya actualizado. No aparece el asistente de instalación ni hay que pulsar nada más.
+- **Al cerrar el programa:** descarga la versión nueva mientras sigue trabajando y **se instala sola cuando cierre el programa**, por ejemplo al final del día. La barra de arriba dice **Versión X al cerrar**. Si luego prefiere no esperar, **Actualizar ahora** sigue disponible.
 
-  Los datos no se tocan.
+  En los dos casos los datos no se tocan.
 - Con varias computadoras, **primero la PC principal** y después las demás ([Soporte y recuperación, 14.4](14-soporte-y-recuperacion.md#144-instalar-una-versión-nueva)).
 
 Cuando hay versión nueva, la barra de arriba muestra **Versión X disponible** (solo al administrador).

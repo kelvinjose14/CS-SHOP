@@ -36,7 +36,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/core.test.js` | 14 | Reglas del negocio a través de `createApi` (detalle abajo) |
 | `test/migration.test.js` | 4 | Abrir la base de la 1.0.0 (`test/fixtures/v1.0.0.db`) sin perder datos; migración que falla sin dejar nada a medias; rechazo de una base más nueva; respaldos válidos |
 | `test/backup.test.js` | 9 | Copia diaria y recorte a 30, copia con WAL pendiente, restaurar, copia ilegible, permisos y límite de intentos en la PC principal; **copia fuera de la PC** con fotos, memoria desconectada, aviso de 7 días y restaurar trayendo las fotos; **copia con contraseña** sin nada legible y restaurada solo con la contraseña |
-| `test/updates.test.js` | 2 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
+| `test/updates.test.js` | 3 | Actualizaciones: avisa sin descargar, instala solo cuando se pide; sin versión nueva, sin internet y en desarrollo |
 | `test/permissions.test.js` | 1 | Todas las operaciones: el vendedor recibe "sin permiso" en las de administrador; sin sesión, nada; con la contraseña inicial, solo cambiarla |
 | `test/terminals.test.js` | 3 | Caja por computadora, sesiones independientes, renombrar y desactivar PCs |
 | `test/network.test.js` | 12 | Servidor real: clave, versión, permisos, 40 ventas simultáneas desde 2 PCs, reintentos, fotos (solo con sesión), búsqueda, sin conexión, corte a mitad de una operación, tráfico cifrado, mensaje alterado y hora desfasada |
@@ -48,6 +48,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `test/o6.test.js` | 5 | Conteo de inventario (vista previa, aplicar, ventas durante el conteo, permisos), la lista de aceptación igual a los requisitos y los números de los ejercicios de la capacitación |
 | `test/controles.test.js` | 10 | Controles de la [auditoría](auditoria.md), secciones 2 y 4: motivo al abrir la caja, depósitos por verificar, inventario con productos desactivados, clientes desactivados, límite de crédito y deuda vencida, fechas y textos largos, costos sospechosos y categorías, reglas de la base, contraseñas de 8 y separador del CSV según la región |
 | `test/xlsx.test.js` | 4 | Excel con formato: ZIP y CRC, fechas de Excel, montos y porcentajes como números, textos que nunca son fórmulas, filtros, títulos fijos, impresión, y la plantilla y un inventario exportado que se vuelven a importar |
+| `test/productos17.test.js` | 8 | Catálogos (1.7): migraciones 9 y 10 desde la 1.0.0, con productos repetidos y con marcas en uso; crear marcas y modelos sin repetir, renombrar sin partir el producto, desactivar; variantes únicas, stock total, la venta baja solo su variante; importar por nombre; montos con 2 decimales como máximo |
 
 `test/helpers.js` simula una computadora que guarda su token de sesión y cambia la contraseña inicial.
 
@@ -64,6 +65,8 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
 | `controles.test.js` | Motivo al abrir la caja, depósitos por verificar desde el aviso del Inicio, crédito autorizado por el administrador, compra a costo 0 confirmada, cliente con deuda que no se desactiva, CSV sin fórmulas, ninguna pantalla desbordada a 1,100 px, navegación bloqueada, y copia externa con contraseña y su restauración |
 | `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
+| `actualizaciones.test.js` | Buscar actualizaciones desde Configuración: "Buscando…" mientras busca y el aviso de si hay versión nueva, no la hay o hubo un error (con respuestas simuladas del actualizador) |
+| `catalogo.test.js` | Configuración → Catálogo: renombrar una marca la cambia en sus productos, ya no hay pestaña de colores y un modelo desactivado ya no se ofrece |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

@@ -14,7 +14,8 @@ function productColumns() {
     { key: 'brand', label: 'Marca', hide: true },
     { key: 'model', label: 'Modelo', hide: true },
     { key: 'category', label: 'Categoría', hide: true },
-    { key: 'color', label: 'Color' },
+    // El color es de productos anteriores a 1.7: solo va en la exportación.
+    { key: 'color', label: 'Color', hide: true },
     { key: 'size', label: 'Talla' },
     { key: 'sku', label: 'SKU', render: (p) => html`<code>${p.sku}</code>` , csv: (p) => p.sku },
     { key: 'barcode', label: 'Código de barras', hide: true },
@@ -36,7 +37,7 @@ function productColumns() {
 const MODEL_COLUMNS = [
   { label: '', render: (m) => productThumb(m, 38), csv: false, cls: 'w-thumb' },
   { key: 'name', label: 'Modelo', cls: 'col-product', render: (m) => html`<strong>${m.name}</strong><div class="muted small">${[m.brand, m.model, m.category].filter(Boolean).join(' · ')}</div>` },
-  { key: 'colors', label: 'Colores', cls: 'wrap', render: (m) => m.colors.join(', ') || '—', csv: (m) => m.colors.join(', ') },
+  { key: 'colors', label: 'Colores', hide: true, csv: (m) => m.colors.join(', ') },
   { key: 'sizes', label: 'Tallas', cls: 'wrap', render: (m) => m.sizes.join(', ') || '—', csv: (m) => m.sizes.join(', ') },
   { key: 'variants', label: 'Variantes', num: true, total: true },
   { key: 'stock', label: 'Existencia', num: true, total: true, render: (m) => html`<strong>${Fmt.num(m.stock)}</strong>${m.reserved ? html`<div class="muted small"><span class="text-info">${m.reserved} apartadas</span></div>` : ''}` },
@@ -44,40 +45,7 @@ const MODEL_COLUMNS = [
   { key: 'low', label: 'Estado', render: (m) => (m.out ? badge('agotado', `${m.out} agotada${m.out === 1 ? '' : 's'}`) : m.low ? badge('bajo', `${m.low} en stock bajo`) : badge('ok')), csv: (m) => `${m.out} agotadas, ${m.low} bajas` },
 ];
 
-// Lista "Negro, Azul marino ,negro" → ["Negro", "Azul marino"] (sin repetir, respetando lo que escribió primero).
-function splitList(text) {
-  const out = [];
-  for (const x of String(text || '').split(/[,;\n]/).map((v) => v.trim()).filter(Boolean)) if (!out.some((o) => o.toLowerCase() === x.toLowerCase())) out.push(x);
-  return out;
-}
-
-// Cuadrícula color × talla con la existencia inicial de cada combinación. taken: combinaciones que ya existen.
-function variantGrid(box, colors, sizes, values, taken = new Set()) {
-  const k = (c, z) => `${c.toLowerCase()}|${z.toLowerCase()}`;
-  if (!colors.length && !sizes.length) return setHTML(box, html`<div class="empty">Escriba los colores y las tallas separados por coma.</div>`);
-  const both = colors.length && sizes.length;
-  const rows = colors.length ? colors : sizes;
-  const cols = both ? sizes : [''];
-  const pair = (row, z) => (colors.length ? [row, both ? z : ''] : ['', row]);
-  const fresh = rows.flatMap((row) => cols.map((z) => pair(row, z))).filter(([c, z]) => !taken.has(k(c, z)));
-  setHTML(box, html`
-    <div class="table-wrap"><table class="table vgrid">
-      <thead><tr><th>${both ? 'Color / talla' : colors.length ? 'Color' : 'Talla'}</th>${both ? sizes.map((z) => html`<th class="text-center">${z}</th>`) : html`<th class="text-center">Existencia inicial</th>`}</tr></thead>
-      <tbody>${rows.map((row) => html`<tr><th>${row}</th>${cols.map((z) => {
-        const [c, zz] = pair(row, z);
-        return taken.has(k(c, zz)) ? html`<td class="text-center muted small">Ya existe</td>`
-          : html`<td class="text-center"><input type="number" min="0" step="1" class="qty-input" data-vc="${c}" data-vs="${zz}" value="${values[k(c, zz)] ?? 0}"></td>`;
-      })}</tr>`)}</tbody>
-    </table></div>
-    <p class="muted small">Se ${fresh.length === 1 ? 'crea 1 variante' : `crean ${fresh.length} variantes`}, cada una con su SKU. Escriba en cada casilla las unidades que ya tiene (0 si todavía no llegan). Las combinaciones que no vende las puede desactivar después.</p>`);
-  $$('[data-vc]', box).forEach((i) => (i.oninput = () => { values[k(i.dataset.vc, i.dataset.vs)] = i.value; }));
-  return fresh.length;
-}
-function gridVariants(box) {
-  return $$('[data-vc]', box).map((i) => ({ color: i.dataset.vc, size: i.dataset.vs, initial_stock: Math.max(0, parseInt(i.value, 10) || 0) }));
-}
-
-// Detalle de un modelo: la cuadrícula color × talla con lo disponible de cada variante.
+// Detalle de un modelo: la existencia de cada talla (y de cada color, en productos anteriores a 1.7).
 async function modelDetail(id, onChange) {
   const m = await api('products.modelGet', { id });
   const admin = App.isAdmin();
@@ -99,7 +67,7 @@ async function modelDetail(id, onChange) {
           <div><span>Disponible</span><b>${Fmt.num(m.available)}${m.reserved ? html` <small class="text-info">(${m.reserved} apartadas)</small>` : ''}</b></div>
         </div></div>
       </div>
-      <h4 class="section-title">Existencia por color y talla <small class="muted">— toque una casilla para ver esa variante</small></h4>
+      <h4 class="section-title">Existencia por ${m.colors.length ? 'color y talla' : 'talla'} <small class="muted">— toque una casilla para ver esa variante</small></h4>
       <div class="table-wrap"><table class="table vgrid">
         <thead><tr><th></th>${sizes.map((z) => html`<th class="text-center">${z || 'Única'}</th>`)}<th class="text-right">Total</th></tr></thead>
         <tbody>${colors.map((c) => html`<tr><th>${c || 'Único'}</th>${sizes.map((z) => {
@@ -117,84 +85,11 @@ async function modelDetail(id, onChange) {
     actions: admin
       ? [
           { label: 'Cerrar' },
-          { label: 'Agregar colores o tallas', onClick: () => { addVariantsForm(m, () => { md.close(); modelDetail(id, onChange); onChange && onChange(); }); return false; } },
-          { label: 'Editar modelo', primary: true, onClick: () => { editModelForm(m, (newId) => { md.close(); modelDetail(newId, onChange); onChange && onChange(); }); return false; } },
+          { label: 'Editar producto', primary: true, onClick: () => { productEditor(m, (newId) => { md.close(); modelDetail(newId, onChange); onChange && onChange(); }); return false; } },
         ]
       : [{ label: 'Cerrar' }],
   });
   $$('[data-v]', body).forEach((b) => (b.onclick = () => productDetail(Number(b.dataset.v), async () => { md.close(); await modelDetail(id, onChange).catch(() => {}); onChange && onChange(); })));
-}
-
-function addVariantsForm(m, onSaved) {
-  const values = {};
-  const taken = new Set(m.variants.map((v) => `${(v.color || '').toLowerCase()}|${(v.size || '').toLowerCase()}`));
-  const body = el(html`
-    <div>
-      <p class="muted">Las nuevas variantes copian el nombre, la categoría, los precios y el costo de <b>${m.name}</b>.</p>
-      <div class="grid-2">
-        <label class="field"><span>Colores</span><input name="colors" value="${m.colors.filter(Boolean).join(', ')}" placeholder="Ej. Negro, Rojo"></label>
-        <label class="field"><span>Tallas</span><input name="sizes" value="${m.sizes.filter(Boolean).join(', ')}" placeholder="Ej. 7, 7 1/8, 7 1/4"></label>
-      </div>
-      <div id="av-grid"></div>
-    </div>`);
-  const draw = () => variantGrid($('#av-grid', body), splitList($('[name=colors]', body).value), splitList($('[name=sizes]', body).value), values, taken);
-  $('[name=colors]', body).oninput = draw;
-  $('[name=sizes]', body).oninput = draw;
-  draw();
-  modal({
-    title: `Agregar variantes · ${m.name}`,
-    width: 760,
-    body,
-    actions: [
-      { label: 'Cancelar' },
-      {
-        label: 'Agregar', primary: true,
-        onClick: async () => {
-          const variants = gridVariants($('#av-grid', body));
-          if (!variants.length) { toast('No hay combinaciones nuevas: agregue un color o una talla.', 'error'); return false; }
-          const r = await api('products.addVariants', { model_id: m.id, variants });
-          toast(`${r.ids.length} ${r.ids.length === 1 ? 'variante agregada' : 'variantes agregadas'}.`);
-          onSaved && onSaved();
-        },
-      },
-    ],
-  });
-}
-
-async function editModelForm(m, onSaved) {
-  const facets = await api('products.facets').catch(() => ({ brands: [], categories: [] }));
-  const first = m.variants[0] || {};
-  const body = el(html`
-    <form class="grid-2">
-      <label class="field span-2"><span>Nombre *</span><input name="name" value="${m.name}"></label>
-      <label class="field"><span>Marca</span><input name="brand" value="${m.brand || ''}" list="dl-brands"></label>
-      <label class="field"><span>Modelo</span><input name="model" value="${m.model || ''}"></label>
-      <label class="field"><span>Categoría</span><input name="category" value="${m.category || ''}" list="dl-categories"></label>
-      <label class="field"><span>Stock mínimo de cada variante</span><input name="min_stock" type="number" min="0" step="1" placeholder="Sin cambiar"></label>
-      <label class="check span-2"><input type="checkbox" name="apply_prices" id="em-apply"> Cambiar el precio de las ${m.variants.length} variantes</label>
-      <label class="field em-price hidden"><span>Precio al detalle</span><input name="price_retail" type="number" min="0" step="0.01" value="${first.price_retail ?? ''}"></label>
-      <label class="field em-price hidden"><span>Precio al por mayor</span><input name="price_wholesale" type="number" min="0" step="0.01" value="${first.price_wholesale ?? ''}"></label>
-      <datalist id="dl-brands">${facets.brands.map((b) => html`<option value="${b}">`)}</datalist>
-      <datalist id="dl-categories">${facets.categories.map((b) => html`<option value="${b}">`)}</datalist>
-    </form>`);
-  $('#em-apply', body).onchange = (e) => $$('.em-price', body).forEach((x) => x.classList.toggle('hidden', !e.target.checked));
-  modal({
-    title: `Editar modelo · ${m.name}`,
-    width: 640,
-    body,
-    actions: [
-      { label: 'Cancelar' },
-      {
-        label: 'Guardar', primary: true,
-        onClick: async () => {
-          const f = formData(body);
-          const id = await api('products.updateModel', { id: m.id, ...f });
-          toast('Modelo guardado.');
-          onSaved && onSaved(id);
-        },
-      },
-    ],
-  });
 }
 
 App.register({
@@ -206,7 +101,7 @@ App.register({
     page.appendChild(summaryBox);
     const tb = toolbar(page, {
       left: html`
-        <div class="search">${icon('search')}<input id="p-search" placeholder="Buscar por nombre, marca, categoría, color, talla, SKU o código…"></div>
+        <div class="search">${icon('search')}<input id="p-search" placeholder="Buscar por nombre, marca, modelo, categoría, talla, SKU o código…"></div>
         <div class="seg" id="p-view" title="Ver cada variante o agrupar por modelo">
           <button data-v="variantes" class="active">Variantes</button><button data-v="modelos">${icon('grid')} Modelos</button>
         </div>
@@ -230,7 +125,7 @@ App.register({
       if (state.view === 'modelos') {
         const models = await api('products.models', state);
         drawSummary(sum);
-        setHTML(listBox, table({ columns: MODEL_COLUMNS, rows: models, clickable: true, empty: 'No hay productos con este filtro.' }));
+        setHTML(listBox, table({ columns: MODEL_COLUMNS.filter((c) => !c.hide), rows: models, clickable: true, empty: 'No hay productos con este filtro.' }));
         onRowClick(listBox, models, (m) => (m.id ? modelDetail(m.id, load) : productDetail(m.first_id, load)));
         return;
       }
@@ -263,7 +158,7 @@ App.register({
     }));
     if (admin) {
       $('#p-inactive', tb).onchange = (e) => { state.includeInactive = e.target.checked; load(); };
-      $('#p-new', tb).onclick = () => productForm(null, load);
+      $('#p-new', tb).onclick = () => productEditor(null, load);
       $('#p-import', tb).onclick = () => importProducts(load);
       $('#p-count', tb).onclick = () => App.go('count');
     }
@@ -289,7 +184,7 @@ async function productDetail(id, onChange) {
             <div><span>Marca</span><b>${p.brand || '—'}</b></div>
             <div><span>Modelo</span><b>${p.model || '—'}</b></div>
             <div><span>Categoría</span><b>${p.category || '—'}</b></div>
-            <div><span>Color</span><b>${p.color || '—'}</b></div>
+            ${p.color ? html`<div><span>Color</span><b>${p.color}</b></div>` : ''}
             <div><span>Talla</span><b>${p.size || '—'}</b></div>
             <div><span>SKU</span><b>${p.sku}</b></div>
             <div><span>Código de barras</span><b>${p.barcode || '—'}</b></div>
@@ -326,85 +221,198 @@ async function productDetail(id, onChange) {
           ...(p.variants > 1 ? [{ label: `Ver modelo (${p.variants} variantes)`, onClick: () => { modelDetail(p.model_id, onChange); } }] : []),
           { label: 'Etiquetas', onClick: () => { labelsDialog([p]); return false; } },
           { label: 'Ajustar existencia', onClick: () => { adjustForm(p, () => { onChange(); }); } },
-          { label: 'Editar', primary: true, onClick: () => { productForm(p, onChange); } },
+          { label: 'Editar esta variante', onClick: () => { variantForm(p, onChange); } },
+          { label: 'Editar producto', primary: true, onClick: async () => { productEditor(await api('products.modelGet', { id: p.model_id }), () => onChange && onChange()); } },
         ]
       : [{ label: 'Cerrar' }, ...(p.variants > 1 ? [{ label: `Ver modelo (${p.variants} variantes)`, onClick: () => { modelDetail(p.model_id, onChange); } }] : []), { label: 'Etiquetas', onClick: () => { labelsDialog([p]); return false; } }],
   });
   return m;
 }
 
-async function productForm(p, onSaved) {
-  const isNew = !p;
-  // Marcas y categorías ya usadas: se sugieren al escribir para no terminar con "Snapback" y "snapback".
-  const facets = await api('products.facets').catch(() => ({ brands: [], categories: [] }));
-  p = p || { min_stock: 2 };
+/* ---------- Producto: marca, modelo, categoría y tallas del catálogo (1.7, DT-45, DT-46) ---------- */
+const newCatalogItem = (type, label) => async (typed) => {
+  const name = typed || (await promptDialog({ title: `Nueva ${label}`, label: 'Nombre' }));
+  return name ? api('catalog.create', { type, name }) : null;
+};
+const newSize = async () => {
+  const name = await promptDialog({ title: 'Agregar talla', label: 'Talla (ej. 7 1/4, S/M, XL)' });
+  return name ? api('catalog.create', { type: 'sizes', name }) : null;
+};
+const MONEY_ATTRS = 'type="number" step="0.01" min="0" inputmode="decimal" data-money';
+
+// Producto nuevo, o uno existente con todas sus tallas (m = products.modelGet). Cada talla elegida es una
+// variante con su existencia; sin tallas, es una sola.
+async function productEditor(m, onSaved) {
+  const isNew = !m;
+  const all = await api('catalog.list', { includeInactive: true });
+  const variants = isNew ? [] : m.variants;
+  const used = (key) => new Set(variants.map((v) => v[key]).filter(Boolean));
+  // Lo desactivado del catálogo solo aparece si este producto ya lo usa.
+  const pick = (list, key) => { const u = used(key); return all[list].filter((x) => x.active || u.has(x.id)); };
+  const first = variants.find((v) => v.active) || variants[0] || { min_stock: 2 };
+  const modelNow = !isNew && m.model ? all.models.find((x) => x.name.toLowerCase() === m.model.toLowerCase()) : null;
+  const cat = {
+    brands: pick('brands', 'brand_id'),
+    models: all.models.filter((x) => x.active || x === modelNow),
+    categories: pick('categories', 'category_id'),
+    sizes: pick('sizes', 'size_id'),
+  };
+  const activeVs = variants.filter((v) => v.active);
+  const startSizes = [...new Set(activeVs.map((v) => v.size_id).filter(Boolean))];
+  const samePrices = new Set(activeVs.map((v) => `${v.price_retail}|${v.price_wholesale}`)).size <= 1;
+  const sameCost = new Set(activeVs.map((v) => v.cost)).size <= 1;
   let photoData = null;
   const body = el(html`
-    <form class="grid-form">
+    <form class="grid-form editor">
+      ${isNew ? html`<div class="photo-pick">
+        <div class="photo-preview">${productThumb({}, 120)}</div>
+        <label class="btn small">${icon('plus')} Foto<input type="file" accept="image/*" hidden name="__file"></label>
+      </div>` : ''}
+      <div class="grid-2 ${isNew ? '' : 'span-all'}">
+        <label class="field span-2"><span>Nombre *</span><input name="name" value="${isNew ? '' : m.name}" placeholder="Ej. Gorra New York Yankees"></label>
+        <div class="field"><span>Marca</span><div id="pe-brand"></div></div>
+        <div class="field"><span>Modelo</span><div id="pe-model"></div></div>
+        <div class="field"><span>Categoría</span><div id="pe-category"></div></div>
+        <div class="field"><span>Tallas</span><div id="pe-sizes"></div></div>
+        <div class="span-2" id="pe-stock"></div>
+        <label class="field"><span>Costo</span><input name="cost" ${MONEY_ATTRS} value="${isNew ? '' : sameCost ? first.cost : ''}" placeholder="${!isNew && !sameCost ? 'Distinto en cada talla' : ''}"></label>
+        <label class="field"><span>Precio detalle *</span><input name="price_retail" ${MONEY_ATTRS} value="${first.price_retail ?? ''}"></label>
+        <label class="field"><span>Precio por mayor</span><input name="price_wholesale" ${MONEY_ATTRS} value="${first.price_wholesale ?? ''}"></label>
+        <label class="field"><span>Stock mínimo</span><input name="min_stock" type="number" step="1" min="0" value="${first.min_stock ?? 2}"></label>
+        <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${first.notes || ''}</textarea></label>
+      </div>
+    </form>`);
+  const brand = comboSelect($('#pe-brand', body), { items: cat.brands, value: isNew ? null : m.brand_id ?? first.brand_id, placeholder: 'Seleccionar marca…', createLabel: 'Crear nueva marca', onCreate: newCatalogItem('brands', 'marca'), id: 'pe-brand-input' });
+  const model = comboSelect($('#pe-model', body), { items: cat.models, value: modelNow ? modelNow.id : null, placeholder: 'Seleccionar modelo…', createLabel: 'Crear nuevo modelo', onCreate: newCatalogItem('models', 'modelo'), id: 'pe-model-input' });
+  const category = comboSelect($('#pe-category', body), { items: cat.categories, value: first.category_id ?? null, placeholder: 'Seleccionar categoría…', createLabel: 'Crear nueva categoría', onCreate: newCatalogItem('categories', 'categoría'), id: 'pe-category-input' });
+  const sizes = chipPicker($('#pe-sizes', body), { items: cat.sizes, selected: startSizes, addLabel: 'Otra talla', onAdd: newSize, onChange: () => drawStock(), locked: startSizes });
+
+  // Existencia por talla. Las tallas que ya tiene muestran lo que hay (se cambia con un ajuste); una talla
+  // que se quita se desactiva (no se borra: tiene ventas y movimientos).
+  const typed = {}; // existencia escrita en las tallas nuevas
+  const bySize = (id) => variants.filter((v) => (v.size_id || 0) === (id || 0));
+  let plan = { add: [], deactivate: [], activate: [] };
+  const drawStock = () => {
+    const zs = sizes.value;
+    const cur = new Set(zs.map((z) => z.id));
+    plan = { add: [], deactivate: activeVs.filter((v) => v.size_id && !cur.has(v.size_id)).map((v) => v.id), activate: [] };
+    const rows = zs.map((z) => {
+      const vs = bySize(z.id);
+      const on = vs.filter((v) => v.active);
+      if (!on.length && vs.length) plan.activate.push(...vs.map((v) => v.id));
+      if (!vs.length) plan.add.push({ size_id: z.id });
+      return { z, vs, isNew: !vs.length, stock: vs.reduce((s, v) => s + v.stock, 0), back: !on.length && vs.length > 0 };
+    });
+    const loose = activeVs.filter((v) => !v.size_id); // sin talla
+    const removed = activeVs.filter((v) => plan.deactivate.includes(v.id));
+    const box = $('#pe-stock', body);
+    if (!zs.length && !loose.length) {
+      plan.add.push({ size_id: null });
+      setHTML(box, html`<label class="field stock-one"><span>Existencia inicial</span><input type="number" min="0" step="1" data-stock="0" value="${typed[0] ?? 0}"></label>`);
+    } else {
+      setHTML(box, html`<div class="field"><span>${zs.length ? 'Existencia por talla' : 'Existencia'}</span><div class="size-stock">
+        ${rows.map((r) => html`<label class="ss-item ${r.isNew ? '' : 'has'}"><b>${r.z.name}</b>${r.isNew
+          ? html`<input type="number" min="0" step="1" data-stock="${r.z.id}" value="${typed[r.z.id] ?? 0}">`
+          : html`<span>${Fmt.num(r.stock)}</span>${r.back ? html`<small class="text-ok">se reactiva</small>` : ''}`}</label>`)}
+        ${loose.map((v) => html`<label class="ss-item has"><b>Sin talla</b><span>${Fmt.num(v.stock)}</span></label>`)}
+        ${removed.map((v) => html`<label class="ss-item off"><b>${v.size}${v.color ? ` · ${v.color}` : ''}</b><span>${Fmt.num(v.stock)}</span><small>se desactiva</small></label>`)}
+      </div></div>`);
+    }
+    $$('[data-stock]', box).forEach((i) => (i.oninput = () => { typed[i.dataset.stock] = i.value; }));
+  };
+  drawStock();
+
+  const photo = $('[name=__file]', body);
+  if (photo) photo.onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    photoData = await readImage(f);
+    setHTML($('.photo-preview', body), html`<img class="thumb" src="${photoData}" style="width:120px;height:120px">`);
+  };
+
+  modal({
+    title: isNew ? 'Nuevo producto' : `Editar producto · ${m.name}`,
+    width: 720,
+    body,
+    actions: [
+      { label: 'Cancelar' },
+      {
+        label: 'Guardar', primary: true,
+        onClick: async () => {
+          const f = formData(body);
+          delete f.__file;
+          const common = { name: f.name, model: model.name || null, brand_id: brand.value, category_id: category.value, price_retail: f.price_retail, price_wholesale: f.price_wholesale, notes: f.notes };
+          const rowsNew = plan.add.map((a) => ({ size_id: a.size_id, initial_stock: Math.max(0, parseInt(typed[a.size_id || 0], 10) || 0) }));
+          if (isNew) {
+            const r = await api('products.createModel', { ...common, cost: f.cost, min_stock: f.min_stock, variants: rowsNew, ...(photoData ? { photo_data: photoData } : {}) });
+            toast(r.ids.length === 1 ? 'Producto creado.' : `Producto creado con ${r.ids.length} tallas.`);
+            $$('.modal-back').forEach((x) => x.remove());
+            onSaved && onSaved(r.model_id);
+            return;
+          }
+          const withStock = variants.filter((v) => plan.deactivate.includes(v.id) && v.stock > 0);
+          if (withStock.length && !(await confirmDialog(`${withStock.map((v) => `${[v.size, v.color].filter(Boolean).join(' · ')}: ${v.stock}`).join(', ')}. Esas tallas tienen existencia: al quitarlas dejan de aparecer en la venta, pero siguen contando en el valor del inventario. Si ya no están en la tienda, haga antes un ajuste.`, { title: 'Quitar tallas con existencia', okLabel: 'Quitar' }))) return false;
+          const priceChanged = Number(f.price_retail) !== Number(first.price_retail) || Number(f.price_wholesale || 0) !== Number(first.price_wholesale || 0);
+          // El costo sale de las compras: solo se cambia en todas si se escribió uno distinto.
+          const costChanged = f.cost !== '' && !(sameCost && Number(f.cost) === Number(first.cost));
+          const newId = await api('products.saveModel', {
+            id: m.id, ...common, apply_prices: priceChanged || samePrices,
+            ...(costChanged ? { cost: f.cost } : {}),
+            ...(Number(f.min_stock) !== Number(first.min_stock) ? { min_stock: f.min_stock } : {}),
+            add: rowsNew, deactivate: plan.deactivate, activate: plan.activate,
+          });
+          toast('Producto guardado.');
+          $$('.modal-back').forEach((x) => x.remove());
+          onSaved && onSaved(newId);
+        },
+      },
+    ],
+  });
+  $('[name=name]', body).focus();
+}
+
+// Una sola variante: su SKU, código de barras, costo, precios, talla y estado. El color (de productos
+// anteriores a 1.7) se conserva como está.
+async function variantForm(p, onSaved) {
+  const all = await api('catalog.list', { includeInactive: true });
+  const avail = (list, current) => all[list].filter((x) => x.active || x.id === current);
+  let photoData = null;
+  const opts = (list, current, empty) => options([['', empty], ...avail(list, current).map((x) => [x.id, x.name])], current ?? '');
+  const body = el(html`
+    <form class="grid-form editor">
       <div class="photo-pick">
         <div class="photo-preview">${productThumb(p, 150)}</div>
         <label class="btn small">${icon('plus')} Foto<input type="file" accept="image/*" hidden name="__file"></label>
       </div>
       <div class="grid-2">
-        ${isNew ? html`<div class="seg full span-2" id="pf-mode"><button type="button" data-m="uno" class="active">Una gorra</button><button type="button" data-m="varias">${icon('grid')} Varios colores y tallas</button></div>` : ''}
-        <label class="field span-2"><span>Nombre *</span><input name="name" value="${p.name || ''}" placeholder="Ej. Gorra New York Yankees 59FIFTY"></label>
-        <label class="field"><span>Marca</span><input name="brand" value="${p.brand || ''}" list="dl-brands"></label>
-        <label class="field"><span>Modelo</span><input name="model" value="${p.model || ''}"></label>
-        <label class="field"><span>Categoría</span><input name="category" value="${p.category || ''}" list="dl-categories" placeholder="Ej. Snapback, Trucker, Fitted"></label>
-        <label class="field single-only"><span>Color</span><input name="color" value="${p.color || ''}"></label>
-        <label class="field single-only"><span>Talla</span><input name="size" value="${p.size || ''}" placeholder="Ej. 7 1/4, Ajustable, S/M"></label>
-        <label class="field single-only"><span>Código / SKU</span><input name="sku" value="${p.sku || ''}" placeholder="Automático si se deja vacío"></label>
-        <label class="field single-only"><span>Código de barras</span><input name="barcode" value="${p.barcode || ''}" placeholder="Escanee o escriba"></label>
-        ${isNew ? html`<div class="span-2 multi-only hidden">
-          <div class="grid-2">
-            <label class="field"><span>Colores</span><input name="colors" id="pf-colors" placeholder="Ej. Negro, Azul marino, Rojo"></label>
-            <label class="field"><span>Tallas</span><input name="sizes" id="pf-sizes" placeholder="Ej. 7, 7 1/8, 7 1/4, 7 3/8"></label>
-          </div>
-          <div id="pf-grid"></div>
-        </div>` : ''}
-        <label class="field"><span>Costo de compra</span><input name="cost" type="number" step="0.01" min="0" value="${p.cost ?? ''}"></label>
-        <label class="field"><span>Precio al detalle *</span><input name="price_retail" type="number" step="0.01" min="0" value="${p.price_retail ?? ''}"></label>
-        <label class="field"><span>Precio al por mayor</span><input name="price_wholesale" type="number" step="0.01" min="0" value="${p.price_wholesale ?? ''}"></label>
+        <label class="field span-2"><span>Nombre *</span><input name="name" value="${p.name}"></label>
+        <div class="field"><span>Marca</span><div id="vf-brand"></div></div>
+        <div class="field"><span>Modelo</span><div id="vf-model"></div></div>
+        <div class="field"><span>Categoría</span><div id="vf-category"></div></div>
+        <label class="field"><span>Talla</span><select name="size_id">${opts('sizes', p.size_id, 'Sin talla')}</select></label>
+        <label class="field"><span>Código / SKU</span><input name="sku" value="${p.sku || ''}"></label>
+        <label class="field"><span>Código de barras</span><input name="barcode" value="${p.barcode || ''}" placeholder="Escanee o escriba"></label>
+        <label class="field"><span>Costo promedio</span><input name="cost" ${MONEY_ATTRS} value="${p.cost ?? ''}"></label>
+        <label class="field"><span>Precio detalle *</span><input name="price_retail" ${MONEY_ATTRS} value="${p.price_retail ?? ''}"></label>
+        <label class="field"><span>Precio por mayor</span><input name="price_wholesale" ${MONEY_ATTRS} value="${p.price_wholesale ?? ''}"></label>
         <label class="field"><span>Stock mínimo</span><input name="min_stock" type="number" step="1" min="0" value="${p.min_stock ?? 0}"></label>
-        ${isNew ? html`<label class="field single-only"><span>Existencia inicial</span><input name="initial_stock" type="number" step="1" min="0" value="0"></label>` : html`<label class="field"><span>Existencia</span><input value="${p.stock}" disabled title="Use “Ajustar existencia” o registre una compra"></label>`}
-        ${isNew ? '' : html`<label class="check"><input type="checkbox" name="active" ${p.active ? 'checked' : ''}> Producto activo</label>`}
+        <label class="field"><span>Existencia</span><input value="${p.stock}" disabled title="Use “Ajustar existencia” o registre una compra"></label>
+        <label class="check"><input type="checkbox" name="active" ${p.active ? 'checked' : ''}> Variante activa</label>
         <label class="field span-2"><span>Notas</span><textarea name="notes" rows="2">${p.notes || ''}</textarea></label>
       </div>
-      <datalist id="dl-brands">${facets.brands.map((b) => html`<option value="${b}">`)}</datalist>
-      <datalist id="dl-categories">${facets.categories.map((b) => html`<option value="${b}">`)}</datalist>
     </form>`);
+  const brand = comboSelect($('#vf-brand', body), { items: avail('brands', p.brand_id), value: p.brand_id, placeholder: 'Seleccionar marca…', createLabel: 'Crear nueva marca', onCreate: newCatalogItem('brands', 'marca') });
+  const modelNow = p.model ? all.models.find((x) => x.name.toLowerCase() === p.model.toLowerCase()) : null;
+  const model = comboSelect($('#vf-model', body), { items: all.models.filter((x) => x.active || x === modelNow), value: modelNow ? modelNow.id : null, placeholder: 'Seleccionar modelo…', createLabel: 'Crear nuevo modelo', onCreate: newCatalogItem('models', 'modelo') });
+  const category = comboSelect($('#vf-category', body), { items: avail('categories', p.category_id), value: p.category_id, placeholder: 'Seleccionar categoría…', createLabel: 'Crear nueva categoría', onCreate: newCatalogItem('categories', 'categoría') });
   $('[name=__file]', body).onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
     photoData = await readImage(f);
     setHTML($('.photo-preview', body), html`<img class="thumb" src="${photoData}" style="width:150px;height:150px">`);
   };
-  const margin = () => {
-    const c = Number($('[name=cost]', body).value);
-    const r = Number($('[name=price_retail]', body).value);
-    const lbl = $('[name=price_retail]', body).previousElementSibling;
-    lbl.textContent = c && r ? `Precio al detalle * (margen ${Fmt.pct(((r - c) / r) * 100)})` : 'Precio al detalle *';
-  };
-  $('[name=cost]', body).oninput = margin;
-  $('[name=price_retail]', body).oninput = margin;
-  margin();
-  // Modelo con variantes (1.5): una cuadrícula color × talla crea todas las combinaciones de una vez.
-  let mode = 'uno';
-  const gridValues = {};
-  const drawGrid = () => variantGrid($('#pf-grid', body), splitList($('#pf-colors', body).value), splitList($('#pf-sizes', body).value), gridValues);
-  if (isNew) {
-    $$('#pf-mode [data-m]', body).forEach((b) => (b.onclick = () => {
-      mode = b.dataset.m;
-      $$('#pf-mode [data-m]', body).forEach((x) => x.classList.toggle('active', x === b));
-      $$('.single-only', body).forEach((x) => x.classList.toggle('hidden', mode === 'varias'));
-      $$('.multi-only', body).forEach((x) => x.classList.toggle('hidden', mode !== 'varias'));
-      if (mode === 'varias') { drawGrid(); $('#pf-colors', body).focus(); }
-    }));
-    $('#pf-colors', body).oninput = drawGrid;
-    $('#pf-sizes', body).oninput = drawGrid;
-  }
   modal({
-    title: isNew ? 'Nuevo producto' : 'Editar producto',
+    title: `Editar variante · ${productLabel(p)}`,
     width: 820,
     body,
     actions: [
@@ -414,25 +422,13 @@ async function productForm(p, onSaved) {
         onClick: async () => {
           const f = formData(body);
           delete f.__file;
-          if (mode === 'varias') {
-            const variants = gridVariants($('#pf-grid', body));
-            if (!variants.length) { toast('Escriba al menos un color o una talla.', 'error'); return false; }
-            const { name, brand, model, category, cost, price_retail, price_wholesale, min_stock, notes } = f;
-            const r = await api('products.createModel', { name, brand, model, category, cost, price_retail, price_wholesale, min_stock, notes, variants, ...(photoData ? { photo_data: photoData } : {}) });
-            toast(`Modelo creado con ${r.ids.length} ${r.ids.length === 1 ? 'variante' : 'variantes'}.`);
-            $$('.modal-back').forEach((x) => x.remove());
-            onSaved && onSaved();
-            return;
-          }
-          delete f.colors;
-          delete f.sizes;
-          const data = { ...f, id: p.id };
+          const data = { ...f, id: p.id, brand_id: brand.value, model: model.name || null, category_id: category.value, color_id: p.color_id || null, size_id: f.size_id || null };
           if (photoData) data.photo_data = photoData;
           // Desactivar no saca la mercancía: sigue contando en el valor del inventario (auditoría 2.2).
-          if (!isNew && p.active && !f.active && p.stock > 0
-            && !(await confirmDialog(`Quedan ${p.stock} unidades de este producto. Al desactivarlo deja de aparecer en la venta, pero sigue contando en el valor del inventario. Si ya no están en la tienda, haga antes un ajuste de existencia.`, { title: 'Desactivar producto', okLabel: 'Desactivar' }))) return false;
+          if (p.active && !f.active && p.stock > 0
+            && !(await confirmDialog(`Quedan ${p.stock} unidades de esta variante. Al desactivarla deja de aparecer en la venta, pero sigue contando en el valor del inventario. Si ya no están en la tienda, haga antes un ajuste de existencia.`, { title: 'Desactivar variante', okLabel: 'Desactivar' }))) return false;
           await api('products.save', data);
-          toast('Producto guardado.');
+          toast('Variante guardada.');
           $$('.modal-back').forEach((x) => x.remove());
           onSaved && onSaved();
         },
