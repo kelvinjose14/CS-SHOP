@@ -133,12 +133,12 @@ Menú **Análisis** → **Reportes**.
 | Productos más vendidos | Ranking por unidades, con ventas, costo y ganancia | ✔ |
 
 Dentro de cada reporte:
-- **Excel (CSV)** guarda un archivo que abre Excel, con acentos correctos.
+- **Excel** guarda el reporte en un libro de Excel con formato ([9.6](#96-exportar-a-excel)).
 - **PDF** guarda el reporte con el logo y el período en el encabezado.
 - **Imprimir** lo manda a la impresora.
 - **← Todos los reportes** vuelve a la lista.
 
-**Reportes largos:** en pantalla se ven las primeras **1,000 filas**, con el aviso "Se muestran 1,000 de N filas" y el botón **Mostrar todas**. Los **totales**, el **CSV**, el **PDF** y **Imprimir** incluyen siempre **todas** las filas.
+**Reportes largos:** en pantalla se ven las primeras **1,000 filas**, con el aviso "Se muestran 1,000 de N filas" y el botón **Mostrar todas**. Los **totales**, el **Excel**, el **PDF** y **Imprimir** incluyen siempre **todas** las filas.
 
 ## 9.5 Historial de movimientos
 
@@ -157,3 +157,20 @@ Registro de **todo lo que se hizo**, con fecha, hora y usuario:
 Se puede filtrar por período, acción y usuario, y buscar en el detalle. No se puede editar ni borrar.
 
 > En los gastos, el detalle aparece hoy con nombres de campo en inglés (`category`, `amount`…). Está anotado para corregir ([Objetivos](../producto/objetivos.md#o5-brechas-funcionales)).
+
+## 9.6 Exportar a Excel
+
+Los botones **Exportar** de cada lista (ventas, inventario, clientes, compras, gastos, apartados…), **Excel** en los reportes y **Exportar tabla** en el dashboard ejecutivo guardan un **libro de Excel (.xlsx)** listo para leer, imprimir o enviar.
+
+![Reporte de ganancias en Excel](img/excel.jpg)
+
+El archivo trae:
+- arriba, el **nombre de la tienda** y el **título** de la pantalla o del reporte, el **período** elegido, cuántos registros son, la fecha y quién lo generó;
+- los **títulos de las columnas** en rojo, que quedan fijos al bajar, con **filtros** para ordenar o buscar;
+- los **montos** con la moneda (RD$) y los negativos en rojo, las **fechas** como fechas de Excel y los **porcentajes** con su signo. Son números de verdad: se pueden sumar o graficar;
+- los **códigos** y **SKU** tal como se escribieron: Excel no les quita los ceros ni los convierte en 7.5E+12;
+- la fila de **Totales**, igual que en pantalla;
+- lo que se ve en pantalla ("Crédito", "Por mayor"), no los códigos internos;
+- al imprimir, todo el ancho en una hoja, los títulos repetidos en cada página y el número de página al pie.
+
+**CSV:** en la ventana de guardar, en **Tipo**, se puede elegir **CSV** en lugar de Excel. Sirve para pasar los datos a otro programa. Usa el separador de la región de Windows, o el que se elija en Configuración ([11.1](11-configuracion-y-respaldos.md#111-configuración)).

@@ -7,14 +7,14 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 3. **Al terminar un objetivo** se actualizan [Requisitos](requisitos.md), [Decisiones](decisiones.md), el manual si cambió algo visible, y el [CHANGELOG](../../CHANGELOG.md).
 4. **Las decisiones pendientes** de un objetivo se resuelven **antes** de empezar a programarlo.
 
-## Estado actual (versión 1.6.0)
+## Estado actual (versión 1.6.1)
 
 **Lo que está listo:**
 - Todas las funciones pedidas: inventario, compras, ventas, clientes, cuentas, gastos, caja, contabilidad, dashboard, 15 reportes, usuarios e historial ([Requisitos](requisitos.md), 102 de 103 cumplen) y los 9 requisitos nuevos (O5).
 - Varias computadoras en red, cada una con su caja (O2), con la red cifrada (O3).
 - Pruebas automáticas en cada cambio, en Linux y Windows (O3):
-  - 91 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM y las correcciones y controles de la auditoría;
-  - 24 de interfaz con la app real;
+  - 95 de lógica, migración, respaldos, permisos, red, actualizaciones, importación, etiquetas, conteo, publicación, dashboard ejecutivo, modelos, apartados, CRM, Excel y las correcciones y controles de la auditoría;
+  - 25 de interfaz con la app real;
   - rendimiento con 3 años de datos;
   - el instalador instalado de verdad.
 - Registro de errores y **Guardar diagnóstico** (O3).
@@ -25,6 +25,7 @@ Hoja de ruta de CAPS Shop hacia producción. El trabajo se hace **por objetivos*
 - **Dashboard ejecutivo** con comparaciones, pronóstico de cierre de mes, salud del inventario y utilidad por producto, marca, categoría y vendedor (1.4.0, [O7](#o7-gestión-avanzada)).
 - **Inventario avanzado**: modelos con colores y tallas, apartados con stock disponible y conteo cíclico sugerido (1.5.0).
 - **CRM de clientes**: ficha con compras, frecuencia y lo que más compra, segmentos, VIP, etiquetas, notas y cumpleaños (1.6.0).
+- **Excel con formato** en todas las exportaciones: la franja de la tienda con el período, montos y fechas como números, totales y filtros (1.6.1, DT-43).
 
 **Lo que NO está listo para producción:**
 

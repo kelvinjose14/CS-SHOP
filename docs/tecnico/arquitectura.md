@@ -12,6 +12,7 @@ src/
     schema.js    Esquema y migraciones (PRAGMA user_version)
     util.js      Fechas, redondeo, validaciones, errores (AppError), estados de cuenta y períodos
     importer.js  Lee listas de productos de Excel (.xlsx) o CSV, sin bibliotecas
+    xlsx.js      Escribe libros de Excel con formato (reportes y plantilla), sin bibliotecas
     services/
       common.js    Configuración, historial (audit), libro de dinero (ledger), cambios de existencia
       users.js     Usuarios, contraseñas, inicio de sesión, código de recuperación y configuración
@@ -26,7 +27,7 @@ src/
     client.js    Cliente de las PCs conectadas: reintentos, sin conexión, búsqueda
     secure.js    Cifrado de la red con la clave de conexión (AES-256-GCM)
   main/        Proceso principal de Electron
-    main.js      Ventana, IPC, configurar esta PC, protocolo de fotos, respaldos, CSV/PDF e impresión
+    main.js      Ventana, IPC, configurar esta PC, protocolo de fotos, respaldos, Excel/CSV/PDF e impresión
     backend.js   Local (PC principal: base en este proceso) o remoto (PC conectada: todo por la red)
     config.js    config.json de esta PC (modo, clave, principal)
     log.js       Registro de errores en <datos>/registros (14 días) para el diagnóstico

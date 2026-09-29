@@ -48,7 +48,7 @@ App.register({
     }));
     $('#rs-search', tb).oninput = debounce((e) => { f.search = e.target.value; load(); });
     $('#rs-new', tb).onclick = () => reservationForm(load);
-    $('#rs-export', tb).onclick = () => exportCsv('apartados', RES_COLUMNS, rows);
+    $('#rs-export', tb).onclick = () => exportExcel('apartados', RES_COLUMNS, rows);
     await load();
   },
 });

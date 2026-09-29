@@ -59,7 +59,7 @@ Menú **Principal** → **Ventas**.
 
 - Filtre por período (**Hoy**, **Semana**, **Mes**, **Año**, **Rango**), por tipo (detalle o por mayor), por pago (contado o crédito) y por estado. También puede buscar por número de venta o cliente.
 - Arriba ve el total vendido, lo vendido al detalle y al por mayor, las unidades y, para el administrador, la ganancia bruta.
-- **Exportar** guarda la lista en un archivo CSV que abre Excel.
+- **Exportar** guarda la lista en Excel, con formato ([9.6](09-contabilidad-y-reportes.md#96-exportar-a-excel)).
 - Pulse una venta para ver su detalle.
 
 ![Detalle de una venta](img/detalle-venta.jpg)

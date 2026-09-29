@@ -54,7 +54,7 @@ function entryScreen({ kind }) {
     };
     $$('[data-go]', tb).forEach((b) => (b.onclick = () => App.go(b.dataset.go)));
     $('#e-cat', tb).onchange = (e) => { category = e.target.value; load(); };
-    $('#e-export', tb).onclick = () => exportCsv(isExpense ? 'gastos' : 'otros-ingresos', cols, rows);
+    $('#e-export', tb).onclick = () => exportExcel(isExpense ? 'gastos' : 'otros-ingresos', cols, rows);
     $('#e-new', tb).onclick = () => modal({
       title: isExpense ? 'Registrar gasto' : 'Registrar otro ingreso',
       width: 520,
@@ -122,7 +122,7 @@ App.register({
       });
     };
     $$('[data-go]', tb).forEach((b) => (b.onclick = () => App.go(b.dataset.go)));
-    $('#c-export', tb).onclick = () => exportCsv('aportes-del-dueno', cols, rows);
+    $('#c-export', tb).onclick = () => exportExcel('aportes-del-dueno', cols, rows);
     $('#c-new', tb).onclick = () => modal({
       title: 'Registrar aporte del dueño',
       width: 480,
@@ -407,7 +407,7 @@ App.register({
       $$('#d-status [data-v]', tb).forEach((x) => x.classList.toggle('active', x === b));
       load();
     }));
-    $('#d-export', tb).onclick = () => exportCsv('depositos-al-banco', cols, rows);
+    $('#d-export', tb).onclick = () => exportExcel('depositos-al-banco', cols, rows);
     periodPicker(pp, (r) => { range = { from: r.from, to: r.to }; load(); }, { initial: 'todo', allowAll: true });
   },
 });

@@ -45,6 +45,8 @@ const Fmt = {
 };
 const METHOD_LABELS = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', otro: 'Otro' };
 const STATUS_LABELS = { nuevo: 'Nuevo', frecuente: 'Frecuente', ocasional: 'Ocasional', en_riesgo: 'En riesgo', perdido: 'Perdido', sin_compras: 'Sin compras', activo: 'Activo', vendido: 'Vendido', cancelado: 'Cancelado', pendiente: 'Pendiente', parcial: 'Parcial', pagado: 'Pagado', anulada: 'Anulada', abierta: 'Abierta', cerrada: 'Cerrada', ok: 'Normal', bajo: 'Stock bajo', agotado: 'Agotado', vencido: 'Vencido' };
+// Códigos que se guardan en la base y cómo se leen (para el Excel).
+const CODE_LABELS = { ...STATUS_LABELS, ...METHOD_LABELS, contado: 'Contado', credito: 'Crédito', detalle: 'Detalle', mayor: 'Por mayor' };
 const STATUS_CLASS = { nuevo: 'info', frecuente: 'ok', ocasional: 'muted', en_riesgo: 'warn', perdido: 'danger', sin_compras: 'muted', activo: 'info', vendido: 'ok', cancelado: 'muted', pendiente: 'warn', parcial: 'info', pagado: 'ok', anulada: 'muted', abierta: 'ok', cerrada: 'muted', ok: 'ok', bajo: 'warn', agotado: 'danger', vencido: 'danger' };
 const badge = (status, label) => html`<span class="badge ${STATUS_CLASS[status] || ''}">${label || STATUS_LABELS[status] || status}</span>`;
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -248,7 +250,7 @@ const methodOptions = (selected = 'efectivo') => options(Object.entries(METHOD_L
  * columns: [{ key, label, render(row), align: 'right'|'center', money: true, pct: true (total en %), total: true|fn, cls }]
  */
 // Tablas grandes (auditoría 3.2): en pantalla se muestran las primeras TABLE_LIMIT filas, con un aviso
-// y "Mostrar todas". Los totales y el CSV usan siempre todas las filas, y antes de imprimir o guardar
+// y "Mostrar todas". Los totales y el Excel usan siempre todas las filas, y antes de imprimir o guardar
 // en PDF se despliegan completas (expandTables).
 const TABLE_LIMIT = 1000;
 const bigTables = new Map();
@@ -292,7 +294,7 @@ function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable
   const big = rows.length > limit;
   const id = big ? `t${++tableSeq}` : '';
   if (big) bigTables.set(id, { rows, row });
-  const more = big ? `<tr class="table-more"><td colspan="${columns.length}">Se muestran ${esc(Fmt.num(limit))} de ${esc(Fmt.num(rows.length))} filas. Los totales, el CSV y el PDF incluyen todas. <button class="btn small" type="button" data-show-all>Mostrar todas</button></td></tr>` : '';
+  const more = big ? `<tr class="table-more"><td colspan="${columns.length}">Se muestran ${esc(Fmt.num(limit))} de ${esc(Fmt.num(rows.length))} filas. Los totales, el Excel y el PDF incluyen todas. <button class="btn small" type="button" data-show-all>Mostrar todas</button></td></tr>` : '';
   const body = rows.length ? rows.slice(0, big ? limit : rows.length).map(row).join('') + more : `<tr><td colspan="${columns.length}" class="empty">${esc(empty)}</td></tr>`;
   return raw(`
     <div class="table-wrap"><table class="table ${clickable ? 'clickable' : ''}"${big ? ` data-big="${id}"` : ''}>
@@ -342,11 +344,45 @@ function toCsv(columns, rows, { sep = ',', dec = '.' } = {}) {
   };
   return [columns.map((c) => q(c.label)).join(sep), ...rows.map((r) => columns.map((c) => q(value(c, r))).join(sep))].join('\r\n');
 }
-async function exportCsv(name, columns, rows) {
+// Lo que va en el Excel: la franja con la tienda, el título de la pantalla y el período elegido; cada
+// columna con su tipo (montos, porcentajes, fechas), y los totales calculados como en pantalla (DT-43).
+function sheetFor(columns, rows, { title, subtitle } = {}) {
+  const period = $('#page .period .range-label');
+  const d = new Date();
+  const now = `${todayStr()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const type = (c) => (c.money ? 'money' : c.pct ? 'pct' : c.date ? 'date' : c.datetime ? 'datetime' : c.num ? 'num' : 'auto');
+  const total = (c) => (!c.total ? null : typeof c.total === 'function' ? c.total(rows) : rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0));
+  // El CSV lleva los códigos ("credito"); el Excel, lo que se ve en pantalla ("Crédito").
+  const value = (c, r) => {
+    const v = c.csv ? c.csv(r) : r[c.key];
+    if (typeof v !== 'string' || !c.render || type(c) !== 'auto' || /^\d{4}-\d{2}-\d{2}/.test(v)) return v;
+    const shown = c.render(r);
+    return typeof shown === 'string' && shown.trim() ? shown : CODE_LABELS[v] || v;
+  };
+  return {
+    title: title || $('#page-title').textContent.trim(),
+    subtitle: [
+      subtitle ?? (period && period.textContent.trim() ? `Período: ${period.textContent.trim()}` : ''),
+      `${Fmt.num(rows.length)} ${rows.length === 1 ? 'registro' : 'registros'}`,
+      `Generado el ${Fmt.datetime(now)}${App.user ? ` por ${App.user.name}` : ''}`,
+    ].filter(Boolean).join('  ·  '),
+    business: App.settings.business_name || '',
+    currency: Fmt.currency,
+    columns: columns.map((c) => ({ label: c.label, type: type(c) })),
+    rows: rows.map((r) => columns.map((c) => value(c, r))),
+    totals: columns.some((c) => c.total) ? columns.map(total) : null,
+  };
+}
+// Exportar una tabla: Excel con formato o, si se elige en la ventana de guardar, CSV.
+async function exportExcel(name, columns, rows, opts = {}) {
   const cols = columns.filter((c) => c.label && c.csv !== false);
   const format = await window.capsApi.csvFormat(App.settings.csv_format).catch(() => ({ sep: ',', dec: '.' }));
-  const path = await window.capsApi.saveText({ defaultName: `${name}-${todayStr()}.csv`, content: toCsv(cols, rows, format) });
-  if (path) toast('Archivo exportado.');
+  try {
+    const path = await window.capsApi.saveExport({ defaultName: `${name}-${todayStr()}`, sheet: sheetFor(cols, rows, opts), csv: toCsv(cols, rows, format) });
+    if (path) toast(/\.csv$/i.test(path) ? 'CSV guardado.' : 'Excel guardado.');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 async function exportPdf(name, { landscape = false } = {}) {
   expandTables();

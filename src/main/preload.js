@@ -26,7 +26,7 @@ contextBridge.exposeInMainWorld('capsApi', {
     setShare: (on) => unwrap(ipcRenderer.invoke('net:setShare', on)),
     newKey: () => unwrap(ipcRenderer.invoke('net:newKey')),
   },
-  saveText: (opts) => unwrap(ipcRenderer.invoke('file:saveText', opts)),
+  saveExport: (opts) => unwrap(ipcRenderer.invoke('file:saveExport', opts)),
   csvFormat: (setting) => unwrap(ipcRenderer.invoke('file:csvFormat', setting)),
   readProducts: () => unwrap(ipcRenderer.invoke('file:readProducts')),
   productTemplate: () => unwrap(ipcRenderer.invoke('file:productTemplate')),

@@ -101,7 +101,7 @@ Menú **Finanzas** → **Cuentas por cobrar**.
   - **Parcial**: con abonos.
   - **Pagado**.
   - **Vencido**: se agrega cuando pasó la fecha de vencimiento y aún hay saldo. Esas filas se marcan en rojo.
-- **Exportar** guarda la vista actual en CSV.
+- **Exportar** guarda la vista actual en Excel ([9.6](09-contabilidad-y-reportes.md#96-exportar-a-excel)).
 
 ## 6.4 Registrar un abono
 
