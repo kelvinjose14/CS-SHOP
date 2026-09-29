@@ -154,7 +154,9 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
     document.removeEventListener('keydown', onKey);
     if (onClose) onClose();
   };
-  const onKey = (e) => { if (e.key === 'Escape' && document.body.lastElementChild === back) close(); };
+  // La de arriba es la última ventana abierta (los avisos también se agregan al final de la página).
+  const onTop = () => [...document.querySelectorAll('.modal-back')].pop() === back;
+  const onKey = (e) => { if (e.key === 'Escape' && onTop()) close(); };
   document.addEventListener('keydown', onKey);
   $('[data-close]', back).onclick = close;
   if (!actions.length) foot.remove();
@@ -176,8 +178,9 @@ function modal({ title, body, actions = [], width = 560, onClose }) {
   }
   document.body.appendChild(back);
   const first = $('input:not([type=hidden]):not([disabled]), select, textarea', bodyEl);
-  // Solo si el usuario todavía no está escribiendo dentro de la ventana (no le quita el cursor).
-  if (first) setTimeout(() => { if (!back.contains(document.activeElement)) first.focus(); }, 30);
+  // Solo si el usuario todavía no está escribiendo dentro de la ventana, y si no se abrió otra encima
+  // (no le quita el cursor).
+  if (first) setTimeout(() => { if (onTop() && !back.contains(document.activeElement)) first.focus(); }, 30);
   return { close, el: back, body: bodyEl };
 }
 
