@@ -347,6 +347,14 @@ const MIGRATIONS = [
     ['cash_sessions', 'NEW.opening_amount >= 0 AND (NEW.counted_amount IS NULL OR NEW.counted_amount >= 0)', 'el efectivo de una caja no puede ser negativo'],
   ])}
   `,
+
+  // v6: categoría del producto (snapback, trucker…) para ver ventas y utilidad por categoría en el
+  // dashboard ejecutivo. Índice de ventas por vendedor para la utilidad por vendedor.
+  `
+  ALTER TABLE products ADD COLUMN category TEXT;
+  CREATE INDEX ix_products_category ON products(category);
+  CREATE INDEX ix_sales_user ON sales(user_id, date);
+  `,
 ];
 
 // Reglas de la base (v5): cada una es un par de disparadores (al insertar y al modificar) que rechazan

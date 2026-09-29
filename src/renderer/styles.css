@@ -299,6 +299,24 @@ body.login-page { background: #000; }
 .qa b { font-size: 16px; }
 .qa a { text-decoration: none; }
 
+/* ---------- Dashboard ejecutivo ---------- */
+.ex-compare { margin: -4px 0 12px; }
+.kpis { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.kpi .delta { font-size: 12px; font-weight: 600; margin-top: 3px; }
+.kpi.ok .stat-value { color: var(--ok); }
+.kpi.brand { border-top: 3px solid var(--brand); }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--danger); }
+.delta.flat { color: var(--muted); font-weight: 500; }
+.forecast .fc-value { font-size: 30px; font-weight: 750; letter-spacing: -.02em; }
+.progress { height: 10px; background: #ececf0; border-radius: 99px; margin: 12px 0 8px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+.fc-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 4px; }
+.fc-compare > div { background: #fafafb; border: 1px solid #f0f0f3; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.fc-compare span { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.inline-field { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); font-weight: 550; }
+.inline-field select { width: auto; padding: 4px 8px; }
+
 .chart .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
 .chart .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .chart-scroll { overflow-x: auto; }
@@ -401,6 +419,7 @@ body.printing .table tr.table-more { display: none; }
   .split, .cash-grid { grid-template-columns: 1fr; }
   .table th { white-space: normal; }
   .table th, .table td { padding-left: 6px; padding-right: 6px; }
+  .executive .card-head { flex-wrap: wrap; }
 }
 .cs-note { font-size: 12.5px; color: var(--danger); padding: 4px 4px 8px; border-bottom: 1px solid #f0f0f3; }
 .open-form { flex-wrap: wrap; }

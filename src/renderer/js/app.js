@@ -5,7 +5,7 @@ const NAV_ORDER = [
   'dashboard', 'pos', 'sales',
   'products', 'movements', 'purchases', 'suppliers',
   'customers', 'receivables', 'payables', 'expenses', 'cash',
-  'accounting', 'cashflow', 'reports', 'audit',
+  'executive', 'accounting', 'cashflow', 'reports', 'audit',
   'users', 'settings',
 ];
 

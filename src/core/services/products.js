@@ -40,8 +40,8 @@ function list(ctx, { search = '', status = 'todos', includeInactive = false } = 
   if (!includeInactive) where.push('active = 1');
   if (search) {
     const q = `%${search.trim()}%`;
-    where.push('(name LIKE ? OR brand LIKE ? OR model LIKE ? OR color LIKE ? OR size LIKE ? OR sku LIKE ? OR barcode LIKE ?)');
-    params.push(q, q, q, q, q, q, q);
+    where.push('(name LIKE ? OR brand LIKE ? OR model LIKE ? OR category LIKE ? OR color LIKE ? OR size LIKE ? OR sku LIKE ? OR barcode LIKE ?)');
+    params.push(q, q, q, q, q, q, q, q);
   }
   if (status === 'agotado') where.push('stock <= 0');
   if (status === 'bajo') where.push('stock > 0 AND stock <= min_stock');
@@ -80,6 +80,7 @@ function save(ctx, data) {
     name: text(data.name, 'Nombre', { required: true, max: 120 }),
     brand: text(data.brand, 'Marca', { max: 80 }),
     model: text(data.model, 'Modelo', { max: 80 }),
+    category: text(data.category, 'Categoría', { max: 60 }),
     color: text(data.color, 'Color', { max: 60 }),
     size: text(data.size, 'Talla', { max: 30 }),
     sku: text(data.sku, 'SKU', { max: 60 }),
@@ -126,7 +127,7 @@ function save(ctx, data) {
 // SKU (o ese código de barras), actualiza sus datos y precios; la existencia de un producto que ya
 // estaba no se toca (eso se hace con un ajuste, que deja motivo). Una fila con error no detiene las
 // demás. Con dryRun se valida todo y no se guarda nada (vista previa).
-const IMPORT_FIELDS = ['name', 'brand', 'model', 'color', 'size', 'sku', 'barcode', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes'];
+const IMPORT_FIELDS = ['name', 'brand', 'model', 'category', 'color', 'size', 'sku', 'barcode', 'cost', 'price_retail', 'price_wholesale', 'min_stock', 'notes'];
 const DRY_RUN = Symbol('vista previa');
 
 function importRows(ctx, { rows, dryRun = false }) {
@@ -308,4 +309,10 @@ function summary(ctx) {
   return out;
 }
 
-module.exports = { list, get, findByCode, save, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };
+// Marcas y categorías ya usadas, para sugerirlas al escribir y no terminar con "Snapback" y "snapback".
+function facets(ctx) {
+  const distinct = (col) => ctx.db.all(`SELECT ${col} AS v, COUNT(*) AS n FROM products WHERE ${col} IS NOT NULL AND ${col} <> '' GROUP BY ${col} COLLATE NOCASE ORDER BY ${col} COLLATE NOCASE`).map((r) => r.v);
+  return { brands: distinct('brand'), categories: distinct('category') };
+}
+
+module.exports = { list, get, findByCode, facets, save, importRows, count, adjust, movements, summary, stockStatus, MOVEMENT_LABELS };

@@ -10,6 +10,7 @@ const HEADERS = {
   name: ['nombre', 'producto', 'descripcion', 'articulo'],
   brand: ['marca'],
   model: ['modelo'],
+  category: ['categoria', 'tipo', 'estilo'],
   color: ['color'],
   size: ['talla', 'tamano', 'medida'],
   sku: ['sku', 'codigo', 'codigo interno', 'referencia', 'ref'],
@@ -204,8 +205,8 @@ function readProducts(buf, fileName = '') {
 
 // Plantilla CSV con los títulos que se reconocen.
 const TEMPLATE = [
-  'Nombre;Marca;Modelo;Color;Talla;SKU;Código de barras;Costo;Precio detalle;Precio por mayor;Existencia;Mínimo;Notas',
-  'Gorra New York;New Era;59FIFTY;Negro;7 1/4;;;850;1500;1200;10;3;',
+  'Nombre;Marca;Modelo;Categoría;Color;Talla;SKU;Código de barras;Costo;Precio detalle;Precio por mayor;Existencia;Mínimo;Notas',
+  'Gorra New York;New Era;59FIFTY;Fitted;Negro;7 1/4;;;850;1500;1200;10;3;',
 ].join('\r\n');
 
 module.exports = { HEADERS, fieldFor, parseNumber, parseCsv, parseXlsx, toRecords, readProducts, TEMPLATE };

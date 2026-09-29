@@ -26,7 +26,7 @@ Versión documentada: **1.3.1** (26/09/2026, para el piloto en la tienda). Los c
 | 6 | [Clientes y cobros](manual/06-clientes-y-cobros.md) | Ventas a crédito, abonos y cuentas por cobrar |
 | 7 | [Caja](manual/07-caja.md) | Abrir, entradas, depósitos al banco, retiros y cierre |
 | 8 | [Gastos e ingresos](manual/08-gastos-e-ingresos.md) | Gastos, otros ingresos y aportes del dueño |
-| 9 | [Contabilidad y reportes](manual/09-contabilidad-y-reportes.md) | Ganancias, flujo de dinero y los 15 reportes |
+| 9 | [Contabilidad y reportes](manual/09-contabilidad-y-reportes.md) | Dashboard ejecutivo, ganancias, flujo de dinero y los 15 reportes |
 | 10 | [Usuarios y permisos](manual/10-usuarios-y-permisos.md) | Qué puede hacer cada perfil y cómo crear usuarios |
 | 11 | [Configuración y respaldos](manual/11-configuracion-y-respaldos.md) | Ajustes del negocio, copias de seguridad y cambio de computadora |
 | 12 | [Problemas frecuentes](manual/12-problemas-frecuentes.md) | Mensajes de error y qué hacer |

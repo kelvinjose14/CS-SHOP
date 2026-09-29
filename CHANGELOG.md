@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+## [1.4.0] - 2026-09-29
+
+Dashboard ejecutivo, primera parte de la gestión avanzada ([O7](docs/producto/objetivos.md#o7-gestión-avanzada)). La base pasa a la versión 6 al abrir: todas las PCs deben tener la 1.4.0 (actualice primero la PC principal).
+
+### Agregado
+- **Dashboard ejecutivo** (Análisis): ventas netas, utilidad bruta y neta, margen, ticket promedio, cantidad de ventas, unidades vendidas y unidades por venta, cada uno comparado con el período anterior (ayer, mes anterior…) y con el año anterior. Un período en curso se compara hasta el mismo día.
+- **Pronóstico de cierre de mes** según lo que se vende normalmente cada día de la semana, con la utilidad estimada y la comparación con el mes anterior y el mismo mes del año pasado.
+- **Salud del inventario:** rotación, días de inventario y productos estancados (30 a 180 días sin venderse) con el dinero parado.
+- **Utilidad por producto, marca, categoría y vendedor**, exportable a Excel.
+- **Categoría** en el producto (Snapback, Trucker…), con sugerencias de las ya usadas; también en la importación desde Excel. La base pasa a la versión 6 al abrir.
+
 ### Documentación
 - La rama por defecto del repositorio ya es `main`: se quitó el aviso de pendiente en objetivos y en la guía de publicación.
 

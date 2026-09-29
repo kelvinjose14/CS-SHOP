@@ -78,6 +78,7 @@ const ICONS = {
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   tag: '<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
 };
 const icon = (name, cls = '') => raw(`<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`);
 
@@ -231,7 +232,7 @@ const methodOptions = (selected = 'efectivo') => options(Object.entries(METHOD_L
 
 /* ---------- Tablas ---------- */
 /**
- * columns: [{ key, label, render(row), align: 'right'|'center', money: true, total: true|fn, cls }]
+ * columns: [{ key, label, render(row), align: 'right'|'center', money: true, pct: true (total en %), total: true|fn, cls }]
  */
 // Tablas grandes (auditoría 3.2): en pantalla se muestran las primeras TABLE_LIMIT filas, con un aviso
 // y "Mostrar todas". Los totales y el CSV usan siempre todas las filas, y antes de imprimir o guardar
@@ -271,7 +272,7 @@ function table({ columns, rows, empty = 'No hay registros.', rowClass, clickable
     foot = '<tfoot><tr>' + columns.map((c, i) => {
       if (!c.total) return `<td>${i === 0 ? esc(totalsLabel) : ''}</td>`;
       const v = typeof c.total === 'function' ? c.total(rows) : rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0);
-      return `<td class="${align(c)}">${esc(c.money ? Fmt.money(v) : Fmt.num(v))}</td>`;
+      return `<td class="${align(c)}">${esc(c.money ? Fmt.money(v) : c.pct ? Fmt.pct(v) : Fmt.num(v))}</td>`;
     }).join('') + '</tr></tfoot>';
   }
   const row = (r, i) => `<tr data-idx="${i}" class="${rowClass ? esc(rowClass(r) || '') : ''}">${columns.map((c) => `<td class="${align(c)} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`;

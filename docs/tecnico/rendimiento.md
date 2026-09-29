@@ -72,6 +72,21 @@ Con la migración 5 y los controles de la [auditoría](auditoria.md). La base de
 
 **Hallazgo:** la lista de depósitos y el aviso del Inicio tardaban **1.5 s**. Por cada depósito buscaban su anulación en todo el libro de dinero (`ref_type = 'anulacion' AND ref_id = …`), que no tenía índice. La migración 5 agrega los índices `money_movements(ref_type, ref_id)` y `(category, method)`. También el detalle de un cierre bajó de 14 ms a 0.7 ms.
 
+## Resultados de la 1.4.0 (27/09/2026)
+
+Con la migración 6. La base de prueba reparte las gorras en 4 categorías. El dashboard ejecutivo calcula cada vez los indicadores de 3 rangos (el período, el anterior y el del año anterior), el pronóstico, la salud del inventario y las 4 tablas de utilidad.
+
+| Pantalla u operación | ms |
+|---|---:|
+| Inicio (administrador / vendedor) | 10.0 / 9.3 |
+| **Dashboard ejecutivo (mes / año / 3 años)** | **127.6 / 194.0 / 406.3** |
+| Contabilidad (3 años) | 17.7 |
+| Flujo de dinero (3 años) | 249.5 |
+| Más vendidos (3 años) | 55.2 |
+| Registrar una venta | 2.2 |
+
+Lo que más pesa del dashboard es la salud del inventario (unos 90 ms: última venta y primera entrada de cada producto) y la utilidad por producto de 3 años (unos 75 ms). Está muy por debajo del segundo; si la tienda llega a miles de productos, la última venta de cada uno se puede guardar en el producto.
+
 ## Qué vigilar
 
 - **Listas sin paginar:** algunas listas muestran todas las filas del período (Ventas del año: unas 4,800). Hoy dibujan en menos de 0.3 s. Si la tienda crece mucho, conviene paginar.

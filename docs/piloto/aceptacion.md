@@ -1,6 +1,6 @@
 # Lista de aceptación
 
-Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **131 requisitos**. Generada el 26/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
+Cada requisito de [Requisitos](../producto/requisitos.md) se verifica **en la tienda, con datos reales**, durante el piloto ([Plan del piloto](README.md)). Son **132 requisitos**. Generada el 27/09/2026 con `node scripts/lista-aceptacion.js`: no la edite a mano.
 
 **Cómo se llena:**
 1. Imprímala (desde GitHub: botón **Raw** y luego imprimir, o abra el archivo en el navegador).
@@ -227,10 +227,11 @@ Cómo se verifica (todos): cada reporte se genera por período cuando aplica, y 
 | RF-NUE-12 | Revisar los depósitos al banco contra el estado de cuenta (auditoría 4.2, DT-30) | Cada depósito queda por verificar; el administrador lo marca En el banco o No llegó (se descuenta del banco y queda como salida del negocio). El Inicio avisa mientras haya pendientes. Dónde: Caja → Depósitos por verificar | ☐ | ☐ | |
 | RF-NUE-13 | Límite de crédito y deuda vencida (auditoría 2.3 y 2.4, DT-31) | Límite por cliente (0 = sin límite); una venta a crédito que lo pasa, o a quien tiene deuda vencida, la detiene el sistema: el vendedor no sigue y el administrador la autoriza. Solo el administrador desactiva clientes, y no si deben. Dónde: Clientes, Nueva venta, Configuración | ☐ | ☐ | |
 | RF-NUE-14 | Copia externa protegida con contraseña (auditoría 4.3, DT-35) | Opcional. Con contraseña, la copia de la memoria va cifrada, las copias sin cifrar se borran y restaurar pide la contraseña. Dónde: Configuración → Copias de seguridad | ☐ | ☐ | |
+| RF-NUE-15 | Dashboard ejecutivo (DT-36, DT-37) | Ventas, utilidad, margen, ticket promedio, cantidad de ventas y unidades por venta comparados con el período anterior y con el año anterior; pronóstico de cierre de mes; rotación, días de inventario y productos estancados; utilidad por producto, marca, categoría y vendedor. Solo el administrador. Dónde: Análisis → Dashboard ejecutivo | ☐ | ☐ | |
 
 ## Acta de aceptación
 
-Requisitos verificados: ______ de 131. Con observaciones pendientes: ______.
+Requisitos verificados: ______ de 132. Con observaciones pendientes: ______.
 
 Con esta firma, el cliente declara que usó CAPS Shop en la tienda con datos reales durante el piloto, que los requisitos marcados **Sí** funcionan como se describe, y acepta el sistema para uso en producción. Las observaciones pendientes quedan anotadas arriba y en la bitácora, con su compromiso de corrección.
 

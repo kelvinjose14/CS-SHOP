@@ -10,6 +10,7 @@ const purchases = require('./services/purchases');
 const sales = require('./services/sales');
 const finance = require('./services/finance');
 const reports = require('./services/reports');
+const executive = require('./services/executive');
 const terminals = require('./services/terminals');
 
 const ALL = ['admin', 'vendedor'];
@@ -28,6 +29,7 @@ const METHODS = {
   'products.get': [ALL, products.get],
   'products.findByCode': [ALL, products.findByCode],
   'products.summary': [ALL, products.summary],
+  'products.facets': [ALL, products.facets],
   'products.movements': [ALL, products.movements],
   'products.save': [ADMIN, products.save],
   'products.import': [ADMIN, products.importRows],
@@ -85,6 +87,7 @@ const METHODS = {
   'reports.profit': [ADMIN, reports.profit],
   'reports.cashflow': [ADMIN, reports.cashflow],
   'reports.topProducts': [ADMIN, reports.topProducts],
+  'reports.executive': [ADMIN, executive.executive],
   'reports.audit': [ADMIN, reports.auditLog],
   'reports.range': [ALL, reports.range],
 
