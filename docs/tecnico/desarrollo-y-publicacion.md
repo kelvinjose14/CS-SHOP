@@ -64,6 +64,7 @@ npm run dist:dir     # aplicación empaquetada sin instalador (cualquier sistema
 | `o6.test.js` | Conteo de inventario con el lector y a mano, borrador que sobrevive al salir, revisar y aplicar |
 | `controles.test.js` | Motivo al abrir la caja, depósitos por verificar desde el aviso del Inicio, crédito autorizado por el administrador, compra a costo 0 confirmada, cliente con deuda que no se desactiva, CSV sin fórmulas, ninguna pantalla desbordada a 1,100 px, navegación bloqueada, y copia externa con contraseña y su restauración |
 | `excel.test.js` | Exportar a Excel el inventario y dos reportes (franja con el período, totales, números y lo que se ve en pantalla en vez de códigos), a CSV si se elige, y el mensaje cuando el archivo no se puede escribir |
+| `actualizaciones.test.js` | Buscar actualizaciones desde Configuración: "Buscando…" mientras busca y el aviso de si hay versión nueva, no la hay o hubo un error (con respuestas simuladas del actualizador) |
 | `installed.test.js` | El programa **instalado**: se configura, vende, conserva los datos y busca actualizaciones. Solo con `CAPSSHOP_EXE` (la usa el CI de Windows) |
 
 **`npm run test:perf`:** ver [Rendimiento](rendimiento.md).

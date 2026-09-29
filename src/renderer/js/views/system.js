@@ -397,7 +397,7 @@ async function renderUpdates(card, st) {
     disabled: 'Las actualizaciones funcionan en el programa instalado.',
     idle: 'Todavía no se buscó.',
     checking: 'Buscando…',
-    none: 'Tiene la versión más reciente.',
+    none: `Tiene la versión más reciente${u.checked_at ? ` (revisado a las ${new Date(u.checked_at).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' })})` : ''}.`,
     available: `Hay una versión nueva: ${u.version}.`,
     downloading: `Descargando la versión ${u.version}… ${u.percent || 0}%`,
     ready: `La versión ${u.version} está lista para instalar.`,
@@ -412,7 +412,21 @@ async function renderUpdates(card, st) {
       ${['available', 'ready'].includes(u.status) ? html`<button class="btn primary" id="upd-install">Instalar la versión ${u.version}</button>` : ''}
     </div>`);
   const check = $('#upd-check', card);
-  check.onclick = async () => renderUpdates(card, await window.capsApi.updates.check());
+  // Al buscar se ve que está buscando, y al terminar un aviso dice qué encontró.
+  check.onclick = async () => {
+    check.disabled = true;
+    check.textContent = 'Buscando…';
+    try {
+      const r = await window.capsApi.updates.check();
+      renderUpdates(card, r);
+      if (r.status === 'none') toast(`No hay versiones nuevas: la ${r.current} es la más reciente.`);
+      else if (['available', 'ready'].includes(r.status)) toast(`Hay una versión nueva: ${r.version}.`);
+      else if (r.status === 'error') toast(r.error, 'error');
+    } catch (e) {
+      toast(e.message, 'error');
+      renderUpdates(card);
+    }
+  };
   const install = $('#upd-install', card);
   if (install) install.onclick = async () => {
     if (!(await confirmDialog(`Se instalará la versión ${u.version}. El programa se cerrará y volverá a abrir. ¿Instalar ahora?`, { okLabel: 'Instalar' }))) return;

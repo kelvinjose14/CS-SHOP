@@ -4,6 +4,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## Sin publicar
 
+### Corregido
+- **Configuración → Actualizaciones → Buscar ahora** no mostraba nada mientras buscaba ni al terminar, y parecía que el programa se había trabado. Ahora dice "Buscando…" y un aviso indica si hay una versión nueva o no, con la hora de la última revisión.
+
 ## [1.6.1] - 2026-09-29
 
 Excel con formato. Se instala encima de la 1.6.0 o desde Configuración → Actualizaciones; la base no cambia.

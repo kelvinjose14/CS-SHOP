@@ -125,7 +125,7 @@ En una computadora conectada, el diagnóstico muestra a qué PC principal está 
 
 **Configuración → Actualizaciones** (administrador) muestra la versión instalada y si hay una más nueva. El programa busca solo al abrirse y cada 6 horas, pero **no descarga ni instala nada sin que usted lo pida**.
 
-- **Buscar ahora:** busca en el momento. Necesita internet.
+- **Buscar ahora:** busca en el momento; mientras busca dice "Buscando…" y al terminar un aviso indica si hay una versión nueva. Necesita internet.
 - **Instalar la versión X:**
   - descarga la versión nueva;
   - cierra el programa;
