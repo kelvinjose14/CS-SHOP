@@ -14,10 +14,12 @@ Marcar `[x]` al terminar cada tarea **y** reflejarlo en `PROJECT_STATUS.md`. No 
 - [x] Respaldo (`BACKUP_AND_RECOVERY.md`) y preguntas abiertas (`OPEN_QUESTIONS.md`)
 - [x] Rediseño a herramientas gratuitas y programa independiente (ADR-013 a ADR-018)
 - [ ] **Aprobación del plan por el cliente**
-- [ ] Repositorio propio `sistema-conduces` creado por el cliente y proyecto trasladado (HANDOFF §17)
+- [x] Ubicación decidida: carpeta `conduces/` de CS-SHOP, programa independiente (ADR-019)
+- [ ] PR de la Fase 0 fusionado en `main` ([kelvinjose14/CS-SHOP#22](https://github.com/kelvinjose14/CS-SHOP/pull/22))
 
 ## FASE 1 — Proyecto base, BD, autenticación, empresas, usuarios, roles
 - [ ] Scaffold Next.js + TypeScript estricto + Tailwind + ESLint/Prettier
+- [ ] CI propio `.github/workflows/conduces.yml`, solo para cambios en `conduces/**`: lint, typecheck, pruebas unitarias y de BD (servicio PostgreSQL)
 - [ ] `docker-compose.yml` (servicio `db`) + `db/bootstrap.sql` (roles `conduces_owner` / `conduces_app`)
 - [ ] Ejecutor de migraciones `scripts/db-migrate.mjs` (`db:migrate`, `db:status`, checksum) + pruebas
 - [ ] Migraciones 0001–0004 y 0008 (parcial): extensiones, esquema `app`, identidad (users, sessions, login_attempts),

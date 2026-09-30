@@ -101,6 +101,8 @@ entonces la secuencia sigue igual (o en `pending_confirmation`).
 
 ## 9. Preparación que debe hacer el cliente
 
+- Los Excel reales **nunca** se suben al repositorio (CS-SHOP es público): se cargan solo en el sistema instalado. Las
+  muestras que se usen para pruebas automáticas se anonimizan antes (nombres, cédulas, teléfonos).
 - Reunir **todos** los Excel en una carpeta (sin renombrar ni editar) y conservar una copia fuera de la PC (ver
   `BACKUP_AND_RECOVERY.md`).
 - Enviar primero **5–10 archivos de muestra** de distintas épocas/empresas para diseñar el perfil de mapeo.

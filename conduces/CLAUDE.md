@@ -27,14 +27,16 @@ Condiciones del cliente (2026-09-30):
 - Es un **programa totalmente nuevo e independiente de CAPS Shop**.
 - **Solo herramientas gratuitas** (software libre, sin servicios de pago). **Uso interno** del grupo.
 
-## 2. Ubicación del proyecto
+## 2. Ubicación del proyecto (ADR-019)
 
-- Destino: **repositorio propio** (nombre propuesto `sistema-conduces`, ADR-013).
-- Mientras ese repositorio no exista, el proyecto vive temporalmente en la carpeta `conduces/` del repositorio
-  `kelvinjose14/CS-SHOP`, cuya raíz contiene **otro sistema sin relación** (CAPS Shop). En ese caso:
-  trabaja **solo dentro de `conduces/`**, no modifiques CAPS Shop y **no fusiones `conduces/` en `main` de CS-SHOP**.
-- Todas las rutas de esta documentación son relativas a la raíz del proyecto (`conduces/` mientras siga ahí).
-- Cómo trasladarlo: `docs/HANDOFF.md` §17.
+- El proyecto vive en la carpeta **`conduces/`** del repositorio **`kelvinjose14/CS-SHOP`** (rama principal `main`).
+- La raíz de CS-SHOP es **CAPS Shop**, otro programa sin relación. Trabaja **solo dentro de `conduces/`**; no modifiques
+  CAPS Shop ni compartas código, dependencias, documentación o CHANGELOG con él.
+- **CS-SHOP es un repositorio público.** Nunca subas datos reales (conduces, Excel históricos, exportaciones,
+  respaldos), secretos ni `.env`. Los archivos de prueba se inventan o se anonimizan.
+- Flujo: rama de trabajo → PR hacia `main` → fusionar al terminar cada bloque. Lo que no esté en `main` no lo verá
+  una sesión nueva. Al empezar, revisa también PRs abiertos y ramas remotas por si hay trabajo sin fusionar.
+- Todas las rutas de esta documentación son relativas a `conduces/`.
 
 ## 3. Stack (definitivo, 100 % gratuito — ver `docs/DECISIONS.md`)
 

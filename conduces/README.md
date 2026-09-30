@@ -4,7 +4,8 @@ Sistema web **de uso interno** para generar, administrar, consultar, imprimir y 
 empresas del grupo: multiempresa, numeración atómica por empresa, borradores, estados (emitido, despachado,
 recibido, anulado), PDF, usuarios y roles, auditoría e importación de conduces históricos desde Excel.
 
-Programa **independiente** (no tiene relación con CAPS Shop) y construido **solo con herramientas gratuitas**.
+Programa **independiente** y construido **solo con herramientas gratuitas**. Vive en la carpeta `conduces/` del
+repositorio CS-SHOP, cuya raíz es otro programa (CAPS Shop) sin relación con este.
 
 > **Estado:** Fase 0 (diseño y documentación). Todavía no hay aplicación ejecutable.
 > Ver [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
@@ -20,8 +21,8 @@ Detalle y motivos en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y [`docs/DEC
 Requisitos: Node.js 22 LTS o superior, npm, Git, y **Docker** o un **PostgreSQL 16** instalado.
 
 ```bash
-git clone <url-del-repositorio>
-cd <carpeta-del-proyecto>
+git clone https://github.com/kelvinjose14/CS-SHOP.git
+cd CS-SHOP/conduces          # todo el sistema de conduces está en esta carpeta
 npm install
 
 cp .env.example .env.local        # completar (explicación de cada variable dentro del archivo)

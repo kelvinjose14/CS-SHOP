@@ -83,6 +83,9 @@ código. `user_companies.role_code` está reservado para roles distintos por emp
   `SESSION_SECRET`: solo en `src/server/**` con `import 'server-only'` y en scripts. Nunca en logs.
 - `.env*` en `.gitignore` (excepto `.env.example`). Revisar con `git diff --cached` antes de cada commit.
 - El puerto de PostgreSQL no se expone fuera del servidor (solo red interna de Docker).
+- **El repositorio (CS-SHOP) es público** (ADR-019). La seguridad no depende de ocultar el código: contraseñas, claves y
+  datos existen solo en el servidor (`.env` y base de datos). Prohibido subir datos reales, respaldos, exportaciones o
+  Excel históricos; los archivos de prueba se inventan o se anonimizan. `.gitignore` bloquea `.xls/.xlsx/.csv` fuera de `tests/fixtures/`.
 
 ## 7. Entradas y archivos
 

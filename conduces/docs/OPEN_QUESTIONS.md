@@ -5,7 +5,7 @@ Cuando se responda una pregunta: mover la respuesta a la regla correspondiente (
 
 | # | Pregunta | Propuesta por defecto | Bloquea | Estado |
 |---|---|---|---|---|
-| Q1 | ¿El sistema se queda en `conduces/` dentro de CS-SHOP o se mueve a un repositorio propio? | Repositorio propio. | Fase 1 | **RESPONDIDA 2026-09-30**: programa totalmente nuevo, aparte de CAPS Shop → repositorio propio `sistema-conduces` (ADR-013). Pendiente: que el cliente cree el repo y dé acceso. |
+| Q1 | ¿El sistema se queda en `conduces/` dentro de CS-SHOP o se mueve a un repositorio propio? | Repositorio propio. | Fase 1 | **RESPONDIDA 2026-09-30**: programa totalmente aparte de CAPS Shop, pero el cliente no quiere dar acceso a un repositorio nuevo → se queda en la carpeta `conduces/` de CS-SHOP como programa independiente (ADR-019). |
 | Q2 | ¿Dónde se aloja? | — | Fase 7 | **RESPONDIDA 2026-09-30**: todo con herramientas gratuitas, uso interno → PostgreSQL autogestionado + Docker Compose (ADR-014, ADR-018). |
 | Q2b | ¿Qué equipo será el servidor (mini PC/PC de la oficina principal, o VM gratuita en la nube)? ¿Hay sucursales que necesiten acceso desde fuera de la red local? | PC/mini PC en la oficina principal con UPS; Cloudflare Tunnel para sucursales. | Fase 7 | Abierta |
 | Q3 | Lista de empresas del grupo: nombre comercial, razón social, RNC, dirección, teléfonos, correo, logo y **prefijo** de cada una. ¿"MILADYS RODRIGUEZ" es una empresa emisora o un punto comercial? | Se cargan desde la pantalla Empresas; nada hardcodeado. | Fase 2 (datos) | Abierta |
@@ -21,3 +21,4 @@ Cuando se responda una pregunta: mover la respuesta a la regla correspondiente (
 | Q13 | Puntos comerciales y productos: ¿por empresa o compartidos por todo el grupo? | Ambos (campo empresa opcional). | Fase 2 | Abierta |
 | Q14 | ¿Se empezará a emitir en el sistema antes de importar los históricos? | No: importar primero y confirmar la secuencia (RN-13). | Fase 6 | Abierta |
 | Q15 | Zona horaria `America/Santo_Domingo` y formato de fecha `dd/mm/aaaa`. | Sí. | — | Abierta |
+| Q16 | CS-SHOP es público: el código y la documentación de conduces se ven en internet. ¿Está bien, o se prefiere un repositorio privado (requiere dar acceso a Claude)? | Está bien: nunca se suben datos reales ni secretos (ADR-019). | — | Abierta |

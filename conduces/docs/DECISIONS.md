@@ -69,13 +69,14 @@ Configurable en `system_settings`. Timestamps en UTC (`timestamptz`); fechas com
 > **2026-09-30 — Decisiones del cliente:** "Es un programa totalmente nuevo, aparte de CAPS Shop. Todo con
 > instrumentos gratis. Es uso interno." Las ADR-013 a ADR-018 aplican estas decisiones.
 
-## ADR-013 Repositorio propio, separado de CAPS Shop — Aceptada (2026-09-30)
+## ADR-013 Repositorio propio, separado de CAPS Shop — Reemplazada por ADR-019 (2026-09-30)
 **Contexto:** el cliente confirmó que es un programa totalmente nuevo, independiente de CAPS Shop.
 **Decisión:** el proyecto tendrá su propio repositorio (nombre propuesto: `sistema-conduces`, privado). Mientras ese
 repositorio no exista, el trabajo se guarda en la carpeta `conduces/` de CS-SHOP, que ya es autocontenida, y se
 trasladará con `git subtree split` conservando el historial (HANDOFF §17).
 **Estado:** la sesión de Claude no tiene permiso para crear repositorios en GitHub; el cliente debe crear el repositorio
 vacío y dar acceso a la app de Claude. Hasta el traslado, **no** se debe fusionar `conduces/` en la rama `main` de CS-SHOP.
+**Reemplazada:** el cliente no quiere dar acceso a un repositorio nuevo (ADR-019).
 
 ## ADR-014 Solo software libre/gratuito; PostgreSQL autogestionado, sin Supabase — Aceptada (2026-09-30)
 **Contexto:** uso interno y costo cero. Los planes gratuitos en la nube tienen límites (pausas por inactividad, sin
@@ -112,3 +113,29 @@ Desktop), con UPS. Servicios: `db` (PostgreSQL 16), `app` (Next.js), `caddy` (HT
 **Alternativa gratuita en la nube:** una VM "Always Free" (p. ej. Oracle Cloud) con el mismo `docker compose`.
 Revisar siempre las condiciones del proveedor para uso empresarial: algunos planes gratuitos (p. ej. Vercel Hobby) no
 permiten uso comercial.
+
+---
+
+> **2026-09-30 — Decisión del cliente:** ante el paso "dar acceso a Claude al repositorio nuevo", respondió
+> "¿Para qué? No quiero". La ADR-019 aplica esta decisión.
+
+## ADR-019 El proyecto se queda en `conduces/` dentro de CS-SHOP — Aceptada (2026-09-30)
+**Contexto:** para trasladarlo a un repositorio propio, la app de Claude necesitaba acceso a ese repositorio nuevo
+(sin ese permiso, las sesiones de Claude Code en la nube no pueden leerlo ni escribir en él). El cliente no quiere dar
+ese acceso. La app ya tiene acceso a CS-SHOP.
+**Decisión:** el Sistema de Conduces vive de forma permanente en la carpeta `conduces/` del repositorio
+`kelvinjose14/CS-SHOP` y se fusiona en `main` mediante PR, como cualquier trabajo. Sigue siendo un **programa
+totalmente independiente** de CAPS Shop: carpeta, `package.json`, dependencias, base de datos, documentación,
+CHANGELOG, instalación y CI propios. Ningún programa importa código del otro.
+**Consecuencias:**
+- Una sesión nueva (otra cuenta o PC) parte de `main`: cada bloque de trabajo debe terminar **fusionado en `main`**,
+  o la documentación y el código no serán visibles para la siguiente sesión.
+- **CS-SHOP es un repositorio público**: el código y la documentación de conduces se pueden ver en internet. Por eso
+  está prohibido subir datos reales (conduces, Excel históricos, exportaciones, respaldos), secretos o `.env`; los
+  archivos de prueba se inventan o se anonimizan. La seguridad del sistema no depende de ocultar el código: contraseñas,
+  claves y datos existen solo en el servidor. No se recomienda volver privado CS-SHOP, porque dejarían de funcionar la
+  descarga del instalador y las actualizaciones automáticas de CAPS Shop, que se publican en GitHub Releases de ese repositorio.
+- El CI de CAPS Shop (`.github/workflows/build-windows.yml`) se ejecuta en todos los PR, también en los de conduces.
+  Conduces tendrá su propio workflow, limitado a cambios en `conduces/**` (Fase 1).
+- Si en el futuro se quiere un repositorio propio (por ejemplo, privado), HANDOFF §17 describe el traslado con
+  `git subtree split`, conservando el historial.

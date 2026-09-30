@@ -22,11 +22,18 @@ next-env.d.ts
 docker-compose.override.yml
 deploy/secrets/
 
-# Respaldos y datos (nunca en Git)
+# Respaldos y datos reales (nunca en Git: el repositorio es público)
 backups/
 *.dump
 *.sql.gz
 /imports-local/
+/data/
+*.xls
+*.xlsx
+*.csv
+!tests/fixtures/**/*.xls
+!tests/fixtures/**/*.xlsx
+!tests/fixtures/**/*.csv
 
 # Pruebas
 coverage/

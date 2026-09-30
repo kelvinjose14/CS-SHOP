@@ -2,6 +2,10 @@
 
 Cambios funcionales y de arquitectura relevantes (no cambios insignificantes). Más reciente arriba.
 
+## 2026-09-30 (3)
+- Ubicación definitiva: el proyecto se queda en la carpeta `conduces/` de CS-SHOP como programa independiente
+  (el cliente no quiere dar acceso a un repositorio nuevo). CS-SHOP es público: nunca datos reales ni secretos en Git.
+
 ## 2026-09-30 (2)
 - Decisión del cliente: programa totalmente nuevo e independiente de CAPS Shop, solo herramientas gratuitas, uso interno.
 - Stack rediseñado: PostgreSQL 16 autogestionado (sin Supabase), autenticación propia con argon2id y sesiones en BD,

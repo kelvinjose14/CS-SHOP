@@ -15,9 +15,10 @@ Para: otra cuenta de Claude, otra computadora, otro desarrollador u otra IA.
 8. Ejecutar pruebas
 9. Continuar desde "PRÓXIMO PASO" de `PROJECT_STATUS.md`
 
-**Dónde está el proyecto:** en su **repositorio propio** (`sistema-conduces`) si ya se trasladó; si no, en la carpeta
-`conduces/` del repositorio `kelvinjose14/CS-SHOP` (rama `claude/modest-noether-izh1p9`). `PROJECT_STATUS.md` dice cuál.
+**Dónde está el proyecto (ADR-019):** carpeta `conduces/` del repositorio `kelvinjose14/CS-SHOP`, rama `main`.
+Si hay trabajo reciente sin fusionar, está en un PR abierto o una rama `claude/*` (revisar ambos).
 CAPS Shop (raíz de CS-SHOP) es **otro programa sin relación**: no se toca.
+**El repositorio es público:** nunca subir datos reales ni secretos.
 
 ---
 
@@ -31,15 +32,15 @@ Excel. Programa **totalmente nuevo e independiente de CAPS Shop**. **Solo herram
 ## 2. Estado actual
 
 **Fase 0 terminada** (documentación, arquitectura, esquema de BD, estrategias), ya adaptada a herramientas gratuitas.
-**No hay código de aplicación, migraciones ni `package.json` todavía.** Falta crear el repositorio propio y trasladar
-el proyecto (§17), y que el cliente apruebe el plan.
+**No hay código de aplicación, migraciones ni `package.json` todavía.** Falta que el cliente apruebe el plan y que se
+fusione en `main` el PR de la Fase 0 ([kelvinjose14/CS-SHOP#22](https://github.com/kelvinjose14/CS-SHOP/pull/22)).
 
 ## 3. Cómo instalarlo (a partir de la Fase 1)
 
 Requisitos: Node.js 22 LTS+, npm, Git, y Docker **o** PostgreSQL 16 instalado.
 
 ```bash
-git clone <url-del-repositorio> && cd <carpeta>
+git clone https://github.com/kelvinjose14/CS-SHOP.git && cd CS-SHOP/conduces
 npm install
 cp .env.example .env.local   # completar (§6)
 ```
@@ -64,7 +65,7 @@ Producción: `docker compose up -d --build` (db + app + caddy + backup). Ver ARC
 | Disco USB externo | Copias de respaldo offline | Recomendado |
 | Nube gratuita vía rclone (Google Drive / OneDrive) | Copia de respaldo fuera del equipo | Recomendado |
 | Cloudflare Tunnel (gratis) o Tailscale | Acceso desde sucursales fuera de la red local | Opcional |
-| GitHub (repositorio privado gratuito) | Código y documentación | Sí |
+| GitHub (repositorio `kelvinjose14/CS-SHOP`, público, gratuito) | Código y documentación | Sí |
 
 ## 6. Variables de entorno necesarias
 
@@ -110,17 +111,15 @@ Todas las de las Fases 1–7 (`docs/ROADMAP.md`).
 
 ## 12. Problemas conocidos
 
-- El proyecto está provisionalmente dentro de CS-SHOP (otro programa). La sesión de Claude no pudo crear el
-  repositorio nuevo (GitHub devolvió 403: la integración no tiene permiso para crear repositorios). El cliente debe
-  crearlo (§17). **No fusionar el PR de CS-SHOP que agrega `conduces/` a su `main`.**
-- El CI de CS-SHOP corre en los PR de esta rama pero no prueba este proyecto. El repositorio propio tendrá su CI
-  (GitHub Actions es gratis en repos privados dentro del cupo mensual).
+- El proyecto comparte repositorio con CAPS Shop (otro programa) y ese repositorio es **público** (ADR-019).
+- El CI de CAPS Shop corre en todos los PR, también en los de conduces, pero no prueba este proyecto. Conduces tendrá
+  su propio workflow limitado a `conduces/**` (Fase 1).
 - Sin muestras del conduce impreso ni de los Excel: la plantilla PDF y el importador se ajustarán al recibirlas.
 
 ## 13. Decisiones arquitectónicas importantes
 
 Ver `docs/DECISIONS.md`. Las más críticas: ADR-004 (lógica en SQL), ADR-005 (numeración con bloqueo de fila),
-ADR-006 (PDF único), ADR-013 (repo propio), ADR-014 (solo gratuito, PostgreSQL autogestionado), ADR-015 (auth propia).
+ADR-006 (PDF único), ADR-014 (solo gratuito, PostgreSQL autogestionado), ADR-015 (auth propia), ADR-019 (ubicación en CS-SHOP, repositorio público).
 
 ## 14. Próximo paso
 
@@ -139,7 +138,10 @@ Ver `PROJECT_STATUS.md` → PRÓXIMO PASO RECOMENDADO.
 - Commits Conventional Commits, claros (`feat: implement delivery note creation`).
 - Nada de servicios de pago ni dependencias con licencia comercial.
 
-## 17. Trasladar a repositorio propio (pendiente)
+## 17. Trasladar a un repositorio propio (opcional, NO planificado)
+
+Decisión vigente: el proyecto se queda en CS-SHOP (ADR-019). Esta sección solo aplica si el cliente cambia de opinión
+(por ejemplo, para tener un repositorio privado).
 
 **Paso del cliente (una vez):**
 1. En GitHub: **New repository** → nombre `sistema-conduces` → **Private** → sin README, sin .gitignore, sin licencia (vacío).
@@ -149,16 +151,15 @@ Ver `PROJECT_STATUS.md` → PRÓXIMO PASO RECOMENDADO.
 
 **Paso de Claude/desarrollador:**
 ```bash
-# Desde un clon de CS-SHOP con la rama que contiene conduces/
-git fetch origin claude/modest-noether-izh1p9
-git checkout claude/modest-noether-izh1p9
+# Desde un clon actualizado de CS-SHOP (rama main)
+git checkout main && git pull
 git subtree split --prefix=conduces -b conduces-standalone      # historial solo de conduces/
 git push https://github.com/kelvinjose14/sistema-conduces.git conduces-standalone:main
 ```
 Después, en el repositorio nuevo: quitar de la documentación las menciones a "carpeta `conduces/`" y a CS-SHOP
 (`grep -rn "conduces/\|CS-SHOP" .`), actualizar `PROJECT_STATUS.md` (ubicación) y agregar una ADR con la fecha del traslado.
-En CS-SHOP: cerrar sin fusionar el PR de la rama `claude/modest-noether-izh1p9` y borrar esa rama cuando el traslado esté verificado.
-El `CLAUDE.md` que se creó en la raíz de CS-SHOP solo existe en esa rama; no llega a `main` si el PR no se fusiona.
+En CS-SHOP, cuando el traslado esté verificado: PR que borre `conduces/`, el workflow de conduces y la fila de conduces
+del `CLAUDE.md` de la raíz.
 
 ---
 
@@ -168,8 +169,8 @@ CONTINUAR DESDE OTRA CUENTA
 
 Instrucciones exactas para el próximo Claude:
 
-1. Abrir el repositorio del proyecto (`sistema-conduces`; o, si aún no existe, `kelvinjose14/CS-SHOP` en la rama
-   `claude/modest-noether-izh1p9`, carpeta `conduces/`). Clonarlo si hace falta.
+1. Abrir el repositorio `kelvinjose14/CS-SHOP` (rama `main`) y trabajar en la carpeta `conduces/`. Revisar PRs abiertos
+   y ramas `claude/*` por si hay trabajo sin fusionar.
 2. Pegar el prompt de abajo como primer mensaje.
 3. Seguir el ORDEN RECOMENDADO del inicio de este archivo.
 4. Verificar el estado real: `git status`, `git log --oneline -20`, `ls`, `ls db/migrations`, `npm test` (si existe).
@@ -191,9 +192,10 @@ NO reconstruyas el sistema.
 
 Es el "Sistema de Conduces" del Grupo Económico: un programa web interno, totalmente
 independiente de CAPS Shop, construido solo con herramientas gratuitas.
-Está en el repositorio sistema-conduces. Si ese repositorio aún no existe, está en la
-carpeta conduces/ del repositorio kelvinjose14/CS-SHOP, rama claude/modest-noether-izh1p9;
-en ese caso trabaja solo dentro de conduces/ y no modifiques CAPS Shop.
+Está en la carpeta conduces/ del repositorio kelvinjose14/CS-SHOP (rama main).
+La raíz de ese repositorio es OTRO programa (CAPS Shop): trabaja solo dentro de conduces/
+y no lo modifiques. El repositorio es público: nunca subas datos reales ni secretos.
+Revisa también si hay PRs abiertos o ramas con trabajo sin fusionar.
 
 Primero lee:
 
