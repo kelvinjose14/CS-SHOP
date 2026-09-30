@@ -1,0 +1,44 @@
+# Dependencias
+node_modules/
+
+# Next.js / build
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Entorno y secretos (se conserva .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# Respaldos y datos (nunca en Git)
+backups/
+*.dump
+*.sql.gz
+/imports-local/
+
+# Pruebas
+coverage/
+playwright-report/
+test-results/
+/blob-report/
+
+# Logs y temporales
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.tmp
+.vercel
