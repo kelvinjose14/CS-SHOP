@@ -1,49 +1,54 @@
 # Arquitectura
 
 Última revisión: 2026-09-30 (Fase 0 — diseño; aún no hay código de aplicación)
+Condición del cliente: **solo herramientas gratuitas, uso interno** (ADR-014).
 
 ## 1. Visión general
 
 ```
- Navegador (cualquier PC autorizada)
-   │  HTTPS, cookie de sesión httpOnly
+ Navegador (PCs autorizadas del grupo)
+   │  HTTPS (Caddy en la red local, o Cloudflare Tunnel para sucursales) · cookie de sesión httpOnly
    ▼
- Next.js (App Router, Node runtime)  ── servidor ─────────────────────────────┐
-   • Server Components: lectura (listas, dashboard) con la sesión del usuario  │
-   • Server Actions / Route Handlers: escritura, PDF, exportaciones, import    │
-   • Zod valida toda entrada; errores se traducen a mensajes en español        │
-   • src/server/* es solo-servidor (service role, DATABASE_URL)                │
-   ▼                                                                           │
- Supabase                                                                      │
-   • PostgreSQL: tablas + RLS + funciones SQL transaccionales (reglas críticas)│
-   • Auth: usuarios, contraseñas (bcrypt), sesiones JWT con refresh             │
-   • Storage: buckets privados `company-logos`, `imports`                      │
-└──────────────────────────────────────────────────────────────────────────────┘
+ Next.js (App Router, Node runtime) ─────────────────────────────────────────────┐
+   • Middleware: exige sesión en todas las rutas salvo /login                   │
+   • Server Components: lecturas (listas, dashboard)                            │
+   • Server Actions / Route Handlers: escrituras, PDF, exportaciones, import    │
+   • Zod valida toda entrada; errores → mensajes en español                     │
+   • src/server/*: solo servidor (conexión a BD, auth, permisos)                │
+   • Cada petición: withUserTransaction(user) → BEGIN; set_config('app.user_id')│
+   ▼                                                                            │
+ PostgreSQL 16 (rol conduces_app, sin BYPASSRLS)                                │
+   • Tablas + RLS + funciones SQL transaccionales (reglas críticas)             │
+   • users / sessions (auth propia) · stored_files (logos y Excel)              │
+   • audit_logs (solo inserción)                                                │
+└───────────────────────────────────────────────────────────────────────────────┘
+ Contenedor `backup`: pg_dump diario → disco externo / nube gratuita (rclone)
 ```
 
 Principio central: **la base de datos es la última línea de defensa**. Numeración, transiciones de estado,
 inmutabilidad, aislamiento multiempresa y auditoría se garantizan en PostgreSQL (constraints, triggers,
 RLS, funciones). El servidor Next.js valida y orquesta; el navegador solo presenta.
 
-## 2. Stack definitivo
+## 2. Stack definitivo (todo gratuito / código abierto)
 
-Ver tabla en `CLAUDE.md` §3 y justificaciones en `DECISIONS.md` (ADR-001 a ADR-010).
-Dependencias previstas (mínimas):
+Ver tabla en `CLAUDE.md` §3 y justificaciones en `DECISIONS.md`. Dependencias previstas (mínimas):
 
-| Paquete | Motivo |
-|---|---|
-| `next`, `react`, `react-dom`, `typescript` | Framework |
-| `tailwindcss`, `@tailwindcss/postcss` | Estilos |
-| `@supabase/supabase-js`, `@supabase/ssr` | Cliente BD/Auth con cookies seguras |
-| `zod` | Validación servidor (y formularios) |
-| `@react-pdf/renderer` | PDF idéntico para vista previa, impresión y descarga |
-| `xlsx` (SheetJS, tarball oficial de cdn.sheetjs.com) | Leer XLS/XLSX/CSV y exportar Excel |
-| `lucide-react`, `sonner`, primitivas `@radix-ui/*` (vía shadcn/ui), `cmdk` | UI: íconos, toasts, dropdowns, modales, autocomplete |
-| `react-hook-form` + `@hookform/resolvers` | Formulario dinámico de líneas de productos (evaluar en Fase 2) |
-| Dev: `supabase` (CLI), `vitest`, `pg`, `@playwright/test`, `eslint`, `prettier` | Migraciones y pruebas |
+| Paquete | Licencia | Motivo |
+|---|---|---|
+| `next`, `react`, `react-dom`, `typescript` | MIT / Apache-2.0 | Framework |
+| `tailwindcss`, `@tailwindcss/postcss` | MIT | Estilos |
+| `pg` | MIT | Cliente PostgreSQL |
+| `@node-rs/argon2` | MIT | Hash de contraseñas argon2id |
+| `zod` | MIT | Validación en servidor (y formularios) |
+| `@react-pdf/renderer` | MIT | PDF idéntico para vista previa, impresión y descarga |
+| `xlsx` (SheetJS CE, tarball oficial de cdn.sheetjs.com) | Apache-2.0 | Leer XLS/XLSX/CSV y exportar Excel |
+| `lucide-react`, `sonner`, `@radix-ui/*` (vía shadcn/ui), `cmdk` | ISC / MIT | UI: íconos, toasts, dropdowns, modales, autocomplete |
+| `react-hook-form` + `@hookform/resolvers` | MIT | Formulario dinámico de líneas (evaluar en Fase 2) |
+| Dev: `vitest`, `@playwright/test`, `eslint`, `prettier` | MIT / Apache-2.0 | Calidad y pruebas |
+| Infraestructura: PostgreSQL 16, Docker, Caddy, cloudflared (opcional), rclone (opcional) | Libres / gratuitos | Ejecución, HTTPS, acceso remoto, respaldos |
 
-Versiones: última estable al iniciar la Fase 1 (a 2026-09-30: Next 16.x, Tailwind 4.x, Zod 4.x,
-@supabase/ssr 0.12.x, @react-pdf/renderer 4.x). Node.js 22 LTS o superior.
+Versiones: última estable al iniciar la Fase 1 (a 2026-09-30: Next 16.x, Tailwind 4.x, Zod 4.x, pg 8.x,
+@react-pdf/renderer 4.x, SheetJS 0.20.x). Node.js 22 LTS o superior.
 
 ## 3. Módulos y rutas
 
@@ -65,6 +70,7 @@ API (Route Handlers, siempre autenticados):
 - `GET /api/delivery-notes/[id]/pdf?disposition=inline|attachment` — PDF.
 - `GET /api/delivery-notes/export?format=xlsx|csv&<filtros>` — exportación con los mismos filtros de la lista.
 - `POST /api/imports/[batchId]/files` — subida de archivos de importación.
+- `GET /api/files/[id]` — descarga de un archivo guardado (logos), con control de permisos.
 - `GET /api/backup/export` — exportación completa (solo admin).
 
 ## 4. Flujo de escritura (ejemplo: Emitir)
@@ -72,9 +78,9 @@ API (Route Handlers, siempre autenticados):
 ```
 [Botón Emitir] → deshabilitado + spinner (evita doble clic)
   → Server Action issueDeliveryNote({ id, version })
-      1. getUser() de la sesión (no confiar en el cliente)
+      1. getCurrentUser(): valida la cookie contra la tabla sessions (no confiar en el cliente)
       2. Zod valida { id: uuid, version: int }
-      3. supabase.rpc('issue_delivery_note', { p_note_id, p_expected_version })
+      3. withUserTransaction(user, tx => tx.query('select * from issue_delivery_note($1, $2)', [id, version]))
          └─ PostgreSQL, UNA transacción:
             a. SELECT nota FOR UPDATE; verifica status='draft', version, empresa activa
             b. app.has_permission('delivery_notes.issue', company_id)
@@ -123,7 +129,7 @@ sin avanzar el contador.
 - En la UI: selector de empresa al crear conduce (por defecto la última usada) y filtro de empresa en listas,
   dashboard y reportes (solo muestra las autorizadas).
 - Pruebas: un usuario de la empresa A no puede leer, emitir, anular ni exportar conduces de B (ni por UI, ni por
-  API, ni llamando `rpc` directamente con su token).
+  API, ni llamando directamente a las funciones SQL).
 
 ## 7. Permisos
 
@@ -135,7 +141,7 @@ puede hacer, pero **la autorización real** está en el servidor y en la BD.
 
 Decisión (ADR-006): **un único documento PDF** generado en el servidor con `@react-pdf/renderer` es la fuente
 de la vista previa, la impresión y la descarga. Así lo impreso y el PDF son idénticos por construcción, y no se
-depende de Chromium en el servidor (funciona en Vercel, VPS o Docker).
+depende de Chromium en el servidor (funciona en cualquier servidor Node o Docker).
 
 - `src/features/delivery-notes/pdf/DeliveryNotePdf.tsx` — plantilla (tamaño Carta, márgenes, fuente embebida
   con soporte de acentos, p. ej. Inter/Roboto OFL en `public/fonts`).
@@ -193,15 +199,26 @@ Detalle completo en `IMPORT_HISTORY.md`. El commit final es una función SQL tra
   Referencia: <requestId>" y se registra el detalle técnico en los logs del servidor (sin datos sensibles).
 - Toda acción importante tiene estados loading / success / error; botones críticos se deshabilitan mientras
   la acción está en curso (y la BD protege igualmente).
-- Contexto técnico para auditoría (IP, user agent, request id) se envía desde el servidor en cabeceras que
-  PostgREST expone en `current_setting('request.headers')`.
+- Contexto técnico para auditoría (IP, user agent, request id) lo fija `withUserTransaction` con
+  `set_config('app.request_context', <json>, true)`; `app.request_context()` lo lee dentro de las funciones.
 
-## 12. Despliegue (recomendado, pendiente de confirmar — OPEN_QUESTIONS Q2)
+## 12. Despliegue gratuito (ADR-018, pendiente de confirmar el equipo)
 
-- **Supabase Cloud (plan Pro)**: PostgreSQL gestionado, backups diarios, PITR opcional, Auth y Storage.
-- **Vercel** (u otro host Node: VPS, Docker) para Next.js. Región cercana a RD (us-east-1).
-- Alternativa on-premise: Supabase self-hosted o PostgreSQL + Next.js en un servidor del grupo (el diseño lo
-  permite; cambia la operación de backups y auth).
+Un solo `docker-compose.yml` con:
+
+| Servicio | Imagen | Función |
+|---|---|---|
+| `db` | `postgres:16-alpine` | Base de datos; volumen persistente; no expuesto fuera del equipo |
+| `app` | build del `Dockerfile` (Next.js `output: 'standalone'`) | Aplicación |
+| `caddy` | `caddy:2` | HTTPS en la red local (certificado interno de Caddy, instalado una vez en cada PC) |
+| `backup` | `postgres:16-alpine` + cron | `pg_dump` diario, rotación, copia a disco externo / nube gratuita con rclone |
+| `cloudflared` (opcional) | `cloudflare/cloudflared` | Acceso seguro desde otras sucursales sin abrir puertos (Cloudflare Tunnel, gratis) |
+
+Opciones de equipo:
+1. **Recomendado:** mini PC / PC siempre encendida en la oficina principal, con UPS (Linux, o Windows con Docker Desktop).
+2. VM gratuita en la nube ("Always Free", p. ej. Oracle Cloud) con el mismo compose; verificar condiciones de uso empresarial.
+
+Sin servicios de pago. Sin correo saliente (el administrador restablece contraseñas).
 
 ## 13. Continuidad entre cuentas de Claude
 

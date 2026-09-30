@@ -18,57 +18,66 @@ Después de cada bloque de trabajo importante: revisa el código, ejecuta prueba
 
 ## 1. Objetivo del sistema
 
-Sistema web centralizado para **generar, administrar, consultar, imprimir y controlar conduces** (notas de
+Sistema web **de uso interno** para **generar, administrar, consultar, imprimir y controlar conduces** (notas de
 entrega) de varias empresas de un mismo Grupo Económico (República Dominicana). Incluye borradores,
 emisión con numeración atómica, despacho, recepción, anulación, duplicado, búsqueda, PDF/impresión,
 catálogos, usuarios/roles, auditoría e **importación de más de 700 conduces históricos desde Excel**.
 
-## 2. Ubicación dentro del repositorio
+Condiciones del cliente (2026-09-30):
+- Es un **programa totalmente nuevo e independiente de CAPS Shop**.
+- **Solo herramientas gratuitas** (software libre, sin servicios de pago). **Uso interno** del grupo.
 
-Este proyecto vive en la carpeta `conduces/` del repositorio `kelvinjose14/CS-SHOP`, que también contiene
-un proyecto **distinto e independiente** en la raíz (CAPS Shop, app Electron). Reglas:
+## 2. Ubicación del proyecto
 
-- Trabaja **solo dentro de `conduces/`** cuando la tarea sea de conduces. No modifiques CAPS Shop.
-- Todas las rutas de esta documentación son relativas a `conduces/` salvo que se diga lo contrario.
-- La carpeta es autocontenida: puede moverse a su propio repositorio (ver `docs/HANDOFF.md` §Mover a repo propio).
+- Destino: **repositorio propio** (nombre propuesto `sistema-conduces`, ADR-013).
+- Mientras ese repositorio no exista, el proyecto vive temporalmente en la carpeta `conduces/` del repositorio
+  `kelvinjose14/CS-SHOP`, cuya raíz contiene **otro sistema sin relación** (CAPS Shop). En ese caso:
+  trabaja **solo dentro de `conduces/`**, no modifiques CAPS Shop y **no fusiones `conduces/` en `main` de CS-SHOP**.
+- Todas las rutas de esta documentación son relativas a la raíz del proyecto (`conduces/` mientras siga ahí).
+- Cómo trasladarlo: `docs/HANDOFF.md` §17.
 
-## 3. Stack (definitivo, ver `docs/DECISIONS.md`)
+## 3. Stack (definitivo, 100 % gratuito — ver `docs/DECISIONS.md`)
 
 | Capa | Tecnología |
 |---|---|
 | Framework | Next.js (App Router) + React + TypeScript estricto |
 | Estilos / UI | Tailwind CSS v4, componentes estilo shadcn/ui (Radix), íconos lucide-react, toasts sonner |
-| Base de datos | PostgreSQL (Supabase gestionado) — lógica crítica en funciones SQL |
-| Auth | Supabase Auth (email + contraseña, sin registro público) vía `@supabase/ssr` (cookies httpOnly) |
-| Archivos | Supabase Storage (buckets privados: logos, importaciones) |
-| Validación | Zod en el servidor (Server Actions / Route Handlers) + constraints y funciones en la BD |
-| PDF / impresión | `@react-pdf/renderer` en el servidor: **un solo documento PDF** para vista previa, impresión y descarga |
+| Base de datos | **PostgreSQL 16** autogestionado — lógica crítica en funciones SQL + RLS |
+| Acceso a BD | `pg` (node-postgres), consultas parametrizadas, una transacción por petición con el usuario fijado |
+| Autenticación | Propia: tabla `users` (argon2id vía `@node-rs/argon2`) + tabla `sessions` (cookie httpOnly) |
+| Archivos | En PostgreSQL (`stored_files`, `bytea`): logos y Excel importados → un solo respaldo |
+| Validación | Zod en el servidor + constraints, triggers y funciones en la BD |
+| PDF / impresión | `@react-pdf/renderer`: **un solo PDF** para vista previa, impresión y descarga |
 | Excel / CSV | SheetJS (`xlsx`, instalado desde cdn.sheetjs.com, **no** desde npm) |
-| Migraciones | Supabase CLI — SQL versionado en `supabase/migrations/` |
+| Migraciones | SQL versionado en `db/migrations/` + ejecutor propio `scripts/db-migrate.mjs` |
 | Pruebas | Vitest (unitarias + BD contra PostgreSQL real) y Playwright (E2E) |
+| Despliegue | Docker Compose: `db` + `app` + `caddy` (HTTPS) + `backup`; acceso remoto opcional con Cloudflare Tunnel |
+
+**Prohibido** agregar servicios de pago o dependencias con licencia comercial. Toda dependencia nueva se justifica en `docs/DECISIONS.md`.
 
 ## 4. Estructura de carpetas (objetivo; ver estado real en `PROJECT_STATUS.md`)
 
 ```
-conduces/
-  CLAUDE.md  PROJECT_STATUS.md  README.md  .env.example
-  docs/                    documentación (fuente de verdad de reglas y decisiones)
-  supabase/
-    migrations/            SQL versionado (NUNCA editar una migración ya aplicada)
-    seed.sql               datos base (roles, permisos, unidades) — sin usuarios ni empresas reales
-  src/
-    app/                   rutas Next.js (URLs en español: /conduces, /empresas, ...)
-      (auth)/login
-      (app)/dashboard, conduces, conduces/nuevo, conduces/[id], puntos-comerciales,
-            productos, empresas, importar, reportes, usuarios, auditoria, configuracion
-      api/                 route handlers (PDF, exportaciones, importación)
-    components/            UI reutilizable (ui/ = primitivas)
-    features/              lógica por módulo (delivery-notes, companies, imports, ...)
-    lib/                   utilidades puras (formato de número, fechas, zod schemas)
-    server/                código solo-servidor (`import 'server-only'`): supabase admin, permisos, errores
-  tests/
-    unit/  db/  e2e/
-  scripts/                 create-admin, backup, apply-migrations-to-test-db
+CLAUDE.md  PROJECT_STATUS.md  README.md  .env.example  docker-compose.yml  Dockerfile
+docs/                      documentación (fuente de verdad de reglas y decisiones)
+db/
+  migrations/              0001_*.sql, 0002_*.sql ... (NUNCA editar una migración ya aplicada)
+  seed/                    datos base idempotentes (roles, permisos, unidades, ajustes) — sin usuarios ni empresas reales
+  bootstrap.sql            crea los roles de BD (conduces_owner, conduces_app) — se ejecuta una vez
+deploy/                    Caddyfile, script de respaldo, cloudflared (opcional)
+src/
+  app/                     rutas Next.js (URLs en español: /conduces, /empresas, ...)
+    (auth)/login, (auth)/cambiar-contrasena
+    (app)/dashboard, conduces, conduces/nuevo, conduces/[id], puntos-comerciales,
+          productos, empresas, importar, reportes, usuarios, auditoria, configuracion
+    api/                   route handlers (PDF, exportaciones, importación, archivos)
+  components/              UI reutilizable (ui/ = primitivas)
+  features/                lógica por módulo (delivery-notes, companies, imports, ...)
+  lib/                     utilidades puras (formato de número, fechas, esquemas zod)
+  server/                  solo-servidor (`import 'server-only'`): db, auth, permisos, errores
+tests/
+  unit/  db/  e2e/  fixtures/
+scripts/                   db-migrate, create-admin, backup, test-db
 ```
 
 ## 5. Convenciones
@@ -76,7 +85,11 @@ conduces/
 - **Código, tablas y columnas en inglés; interfaz, mensajes y documentación en español.**
 - TypeScript `strict`. Sin `any` salvo justificación en comentario.
 - Toda escritura de negocio pasa por el servidor (Server Action o Route Handler) → valida con Zod →
-  llama a una **función SQL** (`rpc`) que vuelve a validar permisos y reglas. Nunca confiar en el frontend.
+  llama a una **función SQL** que vuelve a validar permisos y reglas. Nunca confiar en el frontend.
+- Toda consulta a la BD pasa por `withUserTransaction(user, fn)` (`src/server/db.ts`), que abre una transacción y
+  fija `app.user_id` y `app.request_context` con `set_config(..., true)`. Así RLS y auditoría saben quién actúa.
+  **Nunca** consultar la BD fuera de ese helper (salvo login y scripts administrativos documentados).
+- Solo consultas **parametrizadas** (`$1, $2`). Prohibido concatenar entrada del usuario en SQL.
 - Operaciones críticas (emitir, anular, despachar, recibir, duplicar, guardar borrador, importar,
   cambiar secuencia) **solo** mediante funciones SQL transaccionales. No reimplementarlas en TypeScript.
 - Errores de BD: `raise exception` con un **código estable** en `message` (p. ej. `NOTE_ALREADY_ISSUED`);
@@ -86,7 +99,6 @@ conduces/
 - Cantidades: `numeric(14,3)`. Nunca `float`.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`), con alcance
   opcional (`feat(numbering): ...`).
-- No agregar dependencias sin justificarlo en `docs/DECISIONS.md`.
 
 ## 6. Reglas críticas de negocio (resumen — detalle en `docs/BUSINESS_RULES.md`)
 
@@ -121,39 +133,43 @@ conduces/
 
 ## 9. Reglas de seguridad
 
-- Sin registro público. Los usuarios los crea un administrador.
-- `SUPABASE_SERVICE_ROLE_KEY` y `DATABASE_URL` **solo en servidor** (módulos con `import 'server-only'`). Nunca con prefijo `NEXT_PUBLIC_`.
-- RLS activado en **todas** las tablas del esquema `public`. Funciones `SECURITY DEFINER` con `set search_path = ''` y chequeo de permisos al inicio.
-- `audit_logs` es de solo inserción (trigger bloquea UPDATE/DELETE, incluso para el service role).
-- Archivos de importación: validar extensión, tipo MIME, tamaño y contenido; guardarlos en bucket privado con hash SHA-256.
+- Sin registro público. Los usuarios los crea un administrador. Contraseñas solo como hash argon2id.
+- Dos roles de PostgreSQL: `conduces_owner` (dueño del esquema; migraciones y respaldos) y `conduces_app` (la aplicación;
+  sin `BYPASSRLS`, no es dueño de las tablas, sin acceso a la columna `password_hash`).
+- `DATABASE_URL`, `DATABASE_OWNER_URL` y `SESSION_SECRET`: **solo en servidor**. Nunca con prefijo `NEXT_PUBLIC_`.
+- RLS activado en **todas** las tablas. Funciones `SECURITY DEFINER` con `set search_path = ''` y chequeo de permisos al inicio.
+- `audit_logs` es de solo inserción (trigger bloquea UPDATE/DELETE para todos).
+- HTTPS siempre (Caddy en la red local o Cloudflare Tunnel): la cookie de sesión es `Secure`.
+- Archivos de importación: validar extensión, firma (magic bytes), tamaño y contenido; hash SHA-256.
 - Detalle: `docs/SECURITY.md`.
 
 ## 10. Cómo ejecutar (cuando exista el código — ver `README.md`)
 
 ```bash
-cd conduces
 npm install
-cp .env.example .env.local        # completar valores (ver docs/HANDOFF.md)
-npx supabase start                # BD local en Docker (opcional si se usa un proyecto remoto)
-npx supabase db reset             # aplica migraciones + seed en local
-npm run dev                       # http://localhost:3000
+cp .env.example .env.local                  # completar valores (ver docs/HANDOFF.md §6)
+docker compose up -d db                     # PostgreSQL 16 local (o un PostgreSQL ya instalado)
+npm run db:migrate                          # aplica db/migrations + db/seed
 npm run create-admin -- --email admin@empresa.com --name "Nombre"
+npm run dev                                 # http://localhost:3000
 ```
 
 Migraciones:
-- Nueva: `npx supabase migration new <nombre>` → editar el SQL → `npx supabase db reset` (local).
-- Remoto: `npx supabase db push` (revisar antes con `npx supabase db diff`/`migration list`).
-- Registrar cada migración en `docs/DATABASE.md` §Registro de migraciones.
+- Nueva: crear `db/migrations/NNNN_descripcion.sql` (siguiente número) → `npm run db:migrate`.
+- Estado: `npm run db:status`. El ejecutor falla si una migración aplicada fue modificada (checksum).
+- Producción: respaldo previo (`npm run backup`) → `npm run db:migrate` con `DATABASE_OWNER_URL` de producción.
+- Registrar cada migración en `docs/DATABASE.md` §10.
 
 Pruebas:
 - `npm test` (unitarias), `npm run test:db` (BD real, incluye concurrencia), `npm run test:e2e` (Playwright).
-- `test:db` usa `TEST_DATABASE_URL` (PostgreSQL local; aplica migraciones con un *shim* del esquema `auth`).
+- `test:db` crea una base de datos temporal con `TEST_DATABASE_ADMIN_URL`, aplica migraciones, prueba y la borra.
 
 ## 11. NO modificar sin analizar consecuencias (y documentar)
 
 - `issue_delivery_note` y todo lo de numeración / secuencias / constraints `UNIQUE` de números.
 - Triggers de inmutabilidad (números, contenido emitido, auditoría).
-- Políticas RLS y `app.has_permission`.
+- Políticas RLS, `app.has_permission`, `withUserTransaction` y los permisos de los roles de BD.
+- Autenticación y sesiones (`src/server/auth/*`).
 - Migraciones ya aplicadas (crear una nueva en su lugar).
 - El documento PDF (formato oficial del conduce) — cambios visibles deben aprobarse.
 - La lógica de commit de importación (`commit_import_batch`).
@@ -165,10 +181,10 @@ Pruebas:
 | `PROJECT_STATUS.md` | Estado actual, fase, próximo paso. **Actualizar tras cada tarea importante.** |
 | `README.md` | Instalación desde cero |
 | `docs/HANDOFF.md` | Transferencia a otra cuenta/PC/desarrollador + prompt para nueva sesión |
-| `docs/ARCHITECTURE.md` | Arquitectura, flujos, numeración, PDF, multiempresa |
+| `docs/ARCHITECTURE.md` | Arquitectura, numeración, PDF, multiempresa, despliegue |
 | `docs/DATABASE.md` | Esquema, constraints, funciones, registro de migraciones |
 | `docs/BUSINESS_RULES.md` | Reglas de negocio (toda decisión del cliente va aquí) |
-| `docs/SECURITY.md` | Roles, matriz de permisos, RLS, sesiones |
+| `docs/SECURITY.md` | Autenticación, roles, matriz de permisos, RLS |
 | `docs/IMPORT_HISTORY.md` | Estrategia y hallazgos de la importación de históricos |
 | `docs/BACKUP_AND_RECOVERY.md` | Respaldos, exportaciones, recuperación |
 | `docs/DECISIONS.md` | Registro de decisiones de arquitectura (ADR) |

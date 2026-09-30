@@ -1,15 +1,19 @@
 # Base de datos
 
-Motor: **PostgreSQL 15+** (Supabase). Extensiones: `pgcrypto` (gen_random_uuid), `pg_trgm`, `unaccent`.
+Motor: **PostgreSQL 16** autogestionado (gratuito, ADR-014). Extensiones: `pgcrypto` (gen_random_uuid), `pg_trgm`, `unaccent`, `citext`.
 Última revisión: 2026-09-30 — **diseño (Fase 0). Ninguna migración creada ni aplicada todavía.**
 
 Reglas:
-- Todo cambio estructural se hace con una **migración versionada** en `supabase/migrations/`
-  (`YYYYMMDDHHMMSS_descripcion.sql`). Nunca editar una migración ya aplicada: crear otra.
+- Todo cambio estructural se hace con una **migración versionada** en `db/migrations/`
+  (`NNNN_descripcion.sql`, aplicadas por `npm run db:migrate`, ADR-017). Nunca editar una migración ya aplicada: crear otra.
 - Nunca modificar producción a mano sin dejar una migración y una entrada en §9.
-- RLS activado en todas las tablas de `public`. Funciones internas en el esquema `app` (no expuesto por la API).
+- RLS activado en todas las tablas de `public`. Funciones internas en el esquema `app`.
+- Roles de BD: `conduces_owner` (dueño de esquemas/tablas; migraciones, respaldos) y `conduces_app` (conexión de la
+  aplicación: sin `BYPASSRLS`, sin `SUPERUSER`, solo los `GRANT` necesarios). Creados por `db/bootstrap.sql`.
+- Identidad del usuario en cada transacción: `app.current_user_id()` lee `current_setting('app.user_id', true)`,
+  fijado por el servidor con `set_config(..., true)` (local a la transacción).
 - Convención: tablas en plural, snake_case, inglés. `id uuid` por defecto; `created_at/updated_at timestamptz`;
-  `created_by/updated_by uuid → profiles(id)`.
+  `created_by/updated_by uuid → users(id)`.
 
 ## 1. Diagrama (resumen)
 
@@ -19,8 +23,10 @@ companies 1─N delivery_notes 1─N delivery_note_items N─1 units
                      │  │                              N─1 products
                      │  └─1─N delivery_note_status_history
                      └─N─1 commercial_points
-profiles (1─1 auth.users) N─1 roles 1─N role_permissions N─1 permissions
-profiles N─N companies  (user_companies)
+users N─1 roles 1─N role_permissions N─1 permissions
+users N─N companies  (user_companies)
+users 1─N sessions
+stored_files (logos de empresas, archivos de importación)
 import_batches 1─N import_files 1─N import_records 1─N import_errors
 import_records 1─1 delivery_notes (origin='import')
 audit_logs (solo inserción) · system_settings (clave/valor)
@@ -44,19 +50,46 @@ audit_logs (solo inserción) · system_settings (clave/valor)
 ### `role_permissions`
 PK `(role_code, permission_code)`, FKs a `roles` y `permissions`.
 
-### `profiles`
+### `users`
 | Columna | Tipo | Notas |
 |---|---|---|
-| id | uuid PK | FK → `auth.users(id)` **ON DELETE RESTRICT** (usuarios se desactivan, no se borran) |
-| email | text NOT NULL UNIQUE | copia sincronizada de auth.users |
+| id | uuid PK | |
+| email | citext NOT NULL UNIQUE | usuario de inicio de sesión |
 | full_name | text NOT NULL | |
+| password_hash | text NOT NULL | argon2id. **`conduces_app` no tiene GRANT sobre esta columna**; se lee/escribe solo con funciones `auth_*` |
 | role_code | text NOT NULL FK roles | |
-| is_active | boolean NOT NULL default true | inactivo ⇒ todas las funciones rechazan sus acciones |
-| last_seen_at | timestamptz | actualizado (con límite de frecuencia) por el servidor |
+| is_active | boolean NOT NULL default true | inactivo ⇒ sesiones revocadas y funciones rechazan sus acciones |
+| must_change_password | boolean NOT NULL default true | primer acceso o contraseña restablecida |
+| failed_login_count | int NOT NULL default 0 | |
+| locked_until | timestamptz | bloqueo temporal tras intentos fallidos |
+| last_login_at, last_seen_at, password_changed_at | timestamptz | "último acceso" en la pantalla Usuarios |
 | created_at, updated_at, created_by, updated_by | | |
+Los usuarios **no se borran** (FKs de autoría); se desactivan.
+
+### `sessions`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | text PK | SHA-256 (hex) del token de la cookie; el token en claro nunca se guarda |
+| user_id | uuid NOT NULL FK users | |
+| created_at | timestamptz NOT NULL | |
+| last_used_at | timestamptz NOT NULL | renovación deslizante (se actualiza como máximo cada 5 min) |
+| idle_expires_at | timestamptz NOT NULL | inactividad (por defecto 12 h) |
+| absolute_expires_at | timestamptz NOT NULL | máximo (por defecto 7 días) |
+| revoked_at | timestamptz | cierre de sesión, cambio de contraseña, usuario desactivado |
+| ip, user_agent | text | |
+Índice `(user_id)`. Limpieza periódica de sesiones vencidas.
+
+### `login_attempts`
+| id bigint identity PK · email citext · ip text · succeeded boolean · attempted_at timestamptz |
+Para límite de intentos por usuario e IP y para auditoría de accesos. Índices `(email, attempted_at)`, `(ip, attempted_at)`.
+
+Funciones de autenticación (`SECURITY DEFINER`, únicas con acceso a `password_hash`):
+`auth_get_login_data(email)`, `auth_record_login(user_id, ok, ip, ua)`, `auth_create_session(...)`,
+`auth_validate_session(token_hash)`, `auth_revoke_session(token_hash)`, `auth_set_password(user_id, hash, must_change)`.
+El hash/verificación argon2id se hace en Node (`@node-rs/argon2`); la BD solo guarda el hash.
 
 ### `user_companies`
-| user_id | uuid FK profiles | PK compuesta |
+| user_id | uuid FK users | PK compuesta |
 | company_id | uuid FK companies | PK compuesta |
 | role_code | text FK roles NULL | **reservado**: rol distinto por empresa en el futuro |
 | created_at, created_by | | |
@@ -72,13 +105,26 @@ PK `(role_code, permission_code)`, FKs a `roles` y `permissions`.
 | legal_name | text | razón social |
 | rnc | text UNIQUE (si no es NULL) | 9 u 11 dígitos (validación de formato) |
 | address, phone, fax, email | text | |
-| logo_path | text | ruta en bucket privado `company-logos` |
+| logo_file_id | uuid FK stored_files NULL | logo (PNG/JPG/WebP ≤ 1 MB) |
 | document_title | text NOT NULL default 'ENTREGA DE PIEZA INDUSTRIAL' | |
 | default_comment | text | comentario predeterminado (RN-10) |
 | footer_text | text NOT NULL default '*Favor devolver este conduce después de haber recibido y firmado el mismo*' | |
 | print_settings | jsonb NOT NULL default '{}' | validado con Zod: `show_unit_column`, `pdf_name`, `accent_color`, `show_fax`, `show_email`, `show_signature_lines`, `show_id_doc_line` |
 | is_active | boolean NOT NULL default true | |
 | created_at, updated_at, created_by, updated_by | | |
+
+### `stored_files` (ADR-016)
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| purpose | text NOT NULL | CHECK en ('company_logo','import_source') |
+| original_filename | text NOT NULL | |
+| mime_type | text NOT NULL | verificado por firma (magic bytes), no solo por extensión |
+| size_bytes | int NOT NULL | CHECK ≤ límite por propósito |
+| sha256 | text NOT NULL | |
+| content | bytea NOT NULL | |
+| created_by, created_at | | |
+Las consultas de listas **nunca** seleccionan `content`. Descarga solo por `GET /api/files/[id]` con permiso.
 
 ### `system_settings`
 | key | text PK | `timezone`, `void_reason_min_length`, `max_backdate_days`, `import_max_file_mb`, ... |
@@ -235,7 +281,7 @@ con índice GIN `gin_trgm_ops`. Filtros por usuario creador, estado, empresa y f
 | id uuid PK · name text · status text CHECK ('uploaded','analyzing','analyzed','mapped','validated','confirmed','importing','imported','failed','cancelled') · mode text CHECK ('form','tabular') NULL · mapping jsonb · mapping_profile_id uuid NULL · default_company_id uuid NULL · analysis_report jsonb · result_report jsonb · total_files int · total_records int · valid_records int · warning_records int · error_records int · imported_records int · created_by, created_at, updated_at, confirmed_by, confirmed_at, imported_at |
 
 ### `import_files`
-| id uuid PK · batch_id uuid FK · original_filename text · storage_path text · sha256 text NOT NULL · size_bytes bigint · mime_type text · file_format text CHECK ('xls','xlsx','csv') · sheet_count int · status text CHECK ('uploaded','parsed','error','duplicate_file','excluded') · parse_error text · created_at |
+| id uuid PK · batch_id uuid FK · original_filename text · stored_file_id uuid FK stored_files · sha256 text NOT NULL · size_bytes bigint · mime_type text · file_format text CHECK ('xls','xlsx','csv') · sheet_count int · status text CHECK ('uploaded','parsed','error','duplicate_file','excluded') · parse_error text · created_at |
 Índice `(sha256)` para detectar el mismo archivo subido dos veces (en este u otro lote).
 
 ### `import_records`
@@ -249,7 +295,7 @@ con índice GIN `gin_trgm_ops`. Filtros por usuario creador, estado, empresa y f
 
 ## 9. Funciones SQL previstas (API de negocio)
 
-Públicas (llamadas por `supabase.rpc`, `SECURITY DEFINER`, `set search_path = ''`, validan `auth.uid()` activo y permisos):
+Públicas (llamadas por el servidor dentro de `withUserTransaction`, `SECURITY DEFINER`, `set search_path = ''`, validan que `app.current_user_id()` sea un usuario activo y sus permisos):
 
 | Función | Descripción |
 |---|---|
@@ -266,7 +312,7 @@ Públicas (llamadas por `supabase.rpc`, `SECURITY DEFINER`, `set search_path = '
 | `dashboard_stats(p_company_ids uuid[] NULL) → jsonb` | contadores del dashboard |
 | `commit_import_batch(p_batch_id) → jsonb` | inserta registros válidos confirmados; todo o nada |
 
-Internas (`app.*`): `current_profile()`, `is_admin()`, `has_permission(perm, company_id)`, `can_access_company(company_id)`,
+Internas (`app.*`): `current_user_id()`, `current_user_row()`, `is_admin()`, `has_permission(perm, company_id)`, `can_access_company(company_id)`,
 `accessible_company_ids()`, `write_audit(...)`, `format_note_number(prefix, sep, value, digits)`, `normalize_text(t)`,
 `request_context() → jsonb`, `assert_transition(from, to)`.
 
@@ -277,19 +323,20 @@ Internas (`app.*`): `current_profile()`, `is_admin()`, `has_permission(perm, com
 | — | (ninguna todavía) | | Se crearán en la Fase 1 | |
 
 Orden previsto para Fase 1–2:
-1. `..._extensions_and_app_schema.sql` — extensiones, esquema `app`, `normalize_text`, `format_note_number`.
-2. `..._identity_roles_permissions.sql` — roles, permissions, role_permissions, profiles, user_companies + trigger de alta de perfil.
-3. `..._companies_settings.sql` — companies, system_settings.
-4. `..._audit.sql` — audit_logs + `write_audit` + protecciones.
-5. `..._catalogs.sql` — units, commercial_points, products.
-6. `..._delivery_notes.sql` — sequences, delivery_notes, items, status_history, triggers, índices.
-7. `..._delivery_note_functions.sql` — funciones de negocio.
-8. `..._rls_policies.sql` — políticas RLS.
-9. (Fase 6) `..._imports.sql` — tablas y funciones de importación.
+0. `db/bootstrap.sql` (una vez por servidor, como superusuario): roles `conduces_owner` y `conduces_app`, base de datos.
+1. `0001_extensions_and_app_schema.sql` — extensiones, esquema `app`, `normalize_text`, `format_note_number`, `current_user_id`, `request_context`.
+2. `0002_identity.sql` — roles, permissions, role_permissions, users, sessions, login_attempts, user_companies, funciones `auth_*`.
+3. `0003_companies_settings_files.sql` — companies, system_settings, stored_files.
+4. `0004_audit.sql` — audit_logs + `write_audit` + protecciones.
+5. `0005_catalogs.sql` — units, commercial_points, products.
+6. `0006_delivery_notes.sql` — sequences, delivery_notes, items, status_history, triggers, índices.
+7. `0007_delivery_note_functions.sql` — funciones de negocio.
+8. `0008_rls_and_grants.sql` — políticas RLS y GRANTs a `conduces_app`.
+9. (Fase 6) `00NN_imports.sql` — tablas y funciones de importación.
+Semillas en `db/seed/` (idempotentes, `ON CONFLICT DO NOTHING`): roles, permisos, role_permissions, unidades, system_settings.
 
 ## 11. Pruebas de BD
 
-`tests/db/` usa PostgreSQL real (`TEST_DATABASE_URL`). Un script aplica un *shim* mínimo del esquema `auth`
-(`auth.users`, `auth.uid()` leyendo `request.jwt.claim.sub`, roles `authenticated`/`anon`/`service_role`) y luego
-todas las migraciones, para probar RLS y funciones sin necesitar Docker/Supabase. También funciona contra
-`supabase start` local.
+`tests/db/` usa PostgreSQL real. `npm run test:db` crea una base temporal con `TEST_DATABASE_ADMIN_URL` (superusuario
+local), ejecuta `bootstrap.sql` y todas las migraciones, corre las pruebas conectándose como `conduces_app`
+(igual que en producción, con RLS activo) y borra la base al terminar. No requiere Docker si hay un PostgreSQL local.

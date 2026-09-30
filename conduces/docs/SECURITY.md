@@ -2,23 +2,30 @@
 
 Última revisión: 2026-09-30
 
-## 1. Autenticación
+## 1. Autenticación (propia, ADR-015)
 
-- Supabase Auth, email + contraseña. **Registro público desactivado** (`enable_signup = false`).
-- Usuarios creados por un administrador (pantalla Usuarios → usa la Admin API con el service role, solo servidor)
-  con contraseña temporal o enlace de invitación. Primer administrador: `npm run create-admin` (ver HANDOFF).
-- Contraseñas: hash bcrypt gestionado por Supabase; nunca en texto plano ni en logs. Longitud mínima 10.
-- Sesión: cookies httpOnly, Secure, SameSite=Lax gestionadas por `@supabase/ssr`; el middleware refresca el token.
-  En el servidor se usa siempre `supabase.auth.getUser()` (valida el JWT contra Auth), nunca solo `getSession()`.
-- Usuario desactivado (`profiles.is_active = false`): el middleware cierra su sesión y todas las funciones SQL lo rechazan.
-- Recuperación de contraseña por correo (Supabase) o restablecimiento por un administrador.
+- Usuario = correo + contraseña. **Sin registro público.** Los usuarios los crea un administrador (pantalla Usuarios)
+  con una contraseña temporal; el primer administrador se crea con `npm run create-admin` (ver HANDOFF §9).
+- Contraseñas: hash **argon2id** (`@node-rs/argon2`, parámetros OWASP: m=19 MiB, t=2, p=1). Nunca en texto plano,
+  ni en logs, ni en auditoría. Mínimo 10 caracteres; se rechazan las iguales al correo.
+- **Cambio obligatorio** en el primer acceso y tras un restablecimiento (`must_change_password`).
+- Sesión: token aleatorio de 32 bytes (`crypto.randomBytes`) en la cookie `conduces_session` con `HttpOnly`, `Secure`,
+  `SameSite=Lax`, `Path=/`. En la BD solo se guarda su SHA-256. Expira por inactividad (12 h) y en forma absoluta
+  (7 días); configurable en `system_settings`.
+- Cerrar sesión, cambiar contraseña o desactivar el usuario **revoca** sus sesiones.
+- Intentos fallidos: tras 5 fallos seguidos, bloqueo del usuario 15 minutos; límite adicional por IP. Mensaje genérico
+  "Correo o contraseña incorrectos" (no revela si el correo existe). Todo queda en `login_attempts`.
+- Sin correo saliente (costo cero): "olvidé mi contraseña" = pedir al administrador que la restablezca (queda auditado).
+- El middleware protege todas las rutas salvo `/login`; además cada Server Action/Route Handler valida la sesión
+  (el middleware no es la única barrera).
 
 ## 2. Autorización en 3 capas
 
 1. **UI**: oculta menús/botones sin permiso (solo comodidad).
 2. **Servidor Next.js**: cada Server Action/Route Handler obtiene el usuario, valida entrada con Zod y verifica permiso.
-3. **PostgreSQL**: RLS para lecturas; funciones `SECURITY DEFINER` con `app.has_permission()` para escrituras.
-   Aunque alguien llame la API de Supabase directamente con su token, no puede saltarse reglas ni empresas.
+3. **PostgreSQL**: la aplicación se conecta como `conduces_app` (sin `BYPASSRLS`, no es dueño de las tablas). Cada
+   transacción fija `app.user_id`; RLS filtra lecturas y las funciones `SECURITY DEFINER` con `app.has_permission()`
+   controlan escrituras. Un error en el código de la aplicación no basta para ver o modificar datos de otra empresa.
 
 ## 3. Roles iniciales
 
@@ -62,18 +69,20 @@ código. `user_companies.role_code` está reservado para roles distintos por emp
 
 - Todas las tablas de `public` con `ENABLE ROW LEVEL SECURITY`.
 - Lectura de datos de negocio: `USING (app.can_access_company(company_id))` (o `company_id IS NULL` para catálogos del grupo).
-- `delivery_notes`, `delivery_note_items`, `delivery_note_sequences`, `audit_logs`, `import_*`: **sin** políticas de
-  INSERT/UPDATE/DELETE para `authenticated`; solo funciones `SECURITY DEFINER`.
+- Sin `app.user_id` válido (usuario activo) las políticas no devuelven filas.
+- `delivery_notes`, `delivery_note_items`, `delivery_note_sequences`, `audit_logs`, `import_*`, `users`, `sessions`:
+  `conduces_app` **no** tiene INSERT/UPDATE/DELETE directos; solo ejecuta funciones `SECURITY DEFINER`.
 - Catálogos y empresas: escritura con política que exige el permiso correspondiente (o también vía funciones).
-- `profiles`: cada usuario lee el suyo; `users.manage` lee y edita todos.
+- `users`: cada usuario lee el suyo; `users.manage` lee todos. La columna `password_hash` no es legible por `conduces_app`.
 - `audit_logs`: SELECT solo con `audit.view`. UPDATE/DELETE bloqueado por trigger para todos.
 
 ## 6. Datos sensibles y variables
 
-- Solo `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` llegan al navegador (la anon key es pública por
-  diseño; la protección real es RLS).
-- `SUPABASE_SERVICE_ROLE_KEY` y `DATABASE_URL`: solo en `src/server/**` con `import 'server-only'`. Nunca en logs.
+- Ninguna variable secreta llega al navegador. Solo existe `NEXT_PUBLIC_APP_URL` como pública.
+- `DATABASE_URL` (rol `conduces_app`), `DATABASE_OWNER_URL` (rol dueño, solo migraciones/respaldos/scripts) y
+  `SESSION_SECRET`: solo en `src/server/**` con `import 'server-only'` y en scripts. Nunca en logs.
 - `.env*` en `.gitignore` (excepto `.env.example`). Revisar con `git diff --cached` antes de cada commit.
+- El puerto de PostgreSQL no se expone fuera del servidor (solo red interna de Docker).
 
 ## 7. Entradas y archivos
 
@@ -81,12 +90,15 @@ código. `user_companies.role_code` está reservado para roles distintos por emp
 - React escapa HTML por defecto; prohibido `dangerouslySetInnerHTML` con datos de usuario.
 - Importación: extensiones `.xls/.xlsx/.csv`, verificación de firma del archivo (magic bytes), tamaño máximo
   (`IMPORT_MAX_FILE_MB`), número máximo de filas/hojas, sin evaluar fórmulas ni macros (solo valores),
-  bucket privado, SHA-256. Protección contra *CSV injection* al exportar (prefijar `'` a celdas que empiezan por `= + - @`).
-- Logos: PNG/JPG/WebP, máximo 1 MB, bucket privado, servidos con URL firmada.
+  guardado en `stored_files` (solo admin), SHA-256. Protección contra *CSV injection* al exportar (prefijar `'` a celdas que empiezan por `= + - @`).
+- Logos: PNG/JPG/WebP, máximo 1 MB, guardados en `stored_files`, servidos por `GET /api/files/[id]` solo a usuarios con sesión.
 
 ## 8. Cabeceras y otros
 
 - Cabeceras de seguridad en `next.config` (CSP, `X-Frame-Options: SAMEORIGIN` para permitir el iframe del PDF propio,
   `Referrer-Policy`, `X-Content-Type-Options`).
 - Server Actions de Next.js tienen protección CSRF por origen; Route Handlers que escriben verifican `Origin`.
-- Límite de tasa de login: el de Supabase Auth.
+- HTTPS obligatorio: Caddy en la red local (certificado interno) o Cloudflare Tunnel para acceso remoto. Opcional:
+  Cloudflare Access (gratis hasta 50 usuarios) como segunda barrera para el acceso desde fuera de la oficina.
+- "PC autorizada": el acceso se limita a la red interna del grupo y al túnel; mejora futura opcional: lista de IPs o
+  aprobación de dispositivos.

@@ -18,10 +18,9 @@ next-env.d.ts
 *.p12
 *.pfx
 
-# Supabase local
-supabase/.branches/
-supabase/.temp/
-supabase/.env
+# Docker / despliegue local
+docker-compose.override.yml
+deploy/secrets/
 
 # Respaldos y datos (nunca en Git)
 backups/

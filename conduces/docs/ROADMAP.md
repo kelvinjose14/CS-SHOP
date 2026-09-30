@@ -12,19 +12,23 @@ Marcar `[x]` al terminar cada tarea **y** reflejarlo en `PROJECT_STATUS.md`. No 
 - [x] Estrategia de impresión/PDF
 - [x] Estrategia de continuidad (`CLAUDE.md`, `PROJECT_STATUS.md`, `HANDOFF.md`)
 - [x] Respaldo (`BACKUP_AND_RECOVERY.md`) y preguntas abiertas (`OPEN_QUESTIONS.md`)
-- [ ] **Aprobación del plan por el cliente** y respuestas a `OPEN_QUESTIONS.md` (Q1, Q2 bloquean la Fase 1)
+- [x] Rediseño a herramientas gratuitas y programa independiente (ADR-013 a ADR-018)
+- [ ] **Aprobación del plan por el cliente**
+- [ ] Repositorio propio `sistema-conduces` creado por el cliente y proyecto trasladado (HANDOFF §17)
 
 ## FASE 1 — Proyecto base, BD, autenticación, empresas, usuarios, roles
-- [ ] Scaffold Next.js + TypeScript estricto + Tailwind + ESLint/Prettier en `conduces/`
-- [ ] Supabase CLI (`supabase init`), `config.toml` con signup desactivado
-- [ ] Migraciones 1–4 y 8 (parcial): extensiones, esquema `app`, identidad/roles/permisos, companies, settings, audit, RLS
-- [ ] `seed.sql`: roles, permisos, role_permissions, unidades, settings (sin usuarios ni empresas reales)
-- [ ] Infraestructura de pruebas de BD (PostgreSQL local + shim `auth`) y Vitest
-- [ ] Clientes Supabase (browser / server / admin solo-servidor), middleware de sesión
-- [ ] Login, logout, recuperación de contraseña, usuario inactivo
+- [ ] Scaffold Next.js + TypeScript estricto + Tailwind + ESLint/Prettier
+- [ ] `docker-compose.yml` (servicio `db`) + `db/bootstrap.sql` (roles `conduces_owner` / `conduces_app`)
+- [ ] Ejecutor de migraciones `scripts/db-migrate.mjs` (`db:migrate`, `db:status`, checksum) + pruebas
+- [ ] Migraciones 0001–0004 y 0008 (parcial): extensiones, esquema `app`, identidad (users, sessions, login_attempts),
+      roles/permisos, companies, settings, stored_files, audit, RLS y GRANTs
+- [ ] `db/seed/`: roles, permisos, role_permissions, unidades, settings (sin usuarios ni empresas reales)
+- [ ] Infraestructura `test:db` (BD temporal, conexión como `conduces_app`) y Vitest
+- [ ] `src/server/db.ts` (`withUserTransaction`), `src/server/auth/*` (argon2id, sesiones, cookie), middleware
+- [ ] Login, logout, cambio de contraseña obligatorio, bloqueo por intentos, usuario inactivo
 - [ ] Layout: sidebar, topbar, toasts, skeletons, páginas de error
 - [ ] Empresas: CRUD, logo, configuración de impresión, comentario predeterminado
-- [ ] Usuarios: crear/invitar, rol, empresas autorizadas, activar/desactivar, último acceso
+- [ ] Usuarios: crear con contraseña temporal, restablecer contraseña, rol, empresas autorizadas, activar/desactivar, último acceso
 - [ ] Script `create-admin`
 - [ ] Pruebas: permisos por rol, aislamiento entre empresas (RLS), auditoría inmutable
 
@@ -69,5 +73,6 @@ Marcar `[x]` al terminar cada tarea **y** reflejarlo en `PROJECT_STATUS.md`. No 
 - [ ] Revisión de seguridad (RLS, cabeceras, dependencias)
 - [ ] E2E Playwright de los flujos principales
 - [ ] Responsive (tablet/móvil)
-- [ ] Script de backup + exportación completa + prueba de restauración documentada
-- [ ] Despliegue a producción documentado
+- [ ] `Dockerfile` (Next standalone) + `docker-compose.yml` completo (db, app, caddy, backup, cloudflared opcional)
+- [ ] Script de backup + rclone + exportación completa + prueba de restauración documentada
+- [ ] Instalación en el equipo del grupo documentada paso a paso (HTTPS en cada PC, acceso remoto)

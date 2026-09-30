@@ -5,8 +5,9 @@ Cuando se responda una pregunta: mover la respuesta a la regla correspondiente (
 
 | # | Pregunta | Propuesta por defecto | Bloquea | Estado |
 |---|---|---|---|---|
-| Q1 | ¿El sistema se queda en `conduces/` dentro de CS-SHOP o se mueve a un repositorio propio (p. ej. `grupo-conduces`)? | Repositorio propio (más limpio; CAPS Shop es otro producto). | Fase 1 | Abierta |
-| Q2 | ¿Dónde se aloja? Supabase Cloud Pro (~25 USD/mes) + Vercel, o servidor propio del grupo. | Supabase Pro + Vercel (sin mantenimiento de servidores, backups diarios). | Fase 1 (despliegue) | Abierta |
+| Q1 | ¿El sistema se queda en `conduces/` dentro de CS-SHOP o se mueve a un repositorio propio? | Repositorio propio. | Fase 1 | **RESPONDIDA 2026-09-30**: programa totalmente nuevo, aparte de CAPS Shop → repositorio propio `sistema-conduces` (ADR-013). Pendiente: que el cliente cree el repo y dé acceso. |
+| Q2 | ¿Dónde se aloja? | — | Fase 7 | **RESPONDIDA 2026-09-30**: todo con herramientas gratuitas, uso interno → PostgreSQL autogestionado + Docker Compose (ADR-014, ADR-018). |
+| Q2b | ¿Qué equipo será el servidor (mini PC/PC de la oficina principal, o VM gratuita en la nube)? ¿Hay sucursales que necesiten acceso desde fuera de la red local? | PC/mini PC en la oficina principal con UPS; Cloudflare Tunnel para sucursales. | Fase 7 | Abierta |
 | Q3 | Lista de empresas del grupo: nombre comercial, razón social, RNC, dirección, teléfonos, correo, logo y **prefijo** de cada una. ¿"MILADYS RODRIGUEZ" es una empresa emisora o un punto comercial? | Se cargan desde la pantalla Empresas; nada hardcodeado. | Fase 2 (datos) | Abierta |
 | Q4 | Foto/PDF del conduce actual impreso y 5–10 Excel históricos de muestra. | — | Fase 4 y 6 | Abierta |
 | Q5 | Permisos del OPERADOR: ¿puede **recibir**, **anular**, **exportar**, **ver reportes**, **crear puntos comerciales/productos**, descartar borradores de otros? | Recibir: sí. Anular, exportar, reportes, catálogos: no. Descartar: solo los propios. | Fase 1–3 | Abierta |

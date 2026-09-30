@@ -28,8 +28,8 @@ SUBIR → ANALIZAR → MAPEAR → VALIDAR → MOSTRAR ERRORES → VISTA PREVIA �
 ```
 
 1. **SUBIR**: se crea un `import_batch`. Se suben uno o muchos archivos (arrastrar y soltar, carpetas completas).
-   Por cada archivo: validar extensión, firma (magic bytes), tamaño; calcular SHA-256; guardar en bucket privado
-   `imports/<batch>/<sha256>.<ext>`; registrar en `import_files`. Mismo SHA-256 ya subido ⇒ `duplicate_file` (advertencia).
+   Por cada archivo: validar extensión, firma (magic bytes), tamaño; calcular SHA-256; guardar el archivo original en
+   `stored_files` (dentro de PostgreSQL, ADR-016); registrar en `import_files`. Mismo SHA-256 ya subido ⇒ `duplicate_file` (advertencia).
 2. **ANALIZAR** (servidor, por partes para no exceder tiempos): leer cada hoja con SheetJS (solo valores, sin fórmulas
    ni macros), detectar modo (formulario/tabular), extraer candidatos a `import_records.raw` (celdas originales con
    coordenadas) y una primera propuesta en `normalized`.
