@@ -87,7 +87,8 @@ Para volver a empezar desde cero: `npx supabase db reset`.
 4. **Crea tu usuario.** Ve a *Authentication → Users → Add user → Create new user*, escribe correo y contraseña, y marca **Auto Confirm User**.
    - Así no dependes del correo de confirmación: el servidor de correo incluido en Supabase tiene un límite bajo de envíos.
    - Si nadie más debe crear cuentas, desactiva *Authentication → Sign In / Providers → Allow new users to sign up*.
-5. **Agrega la URL de la app.** En *Authentication → URL Configuration*, pon tu URL de Vercel en *Site URL* y agrega `https://TU-APP.vercel.app/**` en *Redirect URLs*. Solo se usa en los enlaces de confirmación de correo.
+5. **(Opcional) URL de la app para los correos.** Solo hace falta si las cuentas se crean desde el botón *Crear cuenta* del panel, que envía un correo de confirmación. En *Authentication → URL Configuration* agrega `https://TU-APP.vercel.app/**` en *Redirect URLs*.
+   - **No cambies *Site URL* si el proyecto lo comparte otra app** (por ejemplo, la web de una liga): sus correos dejarían de llevar a su sitio. Con usuario y contraseña creados en el panel de Supabase no hace falta nada de esto.
 
 ---
 
@@ -97,7 +98,7 @@ Para volver a empezar desde cero: `npx supabase db reset`.
 2. En **Root Directory** elige **`marcador`**. *Framework Preset* debe decir *Next.js*.
 3. En **Environment Variables** agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, con los valores del paso 2.
 4. **Deploy.** Al terminar tendrás una URL como `https://marcador-tuyo.vercel.app`.
-5. Vuelve a Supabase y completa el punto 5 del paso 2 con esa URL.
+5. Si usas el botón *Crear cuenta*, vuelve a Supabase y agrega esa URL en *Redirect URLs* (punto 5 del paso 2).
 6. Cada vez que hagas *push* a la rama principal, Vercel publica la nueva versión.
 
 En el celular, abre `https://marcador-tuyo.vercel.app/control`, inicia sesión y toca **Crear partido de ejemplo**. Para tenerlo a mano como una app: menú del navegador → *Agregar a la pantalla de inicio*.
