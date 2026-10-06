@@ -36,6 +36,10 @@ Toda la documentación está en [`docs/`](docs/README.md), en español:
 | **Piloto en la tienda** | [Plan del piloto](docs/piloto/README.md), [Capacitación](docs/piloto/capacitacion.md), [Bitácora](docs/piloto/bitacora.md), [Lista de aceptación](docs/piloto/aceptacion.md) |
 | **Desarrolladores** | [Arquitectura](docs/tecnico/arquitectura.md), [Red](docs/tecnico/red.md), [Modelo de datos](docs/tecnico/modelo-de-datos.md), [Desarrollo y publicación](docs/tecnico/desarrollo-y-publicacion.md) |
 
+## Otro proyecto en este repositorio: Marcador en vivo
+
+La carpeta [`marcador/`](marcador/README.md) es una aplicación web independiente (Next.js + Supabase) para el marcador de transmisiones de softball y béisbol. No comparte código ni dependencias con CAPS Shop. Para publicarla en Vercel se usa *Root Directory* = `marcador`.
+
 ## Desarrollo
 
 ```bash

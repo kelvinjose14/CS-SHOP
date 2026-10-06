@@ -47,6 +47,12 @@ test('exportar inventario y un reporte a Excel con la franja de la tienda, y a C
   // Ventas del mes: lo que se ve en pantalla ("Crédito", "Por mayor"), no los códigos de la base.
   await saveAs('ventas.xlsx');
   await go(win, 'reports', { report: 'ventas' });
+  // La base de muestra tiene ventas de agosto y septiembre de 2026: rango fijo, independiente de la fecha de hoy.
+  await win.click('.period [data-p="rango"]');
+  await win.fill('.period input[name="from"]', '2026-08-01');
+  await win.fill('.period input[name="to"]', '2026-09-30');
+  await win.dispatchEvent('.period input[name="to"]', 'change');
+  await win.waitForSelector('.range-label:has-text("30/09/2026")');
   await win.click('#r-csv');
   await win.waitForSelector('.toast:has-text("Excel guardado")');
   const sales = parseXlsx(fs.readFileSync(path.join(out, 'ventas.xlsx')));
