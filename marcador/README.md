@@ -70,8 +70,10 @@ Para volver a empezar desde cero: `npx supabase db reset`.
    - Luego *New project*.
    - Guarda la contraseña de la base de datos (no la necesita la app).
    - Si ya tienes un proyecto, puedes usarlo: todo lleva el prefijo `marcador_` y no toca tus tablas (por ejemplo, una tabla `games` existente).
-2. **Aplica la migración**, que crea tablas, CHECK, RLS, RPC, triggers, Realtime y el bucket de logos. Elige una de dos formas:
-   - **Desde el panel de Supabase:** *SQL Editor* → *New query* → pega el contenido completo de [`supabase/migrations/20261006120000_marcador.sql`](supabase/migrations/20261006120000_marcador.sql) → *Run*.
+2. **Aplica las migraciones**, que crean tablas, CHECK, RLS, RPC, triggers, Realtime y el bucket de logos. Elige una de dos formas:
+   - **Desde el panel de Supabase:** *SQL Editor* → *Create a new snippet* (no una consulta de *Logs*). Pega y ejecuta con *Run*, en este orden:
+     1. [`supabase/migrations/20261006120000_marcador.sql`](supabase/migrations/20261006120000_marcador.sql)
+     2. [`supabase/migrations/20261006180000_marcador_sin_anonimos.sql`](supabase/migrations/20261006180000_marcador_sin_anonimos.sql)
    - **Con la CLI:** `npx supabase login`, luego `npx supabase link --project-ref TU_REF` y después `npx supabase db push`.
 3. **Copia las dos variables.** En el panel del proyecto, el botón **Connect** (arriba) → *App Frameworks* → *Next.js* las muestra con estos nombres exactos:
 
@@ -203,6 +205,7 @@ Cambios respecto al pedido:
 ### Seguridad
 
 - **RLS en `marcador_games`:** solo el dueño autenticado lee y escribe. El rol `anon` no tiene ningún permiso sobre la tabla.
+- **Sesiones anónimas:** si el proyecto tiene activado *Anonymous sign-ins* (por ejemplo, para los visitantes de otro sitio en el mismo proyecto), esas sesiones no pueden crear, modificar ni borrar partidos, ni subir logos. Hace falta una cuenta real.
 - **`marcador_history`:** solo la lee el dueño. Solo la escribe el trigger y solo la consume `marcador_undo_last()`, que verifica dueño y versión.
 - **Overlay:** lee con `marcador_get_overlay(slug)`, que exige el slug exacto y devuelve solo campos públicos. No expone `id`, `owner_id`, historial ni automatismos.
 - **Realtime:** la base publica cada cambio con *Broadcast from Database* en dos canales **privados**:

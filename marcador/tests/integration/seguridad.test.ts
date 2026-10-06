@@ -56,6 +56,28 @@ describe.skipIf(!configured)("seguridad y reglas en la base de datos", () => {
     });
   });
 
+  describe("criterio 2: una sesión anónima de Supabase tampoco puede escribir", () => {
+    // Si el proyecto permite "Anonymous sign-ins", cualquiera obtiene una sesión con la clave pública.
+    it("no puede crear partidos, modificar ajenos ni subir logos", async () => {
+      const ghost = anonClient();
+      const { data, error } = await ghost.auth.signInAnonymously();
+      if (error?.message.match(/disabled/i)) return; // el proyecto no permite sesiones anónimas: nada que probar
+      expect(error).toBeNull();
+      const uid = data.user!.id;
+
+      const insert = await ghost.from("marcador_games").insert({ title: "anónimo" }).select().maybeSingle();
+      expect(insert.data).toBeNull();
+      expect(insert.error?.code).toBe("42501");
+
+      const upd = await write(ghost, game, { home_runs: 77 });
+      expect(upd.data).toBeNull();
+
+      const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64");
+      const up = await ghost.storage.from("marcador-logos").upload(`${uid}/x/logo.png`, png, { contentType: "image/png" });
+      expect(up.error).not.toBeNull();
+    });
+  });
+
   describe("criterio 3: el overlay solo lee el partido de su slug", () => {
     it("devuelve solo campos públicos (sin id, owner_id, historial ni automatismos)", async () => {
       const { data, error } = await anon.rpc("marcador_get_overlay", { p_slug: game.slug });
