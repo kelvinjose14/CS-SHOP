@@ -25,13 +25,17 @@ interface Options<T> {
 const MAX_BACKOFF_MS = 15_000;
 const POLL_WHILE_DOWN_MS = 4_000;
 const SAFETY_RESYNC_MS = 30_000;
+// Con Realtime recién iniciado, la difusión desde la base tarda unos cientos de ms
+// en quedar activa: un cambio hecho justo al suscribirse puede no llegar por el canal.
+const SETTLE_RESYNC_MS = 2_500;
 
 /**
  * Suscripción en tiempo real con reconexión automática.
  *
  * - Canal privado: solo recibe lo que la base publica (nadie puede inyectar mensajes).
  * - Si el canal falla, lo vuelve a crear con espera exponencial (1 s, 2 s, 4 s… 15 s).
- * - Cada vez que queda suscrito, vuelve a leer el estado completo para no perder eventos.
+ * - Cada vez que queda suscrito, vuelve a leer el estado completo para no perder eventos
+ *   (al instante y otra vez a los 2,5 s, mientras arranca la difusión desde la base).
  * - Mientras no hay tiempo real, consulta el estado cada 4 s; y cada 30 s aunque todo vaya bien.
  * - Nunca borra el último estado conocido: si se cae la red, el marcador se queda como estaba.
  */
@@ -51,6 +55,7 @@ export function useLiveTopic<T>({ topic, onMessage, resync }: Options<T>): Conne
     let channel: RealtimeChannel | null = null;
     let attempt = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
     let subscribed = false;
 
@@ -78,6 +83,9 @@ export function useLiveTopic<T>({ topic, onMessage, resync }: Options<T>): Conne
           subscribed = true;
           setStatus("conectado");
           runResync();
+          // Segunda lectura para cubrir el arranque de la difusión (ver SETTLE_RESYNC_MS).
+          clearTimeout(settleTimer);
+          settleTimer = setTimeout(runResync, SETTLE_RESYNC_MS);
         } else if (state === "CHANNEL_ERROR" || state === "TIMED_OUT" || state === "CLOSED") {
           markDown();
           scheduleReconnect();
@@ -123,6 +131,7 @@ export function useLiveTopic<T>({ topic, onMessage, resync }: Options<T>): Conne
     return () => {
       disposed = true;
       clearTimeout(reconnectTimer);
+      clearTimeout(settleTimer);
       clearInterval(poll);
       clearInterval(safety);
       window.removeEventListener("online", handleOnline);

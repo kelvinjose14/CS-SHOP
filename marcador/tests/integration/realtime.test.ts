@@ -58,12 +58,26 @@ describe.skipIf(!configured)("tiempo real", () => {
     track(anon, overlay.channel);
     expect(await overlay.status).toBe("SUBSCRIBED");
 
+    // Calentamiento: con Realtime recién iniciado (como en CI), la difusión desde la
+    // base tarda unos cientos de ms en activarse y un cambio hecho en ese instante no
+    // llega por el canal. La app lo cubre releyendo el estado al suscribirse y a los
+    // 2,5 s (useLiveTopic). Aquí se exige que el canal quede activo en pocos segundos.
+    let warm = 0;
+    while (overlay.messages.length === 0 && warm < 40) {
+      warm += 1;
+      game = (await write(owner, game, { away_runs: warm })).data!;
+      await waitFor(overlay.messages, 1, 250);
+    }
+    expect(overlay.messages.length, "el canal del overlay nunca empezó a recibir").toBeGreaterThan(0);
+    await sleep(300);
+    const offset = overlay.messages.length;
+
     const latencies: number[] = [];
     for (let i = 1; i <= 5; i += 1) {
       const start = Date.now();
       game = (await write(owner, game, { home_runs: i })).data!;
-      await waitFor(overlay.messages, i);
-      const message = overlay.messages[i - 1];
+      await waitFor(overlay.messages, offset + i);
+      const message = overlay.messages[offset + i - 1];
       expect(message?.payload.home_runs).toBe(i);
       latencies.push(message.at - start);
     }
