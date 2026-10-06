@@ -1,0 +1,78 @@
+name: Marcador en vivo
+
+# Solo corre cuando cambia el marcador (carpeta marcador/). No afecta al CI de CAPS Shop.
+on:
+  pull_request:
+    paths: ['marcador/**', '.github/workflows/marcador.yml']
+  push:
+    branches: [main]
+    paths: ['marcador/**', '.github/workflows/marcador.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  marcador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: marcador
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marcador/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint, tipos y pruebas unitarias
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Supabase local: aplica la migración y los datos de ejemplo (prueba que el SQL es válido).
+      - name: Supabase local
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit
+
+      - name: Variables públicas del Supabase local
+        run: |
+          supabase status -o json > /tmp/supabase.json
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$(jq -r '.API_URL' /tmp/supabase.json)"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(jq -r '.PUBLISHABLE_KEY // .ANON_KEY' /tmp/supabase.json)"
+          } > .env.local
+
+      - name: Pruebas de integración (RLS, CHECK, versión, deshacer, Realtime, Storage)
+        run: npm run test:db
+
+      - name: Prueba de seguridad con curl y la clave pública
+        run: ./scripts/probar-seguridad.sh
+
+      - name: Build de producción
+        run: npm run build
+
+      - name: Navegador para las pruebas de punta a punta
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Criterios de aceptación de punta a punta
+        run: |
+          npx next start -p 3000 > /tmp/next.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 1; done
+          npm run test:e2e
+
+      - name: Capturas y resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marcador-e2e
+          path: marcador/tests/e2e/salida/
+          if-no-files-found: ignore

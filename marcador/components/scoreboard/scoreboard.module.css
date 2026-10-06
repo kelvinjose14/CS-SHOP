@@ -1,0 +1,454 @@
+/*
+ * Marcador sobre un lienzo fijo de 1600 × 220 px. Las medidas son absolutas a
+ * propósito: el lienzo completo se escala con transform: scale(), así nunca se
+ * deforma ni cambia la distribución.
+ *
+ * Se evita CSS muy nuevo (color-mix, :has, anidado): el navegador de OBS puede
+ * ser un Chromium antiguo.
+ */
+
+.board {
+  position: relative;
+  width: 1600px;
+  height: 220px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  background-color: var(--panel);
+  background-image: linear-gradient(180deg, var(--sheen) 0%, rgba(0, 0, 0, 0) 55%);
+  color: var(--text);
+  border: 2px solid var(--line);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  font-family: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 236px 774px 140px 240px 206px;
+  height: 166px;
+}
+
+.main > section + section {
+  border-left: 2px solid var(--line);
+}
+
+/* ---------- Marca de la transmisión ---------- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 18px;
+  min-width: 0;
+}
+
+.brandName {
+  width: 100%;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 0.95;
+}
+
+.brandLogo {
+  display: block;
+  max-width: 200px;
+  max-height: 96px;
+  width: 100%;
+  height: 96px;
+  object-fit: contain;
+}
+
+.brandRule {
+  width: 72%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.brandSubtitle {
+  width: 100%;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 5px;
+  color: var(--muted);
+}
+
+/* ---------- Equipos ---------- */
+.teams {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 10px;
+  min-width: 0;
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  height: 72px;
+  min-width: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.stripe {
+  flex: 0 0 34px;
+  align-self: stretch;
+  clip-path: polygon(0 0, 100% 0, 62% 100%, 0 100%);
+}
+
+.logoBox {
+  flex: 0 0 64px;
+  height: 64px;
+  margin: 0 14px 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.abbrBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 50px;
+  border-radius: 6px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: none;
+}
+
+.teamName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding-right: 8px;
+}
+
+.batting {
+  flex: 0 0 24px;
+  font-size: 20px;
+  color: var(--accent);
+  opacity: 0;
+  text-align: center;
+}
+
+.battingOn {
+  opacity: 1;
+}
+
+.runsBox {
+  flex: 0 0 112px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  color: #0b0d12;
+  border-left: 3px solid rgba(0, 0, 0, 0.25);
+  text-shadow: none;
+}
+
+.runs {
+  display: inline-block;
+  font-size: 66px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Inning ---------- */
+.inning {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.arrow {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0;
+}
+
+.arrowOn {
+  opacity: 1;
+}
+
+.inningNumber {
+  font-size: 80px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.inningNumberSmall {
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.finalTag {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.extraTag {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  background: var(--accent);
+  color: #0b0d12;
+  text-shadow: none;
+}
+
+/* ---------- Conteo y outs ---------- */
+.count {
+  display: flex;
+  flex-direction: column;
+}
+
+.countTop {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-bottom: 2px solid var(--line);
+}
+
+.countNumbers {
+  font-size: 62px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.countLabel {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+
+.countBottom {
+  flex: 0 0 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.outDots {
+  display: flex;
+  gap: 12px;
+}
+
+.outDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--empty-base);
+  box-sizing: border-box;
+}
+
+.outDotOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
+}
+
+.outsLabel {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  min-width: 82px;
+}
+
+/* ---------- Bases ---------- */
+.bases {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diamond {
+  position: relative;
+  width: 150px;
+  height: 120px;
+}
+
+.base {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box;
+  border: 4px solid var(--empty-base);
+  border-radius: 3px;
+  transform: rotate(45deg);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
+}
+
+.second {
+  left: 52px;
+  top: 6px;
+}
+
+.third {
+  left: 8px;
+  top: 50px;
+}
+
+.first {
+  left: 96px;
+  top: 50px;
+}
+
+.baseOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Franja inferior ---------- */
+.strip {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 26px;
+  background: var(--strip);
+  border-top: 2px solid var(--line);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.stripLeft {
+  justify-self: start;
+}
+
+.stripCenter {
+  letter-spacing: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 900px;
+}
+
+.stripRight {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: 2px;
+}
+
+.statusDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.toneLive .statusDot {
+  background: #ef2b2b;
+  box-shadow: 0 0 10px rgba(239, 43, 43, 0.8);
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+
+.toneIdle {
+  color: var(--muted);
+}
+
+.toneWarn .statusDot {
+  background: #f59e0b;
+}
+
+.toneFinal .statusDot {
+  background: var(--text);
+}
+
+.reconnecting {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: #f59e0b;
+}
+
+.reconnectingDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: livePulse 1s ease-in-out infinite;
+}
+
+/* ---------- Animaciones (todas < 400 ms, salvo el pulso del punto EN VIVO) ---------- */
+.pop {
+  animation: runsPop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes runsPop {
+  0% {
+    transform: scale(1.35);
+    color: #b45309;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop,
+  .toneLive .statusDot,
+  .reconnectingDot {
+    animation: none;
+  }
+  .base {
+    transition: none;
+  }
+}
