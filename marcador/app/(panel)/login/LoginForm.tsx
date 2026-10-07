@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { signUpOutcome } from "@/lib/auth/signup";
 import { getBrowserClient } from "@/lib/supabase/client";
 
 const MESSAGES: Record<string, string> = {
@@ -40,7 +41,13 @@ export function LoginForm({ next, authError }: { next: string; authError: boolea
           options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
         });
         if (error) return setError(translate(error.message));
-        if (!data.session) {
+        const outcome = signUpOutcome(data);
+        if (outcome === "existe") {
+          setMode("entrar");
+          setInfo("Ya tienes una cuenta con ese correo. Pulsa Entrar con tu contraseña.");
+          return;
+        }
+        if (outcome === "confirmar") {
           setInfo("Cuenta creada. Revisa tu correo y abre el enlace de confirmación para entrar.");
           return;
         }
