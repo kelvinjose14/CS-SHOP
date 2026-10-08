@@ -1,0 +1,77 @@
+name: Intermediario para Windows
+
+# Arma un ZIP portátil del intermediario (no se instala nada): Node.js, ffmpeg y
+# cloudflared van dentro de la carpeta. En main lo publica como versión
+# "intermediario-windows" para descargarlo desde GitHub.
+on:
+  pull_request:
+    paths: ['marcador/relay/**', '.github/workflows/marcador-intermediario-windows.yml']
+  push:
+    branches: [main]
+    paths: ['marcador/relay/**', '.github/workflows/marcador-intermediario-windows.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  NODE_PORTABLE: 22.22.0
+
+jobs:
+  paquete:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: marcador/relay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Descarga ffmpeg.exe y cloudflared.exe para Windows.
+      - run: npm ci --omit=dev
+
+      - name: Pruebas del intermediario en Windows
+        run: node --test "test/*.test.mjs"
+
+      - name: Armar la carpeta portátil
+        run: |
+          $v = "$env:NODE_PORTABLE"
+          Invoke-WebRequest "https://nodejs.org/dist/v$v/node-v$v-win-x64.zip" -OutFile "$env:RUNNER_TEMP\node.zip"
+          Expand-Archive "$env:RUNNER_TEMP\node.zip" -DestinationPath "$env:RUNNER_TEMP\node"
+          $out = "$env:RUNNER_TEMP\marcador-intermediario"
+          New-Item -ItemType Directory -Force "$out\node" | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\node\node-v$v-win-x64\node.exe" "$out\node\node.exe"
+          Copy-Item iniciar.mjs, configurar.mjs, package.json, .env.example "$out"
+          Copy-Item src, node_modules "$out" -Recurse
+          Copy-Item windows\CONFIGURAR.bat, windows\INICIAR.bat, windows\LEEME.txt "$out"
+
+      - name: Comprobar el paquete (ffmpeg con RTMPS y cloudflared)
+        run: |
+          $out = "$env:RUNNER_TEMP\marcador-intermediario"
+          & "$out\node\node.exe" "$out\iniciar.mjs" --comprobar
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Comprimir
+        run: 7z a -tzip "$env:GITHUB_WORKSPACE\marcador-intermediario-windows.zip" "$env:RUNNER_TEMP\marcador-intermediario"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marcador-intermediario-windows
+          path: marcador-intermediario-windows.zip
+
+      - name: Publicar para descargar
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view intermediario-windows 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create intermediario-windows --title "Intermediario para Windows" --latest=false `
+              --notes "Descarga marcador-intermediario-windows.zip, descomprímelo y sigue LEEME.txt. No se instala nada."
+          }
+          gh release upload intermediario-windows "$env:GITHUB_WORKSPACE\marcador-intermediario-windows.zip" --clobber

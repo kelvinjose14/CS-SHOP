@@ -176,7 +176,7 @@ con el marcador dibujado dentro          gratis de        con tu clave de
 
 | Dónde | Requisito |
 |---|---|
-| Computadora | Windows, Mac o Linux, con [Node.js](https://nodejs.org) 20.12 o superior (el instalador "LTS"). Encendida y con internet durante todo el partido. Basta con unos 5 Mbps de subida. |
+| Computadora | Windows (el ZIP portátil, sin instalar nada), o Windows, Mac o Linux con [Node.js](https://nodejs.org) 20.12 o superior. Encendida, **sin suspenderse**, y con internet durante todo el partido. Basta con unos 5 Mbps de subida. |
 | iPhone | Safari en iOS 16.4 o superior. Funciona desde iOS 14.5, pero sin mantener la pantalla encendida sola. |
 | Android | Chrome actualizado. |
 | YouTube | Canal con las emisiones en vivo activadas. La primera vez YouTube pide verificar el teléfono y puede tardar hasta 24 horas. |
@@ -188,6 +188,17 @@ con el marcador dibujado dentro          gratis de        con tu clave de
 3. En **Configuración de la emisión**, copia la **Clave de transmisión**. No la compartas: con ella cualquiera podría emitir en tu canal.
 
 ### Paso 2. Preparar el intermediario (una sola vez)
+
+**Windows sin instalar nada (recomendado):**
+
+1. Descarga [marcador-intermediario-windows.zip](https://github.com/kelvinjose14/CS-SHOP/releases/download/intermediario-windows/marcador-intermediario-windows.zip). Trae Node.js, ffmpeg y cloudflared dentro.
+2. Clic derecho → **Extraer todo**.
+3. En la carpeta, doble clic en **CONFIGURAR.bat**: pega la clave de YouTube, escribe tu correo y pulsa Enter en lo demás.
+4. Para cada partido, doble clic en **INICIAR.bat**: se abre el código QR para el celular. No cierres la ventana negra mientras transmites.
+
+Si Windows muestra "Windows protegió su PC", toca **Más información → Ejecutar de todas formas**. En una computadora de empresa, la política o la red pueden impedirlo: pregunta a quien la administra.
+
+**Con Node.js instalado (Windows, Mac o Linux):**
 
 En la computadora, descarga este repositorio (botón **Code → Download ZIP** en GitHub y descomprímelo, o `git clone`). Luego, en una terminal:
 
