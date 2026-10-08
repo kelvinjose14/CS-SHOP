@@ -1,0 +1,17 @@
+MARCADOR EN VIVO - INTERMEDIARIO PARA WINDOWS
+No se instala nada. Todo está dentro de esta carpeta.
+
+1. PRIMERA VEZ: doble clic en CONFIGURAR.bat
+   - Pega la clave de transmisión de YouTube
+     (YouTube Studio > Crear > Emitir en vivo > Clave de transmisión).
+   - Escribe el correo con el que entras al marcador.
+   - En lo demás solo pulsa Enter.
+
+2. CADA PARTIDO: doble clic en INICIAR.bat
+   - Se abre una imagen con un código QR. Escanéalo con el celular.
+   - NO cierres la ventana negra mientras transmites.
+   - La computadora no debe suspenderse (dormirse) durante el partido.
+
+Si Windows dice "Windows protegió su PC": toca "Más información" y luego "Ejecutar de todas formas".
+
+La clave queda guardada solo en esta carpeta, en el archivo .env. No la compartas.

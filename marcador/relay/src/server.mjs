@@ -202,7 +202,9 @@ export function createRelayServer({ config, verifyUser, ffmpegPath, spawnProcess
 
   return {
     http,
-    listen: (port = config.port) => new Promise((resolve) => http.listen(port, () => resolve(http.address().port))),
+    // Solo en esta computadora: el túnel llega por 127.0.0.1 (y Windows no pide abrir el cortafuegos).
+    listen: (port = config.port, host = "127.0.0.1") =>
+      new Promise((resolve) => http.listen(port, host, () => resolve(http.address().port))),
     close: () =>
       new Promise((resolve) => {
         for (const client of wss.clients) client.terminate();

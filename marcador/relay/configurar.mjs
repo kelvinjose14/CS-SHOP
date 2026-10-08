@@ -43,4 +43,4 @@ try {
 } catch {
   // Windows: los permisos los gestiona la carpeta de tu usuario
 }
-console.log(`\nGuardado en ${envFile}. Ahora ejecuta: npm start\n`);
+console.log(`\nGuardado en ${envFile}. Ahora ejecuta: ${process.env.MARCADOR_PORTABLE ? "INICIAR.bat" : "npm start"}\n`);
