@@ -161,6 +161,21 @@ const shownInStudio = await phone
   .then(() => true)
   .catch(() => false);
 check("el Estudio sigue sincronizado con el marcador", shownInStudio);
+
+// Pizarra dentro del Estudio: el mismo celular que transmite cambia el marcador.
+// Primero espera a tener al día los cambios del otro dispositivo: si tocara con un estado
+// viejo, el control de versión rechazaría el toque (a propósito: nadie sobrescribe a nadie).
+await phone.waitForFunction(() => document.querySelector('[data-testid="runs-value-home"]')?.textContent?.trim() === "3", null, {
+  timeout: 10000,
+});
+await phone.waitForSelector('[data-testid="connection"][data-status="conectado"]', { timeout: 10000 });
+await phone.click('[data-testid="runs-plus-away"]');
+await phone.click('[data-testid="base-on_third"]');
+const seenByOther = await other
+  .waitForFunction(() => document.querySelector('[data-testid="runs-value-away"]')?.textContent?.trim() === "1", null, { timeout: 8000 })
+  .then(() => true)
+  .catch(() => false);
+check("la pizarra del Estudio cambia el marcador (el otro dispositivo lo ve)", seenByOther);
 await sleep(8000);
 
 // ---------- Corte de la salida (como si YouTube cerrara la conexión) ----------

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import type { GameRow, OverlayGame } from "@/lib/game/types";
+import type { GameRow } from "@/lib/game/types";
 import { getServerClient } from "@/lib/supabase/server";
 import { StudioLoader } from "./StudioLoader";
 
@@ -18,10 +18,8 @@ export default async function StudioPage({ params }: { params: Promise<{ gameId:
   if (!claims?.claims?.sub) redirect(`/login?next=/estudio/${gameId}`);
 
   // RLS: solo devuelve el partido si pertenece al usuario de la sesión.
-  const { data: game } = await supabase.from("marcador_games").select("id,slug,title").eq("id", gameId).maybeSingle<Pick<GameRow, "id" | "slug" | "title">>();
+  const { data: game } = await supabase.from("marcador_games").select("*").eq("id", gameId).maybeSingle<GameRow>();
   if (!game) notFound();
 
-  const { data: initial } = await supabase.rpc("marcador_get_overlay", { p_slug: game.slug });
-
-  return <StudioLoader gameId={game.id} slug={game.slug} title={game.title} initial={(initial as OverlayGame | null) ?? null} />;
+  return <StudioLoader initial={game} />;
 }
