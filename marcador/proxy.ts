@@ -27,7 +27,7 @@ export async function proxy(request: NextRequest) {
   const signedIn = !!data?.claims?.sub;
   const { pathname, search } = request.nextUrl;
 
-  if (pathname.startsWith("/control") && !signedIn) {
+  if ((pathname.startsWith("/control") || pathname.startsWith("/estudio")) && !signedIn) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = `?next=${encodeURIComponent(pathname + search)}`;
@@ -45,5 +45,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/control/:path*", "/login"],
+  matcher: ["/", "/control/:path*", "/estudio", "/estudio/:path*", "/login"],
 };

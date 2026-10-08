@@ -205,6 +205,16 @@ export function ControlPanel({ initial }: { initial: GameRow }) {
             <OverlayLink slug={game.slug} />
           </section>
 
+          <section className="card" aria-labelledby="h-studio">
+            <h2 id="h-studio">Transmitir desde el celular</h2>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Estudio en vivo: cámara del celular con el marcador dentro del video, directo a YouTube.
+            </p>
+            <Link className="btn btn-primary btn-block" href={`/estudio/${game.id}`} data-testid="open-studio">
+              Abrir Estudio en vivo
+            </Link>
+          </section>
+
           <section className="card" aria-labelledby="h-auto">
             <h2 id="h-auto">Automatismos (opcionales)</h2>
             <Automations game={game} dispatch={dispatch} />

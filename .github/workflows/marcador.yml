@@ -25,15 +25,22 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: marcador/package-lock.json
+          cache-dependency-path: |
+            marcador/package-lock.json
+            marcador/relay/package-lock.json
 
       - run: npm ci
+
+      # Intermediario: sin los binarios descargables (las pruebas usan el ffmpeg del sistema).
+      - run: npm ci --ignore-scripts
+        working-directory: marcador/relay
 
       - name: Lint, tipos y pruebas unitarias
         run: |
           npm run lint
           npm run typecheck
           npm test
+          npm run test:relay
 
       - uses: supabase/setup-cli@v1
         with:
@@ -68,6 +75,14 @@ jobs:
           npx next start -p 3000 > /tmp/next.log 2>&1 &
           for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 1; done
           npm run test:e2e
+
+      - name: ffmpeg (receptor RTMP de prueba)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Estudio en vivo de punta a punta (cámara simulada → intermediario → receptor RTMP)
+        run: |
+          npm run test:estudio
+          MIME=mp4 npm run test:estudio
 
       - name: Capturas y resultados
         if: always()

@@ -16,6 +16,7 @@ Marcador para transmisiones de **softball y béisbol**. Se controla desde el cel
 - **Overlay** (`/overlay/<slug>`): público y de solo lectura.
   - Fondo transparente para OBS.
   - Escalable con `?scale=` y posicionable con `?pos=`.
+- **Estudio en vivo** (`/estudio/<id>`): transmite a YouTube desde el celular, con el marcador **dentro del video**. Ver la [sección 6](#6-transmitir-a-youtube-desde-el-celular-estudio-en-vivo).
 
 **Tecnología:** Next.js 16 (App Router) + TypeScript, y Supabase (Postgres, Auth, Realtime y Storage). Se despliega en Vercel.
 
@@ -58,6 +59,8 @@ Para volver a empezar desde cero: `npx supabase db reset`.
 | `npm test` | Reglas del juego, validación, escalado del overlay, contraste y rechazo de claves secretas | Nada |
 | `npm run test:db` | RLS, CHECK, versión, deshacer, aislamiento por slug, Realtime y Storage, usando solo la clave pública | Supabase **local** (`supabase start`) |
 | `npm run test:e2e` | Los 9 criterios de aceptación en un navegador real; guarda capturas en `tests/e2e/salida/` | Supabase local y la app corriendo (`npm run build && npm start`) |
+| `npm run test:relay` | Intermediario: clave nunca expuesta, sesión obligatoria, origen permitido, argumentos de ffmpeg, avisos de error | Nada (`cd relay && npm install` una vez) |
+| `npm run test:estudio` | Estudio de punta a punta: cámara simulada → intermediario → receptor RTMP local. Revisa 720p/30 fps, audio, marcador en el video, cambios desde otro dispositivo, reconexión y fin (`MIME=mp4` usa el formato de Safari) | Supabase local, la app corriendo y `ffmpeg` |
 | `./scripts/probar-seguridad.sh` | Con `curl` y la clave pública: toda escritura sin sesión es rechazada | Cualquier proyecto (local o nube) |
 | `npm run lint` / `npm run typecheck` | Calidad del código | Nada |
 
@@ -154,6 +157,128 @@ El marcador se dibuja sobre un lienzo fijo de 1600 × 220 y se escala con un sol
 
 ---
 
+## 6. Transmitir a YouTube desde el celular (Estudio en vivo)
+
+```
+Celular (Estudio)                          Tu computadora (intermediario)              YouTube
+cámara + micrófono ─► video 1280×720 ─►  túnel HTTPS ─► ffmpeg (H.264 + AAC) ─► RTMPS ─► directo
+con el marcador dibujado dentro          gratis de        con tu clave de
+(se actualiza en vivo desde el panel)    Cloudflare       transmisión (solo aquí)
+```
+
+- **El marcador va dentro del video** que recibe YouTube, no encima de la vista previa. La vista previa del Estudio es exactamente lo que sale.
+- **El navegador no envía RTMP.** Envía el video por una conexión segura (WebSocket) al **intermediario**, un programa pequeño que corre en tu computadora y lo reenvía a YouTube por **RTMPS**.
+- **La clave de YouTube vive solo en el intermediario**, en un archivo privado `.env`. No pasa por el celular, no está en Vercel ni en Supabase, y no aparece en los mensajes.
+- **Solo tu cuenta puede transmitir.** El intermediario verifica tu sesión con Supabase y solo acepta los correos que pongas en `ALLOWED_EMAILS`.
+- **Costo: 0.** El túnel rápido de Cloudflare no pide cuenta, y ffmpeg y el intermediario son gratuitos. Lo único que usas es tu internet y los datos del celular (unos **1,3 GB por hora**).
+
+### Qué necesitas
+
+| Dónde | Requisito |
+|---|---|
+| Computadora | Windows, Mac o Linux, con [Node.js](https://nodejs.org) 20.12 o superior (el instalador "LTS"). Encendida y con internet durante todo el partido. Basta con unos 5 Mbps de subida. |
+| iPhone | Safari en iOS 16.4 o superior. Funciona desde iOS 14.5, pero sin mantener la pantalla encendida sola. |
+| Android | Chrome actualizado. |
+| YouTube | Canal con las emisiones en vivo activadas. La primera vez YouTube pide verificar el teléfono y puede tardar hasta 24 horas. |
+
+### Paso 1. Crear el directo en YouTube (no listado, para probar)
+
+1. Abre [YouTube Studio](https://studio.youtube.com) → **Crear → Emitir en vivo**.
+2. En **Emitir**, crea una emisión con visibilidad **No listado**.
+3. En **Configuración de la emisión**, copia la **Clave de transmisión**. No la compartas: con ella cualquiera podría emitir en tu canal.
+
+### Paso 2. Preparar el intermediario (una sola vez)
+
+En la computadora, descarga este repositorio (botón **Code → Download ZIP** en GitHub y descomprímelo, o `git clone`). Luego, en una terminal:
+
+```bash
+cd CS-SHOP/marcador/relay
+npm install            # descarga ffmpeg y cloudflared (unos 100 MB, solo la primera vez)
+npm run configurar     # te pide la clave de YouTube y tu correo; los guarda en relay/.env
+```
+
+`npm run configurar` ya trae la URL y la clave pública de Supabase del marcador publicado. Si usas otro proyecto, cámbialas ahí.
+
+### Paso 3. Antes de cada partido
+
+1. **Computadora:** en `CS-SHOP/marcador/relay`, ejecuta `npm start`.
+   - Aparece un **código QR** y un enlace `https://marcador-one.vercel.app/estudio?relay=wss://….trycloudflare.com`.
+   - Deja esa ventana abierta. **El enlace cambia cada vez** que ejecutas `npm start`.
+2. **Celular:** escanea el QR, inicia sesión y elige el partido.
+   - Otra forma: en el panel, toca **Abrir Estudio en vivo** y pega la dirección del túnel en **Intermediario**.
+3. Toca **Activar cámara y micrófono** y acepta los permisos. Se usa la cámara trasera por defecto.
+   - Si quieres otra cámara u otro micrófono, elígelos en **Cámara y micrófono**.
+4. Comprueba que **Estado → Intermediario** diga **Listo**.
+5. Ajusta **Marcador en el video**: mostrar u ocultar, posición y tamaño.
+6. Pon el celular **en horizontal**, idealmente en un trípode y con el cargador conectado.
+7. Toca **Iniciar transmisión**.
+   - **YouTube: Recibiendo · 30 fps · … kbps** confirma que el video sale de tu computadora hacia YouTube.
+   - En YouTube Studio la vista previa aparece en unos 10 a 20 segundos.
+
+**Durante el partido:**
+
+- **Otra persona puede llevar el marcador** desde su celular: que abra `/control/<id>` (el enlace está en el Estudio) e inicie sesión **con la misma cuenta**. Cada cambio aparece en el video en menos de un segundo.
+- **Silenciar micrófono** deja el audio en silencio sin cortar la transmisión.
+- La **duración** y el **estado real** se ven arriba y en la tarjeta **Estado**:
+  - Transmisión.
+  - YouTube.
+  - Envío desde el celular: avisa si la red va lenta.
+  - Intermediario.
+  - Marcador.
+  - Pantalla.
+
+**Al terminar:**
+
+1. Toca **Finalizar transmisión…** y confirma.
+2. En YouTube Studio, toca **Finalizar emisión**. Si no lo haces, YouTube cierra el directo solo al rato.
+3. En la computadora, `Ctrl+C` cierra el intermediario.
+
+### Interrupciones: qué pasa y qué no
+
+- **El celular debe quedar desbloqueado y con la página del Estudio abierta.** No hay transmisión en segundo plano.
+  - Si bloqueas la pantalla, recibes una llamada o cambias de app, el sistema detiene la cámara y el video se corta.
+  - Al volver a la página, el Estudio recupera la cámara y el micrófono y reanuda solo. En YouTube se verá un corte.
+- La pantalla se mantiene encendida sola mientras transmites (*Wake Lock*). Si el Estado dice *Desactiva el bloqueo automático a mano*, hazlo en los ajustes del celular.
+- **Si se cae internet** (en el celular o en la computadora), el Estudio muestra *Reconectando… (intento N)* y reintenta solo cada 1, 2, 4… hasta 10 segundos. Al volver la red sigue la misma transmisión, con la misma duración.
+  - YouTube mantiene el directo abierto durante cortes breves.
+- **Si la red del celular no da abasto**, el Estudio baja la calidad del envío (2,5 → 1,5 → 0,9 Mbps). YouTube sigue recibiendo 720p a 30 fps.
+- **Si abres el Estudio en un segundo celular** y transmites desde ahí, ese toma el control y el primero recibe un aviso. Nunca llegan dos señales a YouTube.
+
+### Si algo no funciona
+
+| Mensaje | Qué hacer |
+|---|---|
+| Intermediario: **No responde** | ¿Sigue abierta la ventana de `npm start`? El enlace cambia cada vez: escanea el QR nuevo. |
+| **Falta configurar: YOUTUBE_STREAM_KEY…** | Ejecuta `npm run configurar` en la computadora y luego `npm start` otra vez. |
+| **Tu cuenta no está autorizada** | El correo con el que iniciaste sesión no está en `ALLOWED_EMAILS` (`npm run configurar`). |
+| **YouTube cerró o rechazó la conexión** | La clave es incorrecta o es de otra emisión. Cópiala de nuevo desde YouTube Studio. |
+| `quick tunnel provisioning failed` | Cloudflare no dio un túnel; vuelve a intentar. Los túneles rápidos no tienen garantía. Si falla seguido, una alternativa gratuita es [Tailscale](https://tailscale.com) (*Tailscale Funnel*): `TUNNEL=off` y publicas el puerto 8787 con HTTPS por tu cuenta. |
+| **Permiso denegado** (cámara) | iPhone: Ajustes → Safari → Cámara/Micrófono → Permitir. Android: candado de la barra de direcciones → Permisos. |
+| **Gira el celular a horizontal** | El video de YouTube es horizontal: en vertical se recorta arriba y abajo. |
+
+### Compatibilidad: qué está probado
+
+| Navegador / pieza | Estado |
+|---|---|
+| Chromium de escritorio con cámara y micrófono simulados → intermediario → receptor RTMP local (hace de YouTube) | **Probado**: `npm run test:estudio` (27/27), con el formato de Chrome (WebM) y el de Safari (MP4) |
+| Señal recibida | **Probado**: H.264 1280×720 a 30 fps, AAC 44,1 kHz con sonido, cámara y marcador visibles, cambios del marcador hechos desde otro dispositivo, reconexión tras un corte de la salida y fin con confirmación |
+| Clave y seguridad del intermediario | **Probado**: la clave no sale en mensajes ni registros; sin sesión válida o desde otro sitio, no transmite (`npm run test:relay`, 14/14) |
+| **Safari de iPhone** y **Chrome de Android** reales | **Pendiente**: hay que probarlos en un teléfono real. Se usan las funciones que ambos soportan (cámara, lienzo, MediaRecorder MP4/WebM, WebSocket y Wake Lock), y está prevista la compatibilidad (MP4 en Safari, video en la página para iOS). |
+| Túnel rápido de Cloudflare | **Pendiente**: el entorno de desarrollo bloquea la conexión con Cloudflare. Pruébalo en tu computadora. |
+| Envío real a YouTube por RTMPS | **Pendiente**: el entorno de desarrollo no llega a YouTube y la prueba necesita tu clave. Haz el directo no listado del paso 1. |
+
+### Prueba con un directo no listado (lista de control)
+
+1. Paso 1 con visibilidad **No listado**, y luego los pasos 2 y 3.
+2. En YouTube Studio deben verse, en unos 20 s, la cámara del celular y el marcador abajo.
+3. Habla cerca del celular: el medidor del Estudio se mueve y el audio se oye en YouTube Studio, con unos 10 a 20 s de retraso.
+4. Desde otro celular, con el panel y la misma cuenta, suma una carrera: el marcador cambia en el video.
+5. Toca **Silenciar micrófono**: en YouTube deja de oírse.
+6. Bloquea el celular 5 s y vuelve a abrirlo: el Estudio dice *Reconectando…* y luego reanuda.
+7. **Finalizar transmisión…** → confirma → **Finalizar emisión** en YouTube Studio.
+
+---
+
 ## Cómo está hecho
 
 ### Estructura
@@ -162,12 +287,15 @@ El marcador se dibuja sobre un lienzo fijo de 1600 × 220 y se escala con un sol
 marcador/
 ├─ app/(panel)/                 login, /control, /control/[gameId], /auth/callback (layout raíz del panel)
 ├─ app/(overlay)/overlay/[slug] overlay público (layout raíz propio: html y body transparentes)
+├─ app/(panel)/estudio/         Estudio en vivo: cámara, marcador dentro del video y envío al intermediario
+├─ lib/studio/                  dibujo del marcador en el lienzo, composición, envío y reconexión
+├─ relay/                       intermediario (Node + ffmpeg + túnel): celular → RTMPS → YouTube
 ├─ components/scoreboard/       marcador 1600 × 220 compartido por el overlay y la vista previa
 ├─ components/control/          piezas del panel (carreras, conteo, bases, formularios, logos…)
 ├─ lib/game/                    tipos, reglas puras y cola de acciones con control de versión
 ├─ lib/realtime/                suscripción con reconexión y relectura del estado
 ├─ lib/supabase/                clientes (navegador, servidor) y protección de la clave pública
-├─ proxy.ts                     renueva la sesión y protege /control
+├─ proxy.ts                     renueva la sesión y protege /control y /estudio
 ├─ supabase/migrations/         esquema completo
 ├─ supabase/seed.sql            datos de ejemplo (solo local)
 └─ tests/                       unit/, integration/, e2e/
@@ -220,3 +348,5 @@ Cambios respecto al pedido:
   No hay política de INSERT en `realtime.messages`, así que **nadie puede inyectar un marcador falso** desde un navegador.
 - **Storage:** bucket `marcador-logos` de lectura pública. Acepta PNG, SVG y WebP de hasta 2 MB. Cada usuario sube solo a su carpeta `<user_id>/`, y los SVG se limpian de scripts antes de subir.
 - **Claves:** en el navegador solo se usa la clave pública. Ninguna parte del código usa la *service_role* o la *secret key*.
+- **Clave de YouTube:** solo en `relay/.env`, en la computadora del intermediario. Ese archivo está fuera de git y `npm run configurar` lo deja legible solo por tu usuario. El intermediario la quita de cualquier mensaje o registro, y su ruta `/estado` dice si falta, nunca cuál es.
+- **Intermediario:** acepta video solo desde el sitio del marcador (origen permitido) y solo con una sesión válida de un correo de `ALLOWED_EMAILS`. Admite una transmisión a la vez.
