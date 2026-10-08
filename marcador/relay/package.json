@@ -1,0 +1,21 @@
+{
+  "name": "marcador-intermediario",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Recibe el video del Estudio (celular) y lo reenvía a YouTube por RTMPS con ffmpeg",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "cloudflared": "^0.7.1",
+    "ffmpeg-static": "^5.2.0",
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.3"
+  },
+  "scripts": {
+    "start": "node iniciar.mjs",
+    "configurar": "node configurar.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  }
+}
