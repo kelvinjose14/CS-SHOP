@@ -228,7 +228,13 @@ npm run configurar     # te pide la clave de YouTube y tu correo; los guarda en 
 
 **Durante el partido:**
 
-- **La pizarra está dentro del Estudio**: el mismo celular que transmite tiene los botones de carreras, conteo, outs, bases, inning, estado, deshacer y mostrar/ocultar. En horizontal, la cámara queda fija a la izquierda y la pizarra se desplaza a la derecha. No hace falta salir de la página.
+- **La pizarra está dentro del Estudio**, en una consola horizontal sin desplazarse. No hace falta salir de la página.
+  - **Arriba:** el resultado, el inning y el estado; ⚙ abre los ajustes.
+  - **Izquierda:** las carreras, Alta/Baja y la entrada.
+  - **Centro:** la cámara con el marcador, y botones de micrófono, cambiar cámara y pantalla completa.
+  - **Derecha:** Bola, Strike y Out, con sus puntos, y Deshacer.
+  - **Abajo:** el intermediario («Remoto»), las bases 1ª, 2ª y 3ª, y **Transmitir**.
+  - **Ajustes ⚙ / ☰:** el estado del partido, nuevo bateador, cambiar mitad, limpiar bases, mostrar u ocultar el marcador, la posición y el tamaño del marcador en el video, la cámara, el micrófono, el intermediario y el estado de la transmisión.
 - **Opcional: otra persona puede llevar el marcador** desde su celular: que abra `/control/<id>` (el enlace está en el Estudio) e inicie sesión **con la misma cuenta**. Cada cambio aparece en el video en menos de un segundo.
 - **Silenciar micrófono** deja el audio en silencio sin cortar la transmisión.
 - La **duración** y el **estado real** se ven arriba y en la tarjeta **Estado**:

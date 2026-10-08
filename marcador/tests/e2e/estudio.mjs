@@ -128,8 +128,11 @@ console.log(`   formato de grabación del navegador: ${mime}`);
 check("el navegador tiene un formato de grabación compatible", !!mime, mime);
 
 // Ajustes del marcador en el video: abajo a la izquierda, 70 %.
+await phone.screenshot({ path: join(OUT, "estudio-consola.png") });
+await phone.click('[data-testid="open-settings"]');
 await phone.selectOption('[data-testid="studio-pos"]', "bottom-left");
 await phone.fill('[data-testid="studio-scale"]', "0.7");
+await phone.click('[data-testid="close-settings"]');
 
 // ---------- Iniciar ----------
 await phone.click('[data-testid="start-broadcast"]');
