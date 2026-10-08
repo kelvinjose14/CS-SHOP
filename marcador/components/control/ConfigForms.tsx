@@ -276,8 +276,11 @@ export function Automations({ game, dispatch }: { game: GameRow; dispatch: Dispa
           data-testid="auto-new-batter"
         />
         <span>
-          <strong>4.ª bola o 3.er strike → nuevo bateador</strong>
-          <small>Al sumar la 4.ª bola o el 3.er strike, el conteo vuelve a 0-0. No mueve corredores.</small>
+          <strong>4.ª bola → base por bolas · 3.er strike → out</strong>
+          <small>
+            Con 4 bolas el bateador pasa a primera (avanzan los corredores forzados; con bases llenas entra la carrera).
+            Con 3 strikes se anota un out (si es el tercero, cambia la mitad). El conteo vuelve a 0-0.
+          </small>
         </span>
       </label>
       <label className="switch">

@@ -74,6 +74,7 @@ Para volver a empezar desde cero: `npx supabase db reset`.
    - **Desde el panel de Supabase:** *SQL Editor* → *Create a new snippet* (no una consulta de *Logs*). Pega y ejecuta con *Run*, en este orden:
      1. [`supabase/migrations/20261006120000_marcador.sql`](supabase/migrations/20261006120000_marcador.sql)
      2. [`supabase/migrations/20261006180000_marcador_sin_anonimos.sql`](supabase/migrations/20261006180000_marcador_sin_anonimos.sql)
+     3. [`supabase/migrations/20261008120000_marcador_conteo_automatico.sql`](supabase/migrations/20261008120000_marcador_conteo_automatico.sql)
    - **Con la CLI:** `npx supabase login`, luego `npx supabase link --project-ref TU_REF` y después `npx supabase db push`.
 3. **Copia las dos variables.** En el panel del proyecto, el botón **Connect** (arriba) → *App Frameworks* → *Next.js* las muestra con estos nombres exactos:
 
@@ -198,10 +199,13 @@ Cambios respecto al pedido:
 - **Conflictos visibles.** Ante un rechazo, el panel recarga el estado real y avisa: *"Otro controlador cambió el marcador al mismo tiempo…"*. Nadie sobrescribe a nadie en silencio.
 - **Toques rápidos sin conflictos.** Las acciones se encolan y se envían una por una, y la pantalla muestra el resultado de inmediato.
 - **Formularios.** Al guardar, se verifica que nadie haya cambiado esos mismos campos mientras editabas.
-- **Automatismos opcionales y desactivados:**
-  - 4.ª bola o 3.er strike → nuevo bateador.
-  - 3.er out → cambiar mitad.
-  - Nunca mueven corredores ni suman carreras.
+- **Automatismos** (cada uno con su interruptor en el panel):
+  - **Conteo, activado por defecto:**
+    - 4.ª bola → base por bolas: el bateador va a primera y avanzan solo los corredores forzados; con bases llenas entra una carrera del equipo al bate.
+    - 3.er strike → out; si es el tercero, cambia la mitad del inning.
+    - En ambos casos el conteo vuelve a 0-0.
+  - **3.er out → cambiar mitad**, desactivado por defecto.
+  - Fuera de eso no se deducen avances ni carreras: los hits, robos y carreras se marcan a mano.
 
 ### Seguridad
 

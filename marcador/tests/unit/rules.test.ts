@@ -83,15 +83,69 @@ describe("conteo y outs", () => {
     expect(computeChanges(game({ balls: 2, strikes: 1 }), actions.resetCount("balls"))).toEqual({ balls: 0 });
   });
 
-  it("4.ª bola o 3.er strike → nuevo bateador solo si el automatismo está activo", () => {
-    const g = game({ balls: 3, strikes: 2, auto_new_batter: true, on_first: true, outs: 1 });
-    expect(computeChanges(g, actions.changeCount("balls", 1))).toEqual({ balls: 0, strikes: 0 });
-    expect(computeChanges(g, actions.changeCount("strikes", 1))).toEqual({ balls: 0, strikes: 0 });
-    // No se deducen corredores, carreras ni outs.
-    const after = run(g, actions.changeCount("balls", 1));
-    expect(after.on_first).toBe(true);
-    expect(after.outs).toBe(1);
-    expect(after.home_runs).toBe(0);
+  describe("4.ª bola: base por bolas (automatismo de conteo activo)", () => {
+    const walk = (overrides: Partial<GameRow>) =>
+      run(game({ balls: 3, strikes: 1, auto_new_batter: true, ...overrides }), actions.changeCount("balls", 1));
+
+    it("bases vacías: el bateador a primera y el conteo a 0-0", () => {
+      expect(walk({})).toMatchObject({ on_first: true, on_second: false, on_third: false, balls: 0, strikes: 0 });
+    });
+
+    it("corredor en primera: avanza a segunda (forzado)", () => {
+      expect(walk({ on_first: true })).toMatchObject({ on_first: true, on_second: true, on_third: false });
+    });
+
+    it("primera y tercera ocupadas: el de tercera no está forzado y se queda", () => {
+      const after = walk({ on_first: true, on_third: true, away_runs: 2 });
+      expect(after).toMatchObject({ on_first: true, on_second: true, on_third: true, away_runs: 2 });
+    });
+
+    it("segunda ocupada y primera libre: nadie avanza", () => {
+      expect(walk({ on_second: true })).toMatchObject({ on_first: true, on_second: true, on_third: false });
+    });
+
+    it("bases llenas en la alta: entra una carrera del visitante", () => {
+      const after = walk({ on_first: true, on_second: true, on_third: true, away_runs: 2, home_runs: 5 });
+      expect(after).toMatchObject({ on_first: true, on_second: true, on_third: true, away_runs: 3, home_runs: 5 });
+    });
+
+    it("bases llenas en la baja: entra una carrera del local", () => {
+      const after = walk({ half: "baja", on_first: true, on_second: true, on_third: true, away_runs: 2, home_runs: 5 });
+      expect(after).toMatchObject({ away_runs: 2, home_runs: 6 });
+    });
+
+    it("no cambia los outs", () => {
+      expect(walk({ outs: 2 }).outs).toBe(2);
+    });
+  });
+
+  describe("3.er strike: ponche = out (automatismo de conteo activo)", () => {
+    const strikeout = (overrides: Partial<GameRow>) =>
+      run(game({ balls: 2, strikes: 2, auto_new_batter: true, ...overrides }), actions.changeCount("strikes", 1));
+
+    it("suma un out, conteo a 0-0 y los corredores no se mueven", () => {
+      expect(strikeout({ outs: 0, on_second: true })).toMatchObject({ outs: 1, balls: 0, strikes: 0, on_second: true });
+    });
+
+    it("con 2 outs es el tercero: cambia la mitad y limpia bases", () => {
+      const after = strikeout({ outs: 2, on_first: true, half: "alta", inning: 3 });
+      expect(after).toMatchObject({ half: "baja", inning: 3, outs: 0, balls: 0, strikes: 0, on_first: false });
+    });
+
+    it("con 2 outs en la baja pasa a la alta del siguiente inning", () => {
+      expect(strikeout({ outs: 2, half: "baja", inning: 3 })).toMatchObject({ half: "alta", inning: 4, outs: 0 });
+    });
+
+    it("no suma carreras", () => {
+      const after = strikeout({ outs: 1, on_third: true, home_runs: 4, away_runs: 1 });
+      expect([after.home_runs, after.away_runs]).toEqual([4, 1]);
+    });
+  });
+
+  it("con el automatismo de conteo apagado, la 4.ª bola y el 3.er strike no hacen nada", () => {
+    const g = game({ balls: 3, strikes: 2, auto_new_batter: false, on_first: true });
+    expect(computeChanges(g, actions.changeCount("balls", 1))).toBeNull();
+    expect(computeChanges(g, actions.changeCount("strikes", 1))).toBeNull();
   });
 
   it("3.er out → cambiar mitad solo si el automatismo está activo", () => {
