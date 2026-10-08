@@ -8,8 +8,12 @@
  * Los mismos límites están en la base de datos (CHECK constraints): si alguien
  * se salta la interfaz, la escritura se rechaza igual.
  *
- * No se deducen avances de corredores ni carreras a partir de bolas, strikes u
- * outs. Los únicos automatismos son los dos opcionales, desactivados por defecto.
+ * Automatismos (cada uno con su interruptor en el panel):
+ *   - Conteo (activado por defecto): 4.ª bola = base por bolas (el bateador va a
+ *     primera, avanzan solo los corredores forzados y con bases llenas entra una
+ *     carrera); 3.er strike = out (si es el tercero, cambia la mitad del inning).
+ *   - 3.er out → cambiar mitad de inning (desactivado por defecto).
+ * Fuera de eso no se deducen avances de corredores ni carreras.
  */
 import type { Base, CountField, GamePatch, GameRow, GameStatus, Half, TeamSide } from "./types";
 
@@ -49,6 +53,31 @@ const runsKey = (side: TeamSide): "home_runs" | "away_runs" => (side === "home" 
 
 /** Cambios que limpian el turno al bate. */
 const NEW_BATTER: GamePatch = { balls: 0, strikes: 0 };
+
+/**
+ * Base por bolas: el bateador va a primera y solo avanzan los corredores forzados.
+ * Con las bases llenas, el de tercera anota una carrera para el equipo al bate.
+ */
+export function walkPatch(game: GameRow): GamePatch {
+  const changes: GamePatch = { ...NEW_BATTER, on_first: true };
+  if (game.on_first) {
+    changes.on_second = true;
+    if (game.on_second) {
+      changes.on_third = true;
+      if (game.on_third) {
+        const key = runsKey(battingSide(game.half));
+        changes[key] = clamp(game[key] + 1, LIMITS.runs.min, LIMITS.runs.max);
+      }
+    }
+  }
+  return changes;
+}
+
+/** Ponche: un out más y nuevo bateador; si es el tercer out, cambia la mitad del inning. */
+export function strikeoutPatch(game: GameRow): GamePatch | null {
+  if (game.outs >= LIMITS.outs.max) return halfChangePatch(game);
+  return { ...NEW_BATTER, outs: game.outs + 1 };
+}
 
 /** Alta -> baja del mismo inning; baja -> alta del siguiente. Limpia conteo, outs y bases. */
 export function halfChangePatch(game: Pick<GameRow, "half" | "inning">): GamePatch | null {
@@ -91,13 +120,14 @@ export const actions = {
 
   setHalf: (half: Half) => patch("Mitad del inning", () => ({ half })),
 
-  /** +1 / −1 bola, strike u out, con los automatismos opcionales. */
+  /** +1 / −1 bola, strike u out, con los automatismos. */
   changeCount: (field: CountField, delta: number) =>
     patch(COUNT_ACTION_LABEL[field], (g) => {
       const { min, max } = COUNT_LIMITS[field];
       if (delta > 0 && g[field] >= max) {
-        // Se llegó al tope: 4.ª bola o 3.er strike, o 3.er out.
-        if ((field === "balls" || field === "strikes") && g.auto_new_batter) return NEW_BATTER;
+        // Se llegó al tope: 4.ª bola (base por bolas), 3.er strike (ponche) o 3.er out.
+        if (field === "balls" && g.auto_new_batter) return walkPatch(g);
+        if (field === "strikes" && g.auto_new_batter) return strikeoutPatch(g);
         if (field === "outs" && g.auto_change_half) return halfChangePatch(g);
         return null;
       }

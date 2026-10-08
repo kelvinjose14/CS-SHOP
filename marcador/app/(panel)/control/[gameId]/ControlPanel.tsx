@@ -47,7 +47,8 @@ export function ControlPanel({ initial }: { initial: GameRow }) {
     const max = COUNT_LIMITS[field].max;
     if (game[field] < max) return undefined;
     if (field === "outs") return game.auto_change_half ? "+ cambia la mitad" : "Máximo 2";
-    return game.auto_new_batter ? "+ nuevo bateador" : `Máximo ${max}`;
+    if (!game.auto_new_batter) return `Máximo ${max}`;
+    return field === "balls" ? "+ base por bolas" : game.outs >= 2 ? "+ ponche, 3.er out" : "+ ponche (out)";
   };
   const canPlusCount = (field: CountField) =>
     game[field] < COUNT_LIMITS[field].max || (field === "outs" ? game.auto_change_half : game.auto_new_batter);

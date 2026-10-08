@@ -400,6 +400,27 @@ await narrow.click('[data-testid="confirm-yes"]');
 await overlay.waitForFunction(() => document.querySelector('[data-testid="count"]')?.textContent?.trim() === "0 - 0" && document.querySelector('[data-testid="status-tag"]')?.textContent?.includes("PREVIO"));
 check("panel", "reiniciar pide confirmación y deja el partido en Previo", dialogOpen);
 
+// ---------- Conteo automático (activado por defecto): base por bolas y ponche ----------
+// Tras reiniciar: 0-0, sin outs y bases vacías.
+const tap = async (field, times) => {
+  for (let i = 0; i < times; i += 1) await narrow.click(`[data-testid="stepper-${field}"] button[aria-label^="Sumar"]`);
+};
+await tap("balls", 4);
+await overlay.waitForFunction(
+  () =>
+    document.querySelector('[data-testid="overlay-base-1"]')?.dataset.on === "true" &&
+    document.querySelector('[data-testid="count"]')?.textContent?.trim() === "0 - 0",
+);
+check("conteo", "4.ª bola: base por bolas, corredor en primera y conteo a 0-0", true);
+await tap("strikes", 3);
+await overlay.waitForFunction(
+  () =>
+    document.querySelector('[data-testid="outs"]')?.textContent?.trim() === "1 OUT" &&
+    document.querySelector('[data-testid="count"]')?.textContent?.trim() === "0 - 0" &&
+    document.querySelector('[data-testid="overlay-base-1"]')?.dataset.on === "true",
+);
+check("conteo", "3.er strike: un out, conteo a 0-0 y el corredor sigue en primera", true);
+
 check("general", "sin errores de JavaScript en las páginas", errors.length === 0, errors.slice(0, 3).join(" | "));
 
 await browser.close();
