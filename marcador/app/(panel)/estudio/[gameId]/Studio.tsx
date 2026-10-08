@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ConfirmDialog } from "@/components/control/ConfirmDialog";
 import { POSITIONS, type Position } from "@/components/scoreboard/placement";
-import { ConnectionBadge } from "@/components/control/ConnectionBadge";
-import { ScoreControls } from "@/components/control/ScoreControls";
-import { actions } from "@/lib/game/rules";
-import type { GameRow } from "@/lib/game/types";
+import { readableTextOn } from "@/lib/game/colors";
+import { actions, battingSide, COUNT_LIMITS, LIMITS } from "@/lib/game/rules";
+import { STATUS_LABELS, type Base, type CountField, type GameRow, type GameStatus } from "@/lib/game/types";
 import { useGameController } from "@/lib/game/useGameController";
 import { CONNECTION_LABELS } from "@/lib/realtime/useLiveTopic";
 import { Broadcaster, IDLE_STATE, type BroadcastState } from "@/lib/studio/broadcaster";
@@ -52,6 +51,18 @@ type RelayCheck =
   | { state: "listo" }
   | { state: "incompleto"; faltan: string[] }
   | { state: "inalcanzable" };
+
+const COUNT_PADS: { field: CountField; label: string; tone: "ball" | "strike" | "out" }[] = [
+  { field: "balls", label: "Bola", tone: "ball" },
+  { field: "strikes", label: "Strike", tone: "strike" },
+  { field: "outs", label: "Out", tone: "out" },
+];
+const BASE_BUTTONS: { key: Base; label: string }[] = [
+  { key: "on_first", label: "1ª" },
+  { key: "on_second", label: "2ª" },
+  { key: "on_third", label: "3ª" },
+];
+const GAME_STATUSES: GameStatus[] = ["previo", "en_juego", "suspendido", "finalizado"];
 
 type MediaState = "apagada" | "pidiendo" | "activa" | "denegada" | "error";
 
@@ -352,6 +363,7 @@ export function Studio({ initial }: Props) {
   const [broadcast, setBroadcast] = useState<BroadcastState>(IDLE_STATE);
   const broadcasterRef = useRef<Broadcaster | null>(null);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const live = !["detenida", "error"].includes(broadcast.phase);
 
   const getToken = useCallback(async () => {
@@ -470,29 +482,134 @@ export function Studio({ initial }: Props) {
   const startBlocker = (() => {
     if (!mimeType) return "Este navegador no puede grabar video. Usa Safari (iPhone, iOS 14.5+) o Chrome (Android).";
     if (media !== "activa") return "Primero activa la cámara y el micrófono.";
-    if (relayCheck.state === "sin_configurar") return "Falta la dirección del intermediario (abajo).";
+    if (relayCheck.state === "sin_configurar") return "Falta la dirección del intermediario: tócala en Ajustes ⚙.";
     if (relayCheck.state === "inalcanzable") return "No se encuentra el intermediario. ¿Está encendido en tu computadora?";
     if (relayCheck.state === "incompleto") return `Al intermediario le falta: ${relayCheck.faltan.join(", ")}.`;
     if (relayCheck.state === "comprobando") return "Comprobando el intermediario…";
     return "";
   })();
 
+  const supportsFullscreen = typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void document.documentElement.requestFullscreen?.().catch(() => {});
+  };
+  const nextCamera = () => {
+    if (cameras.length < 2) return;
+    const index = cameras.findIndex((d) => d.deviceId === cameraId);
+    void switchCamera(cameras[(index + 1) % cameras.length].deviceId);
+  };
+  const batting = game.status === "en_juego" ? battingSide(game.half) : null;
+  const teams = (["away", "home"] as const).map((side) => ({
+    side,
+    abbr: side === "home" ? game.home_abbr : game.away_abbr,
+    color: side === "home" ? game.home_color : game.away_color,
+    runs: side === "home" ? game.home_runs : game.away_runs,
+  }));
+  const readyLabel =
+    scoreConnection !== "conectado" ? CONNECTION_LABELS[scoreConnection] : pendingCount > 0 ? "Guardando…" : "Listo";
+
   return (
-    <>
-      <header className="topbar sticky">
-        <Link className="btn btn-ghost btn-small" href={`/control/${gameId}`} aria-label="Volver al panel">
-          ←
+    <div className="console">
+      <header className="console-top">
+        <Link className="console-icon" href={`/control/${gameId}`} aria-label="Volver al panel">
+          ‹
         </Link>
-        <h1 className="topbar-title">Estudio · {game.title}</h1>
-        <span className="conn" data-status={broadcast.phase === "en_vivo" ? "conectado" : live ? "reconectando" : "sin_conexion"} data-testid="broadcast-phase">
+        <div className="console-score" aria-label="Resultado">
+          {teams.map((team, index) => (
+            <span key={team.side} className="console-score-team">
+              {index === 1 && <span className="console-score-dash" aria-hidden>—</span>}
+              {index === 0 && <span className="console-dot" style={{ background: team.color }} aria-hidden />}
+              <span className="console-score-abbr">{team.abbr}</span>
+              <strong className="console-score-runs">{team.runs}</strong>
+              {index === 1 && <span className="console-dot" style={{ background: team.color }} aria-hidden />}
+            </span>
+          ))}
+          <span className="console-inning">
+            {game.inning} {game.half === "alta" ? "▲" : "▼"}
+          </span>
+        </div>
+        <span className="console-pill" data-testid="connection" data-status={scoreConnection}>
           <span className="conn-dot" aria-hidden />
+          {readyLabel}
+        </span>
+        <span className="sr-only" data-testid="broadcast-phase">
           {PHASE_LABELS[broadcast.phase]}
         </span>
+        <button className="console-icon" onClick={() => setSettingsOpen(true)} aria-label="Ajustes" data-testid="open-settings">
+          ⚙
+        </button>
       </header>
 
-      <main className="page studio-grid">
-        <div className="studio-live">
-          <div className="studio-stage">
+      <main className="console-main">
+        <section className="console-left" aria-label="Carreras e inning">
+          <div className="console-card">
+            <h2 className="console-title">Carreras</h2>
+            {teams.map((team) => (
+              <div key={team.side} className="console-runs">
+                <span className="console-runs-abbr" style={{ borderColor: team.color }}>
+                  {team.abbr}
+                  {batting === team.side && <span className="console-batting" aria-label="al bate"> ◀</span>}
+                </span>
+                <button
+                  className="console-step"
+                  onClick={() => dispatch(actions.addRuns(team.side, -1))}
+                  disabled={team.runs <= LIMITS.runs.min}
+                  aria-label={`Restar carrera a ${team.abbr}`}
+                  data-testid={`runs-minus-${team.side}`}
+                >
+                  −
+                </button>
+                <output className="console-value" data-testid={`runs-value-${team.side}`}>
+                  {team.runs}
+                </output>
+                <button
+                  className="console-step is-plus"
+                  style={{ background: team.color, color: readableTextOn(team.color) }}
+                  onClick={() => dispatch(actions.addRuns(team.side, 1))}
+                  disabled={team.runs >= LIMITS.runs.max}
+                  aria-label={`Sumar carrera a ${team.abbr}`}
+                  data-testid={`runs-plus-${team.side}`}
+                >
+                  +
+                </button>
+              </div>
+            ))}
+            <div className="console-half" role="group" aria-label="Mitad del inning">
+              <button aria-pressed={game.half === "alta"} onClick={() => dispatch(actions.setHalf("alta"))} data-testid="half-alta">
+                ▲ Alta
+              </button>
+              <button aria-pressed={game.half === "baja"} onClick={() => dispatch(actions.setHalf("baja"))} data-testid="half-baja">
+                ▼ Baja
+              </button>
+            </div>
+            <div className="console-runs">
+              <span className="console-runs-abbr is-label">Entrada</span>
+              <button
+                className="console-step"
+                onClick={() => dispatch(actions.changeInning(-1))}
+                disabled={game.inning <= LIMITS.inning.min}
+                aria-label="Entrada anterior"
+              >
+                −
+              </button>
+              <output className="console-value" data-testid="value-inning">
+                {game.inning}
+              </output>
+              <button
+                className="console-step is-plus is-blue"
+                onClick={() => dispatch(actions.changeInning(1))}
+                disabled={game.inning >= LIMITS.inning.max}
+                aria-label="Entrada siguiente"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="console-center" aria-label="Cámara">
+          <div className="studio-stage console-stage">
             <canvas ref={canvasRef} className="studio-canvas" data-testid="studio-canvas" aria-label="Vista previa de lo que recibe YouTube" />
             {/* El video de la cámara solo alimenta al lienzo; tiene que estar en la página para que iOS lo reproduzca. */}
             <video ref={videoRef} className="studio-source" playsInline muted autoPlay aria-hidden />
@@ -511,53 +628,164 @@ export function Studio({ initial }: Props) {
                 </span>
               )}
               {muted && <span className="studio-badge is-warn">Micrófono silenciado</span>}
-              {portrait && <span className="studio-badge is-warn">Gira el celular a horizontal</span>}
+              {portrait && <span className="studio-badge is-warn">Gira la cámara a horizontal</span>}
             </div>
-          </div>
-
-          <div className="studio-actions">
-            {!live ? (
-              <button className="btn btn-primary btn-big" onClick={startBroadcast} disabled={!canStart} data-testid="start-broadcast">
-                Iniciar transmisión
-              </button>
-            ) : (
-              <button className="btn btn-danger btn-big" onClick={() => setConfirmStop(true)} disabled={broadcast.phase === "finalizando"} data-testid="stop-broadcast">
-                Finalizar transmisión…
-              </button>
+            {media === "activa" && (
+              <div className="console-stage-tools">
+                <button
+                  className={`console-round ${muted ? "is-off" : ""}`}
+                  onClick={toggleMute}
+                  aria-pressed={muted}
+                  aria-label={muted ? "Activar micrófono" : "Silenciar micrófono"}
+                  data-testid="toggle-mute"
+                >
+                  {muted ? "🔇" : "🎙"}
+                </button>
+                {cameras.length > 1 && (
+                  <button className="console-round" onClick={nextCamera} aria-label="Cambiar de cámara" data-testid="next-camera">
+                    ⟲
+                  </button>
+                )}
+                {supportsFullscreen && (
+                  <button className="console-round" onClick={toggleFullscreen} aria-label="Pantalla completa">
+                    ⛶
+                  </button>
+                )}
+              </div>
             )}
-            <button
-              className={`btn btn-big ${muted ? "btn-primary" : ""}`}
-              onClick={toggleMute}
-              disabled={media !== "activa"}
-              aria-pressed={muted}
-              data-testid="toggle-mute"
-            >
-              {muted ? "Activar micrófono" : "Silenciar micrófono"}
-            </button>
           </div>
-          {!live && startBlocker && <p className="hint" data-testid="start-blocker">{startBlocker}</p>}
+          {!live && startBlocker && media === "activa" && (
+            <p className="console-hint" data-testid="start-blocker">
+              {startBlocker}
+            </p>
+          )}
           {broadcast.message && (
-            <p className={broadcast.phase === "error" ? "error-text" : "hint"} role="status" data-testid="broadcast-message">
+            <p className={`console-hint ${broadcast.phase === "error" ? "is-error" : ""}`} role="status" data-testid="broadcast-message">
               {broadcast.message}
             </p>
           )}
+        </section>
 
+        <section className="console-right" aria-label="Conteo y outs">
+          {COUNT_PADS.map(({ field, label, tone }) => {
+            const max = COUNT_LIMITS[field].max;
+            const value = game[field];
+            const canPlus = value < max || (field === "outs" ? game.auto_change_half : game.auto_new_batter);
+            return (
+              <div key={field} className={`console-count is-${tone}`}>
+                <div className="console-count-row">
+                  <span className="console-count-label">{label}</span>
+                  <button
+                    className="console-count-btn"
+                    onClick={() => dispatch(actions.changeCount(field, -1))}
+                    disabled={value <= COUNT_LIMITS[field].min}
+                    aria-label={`Restar ${label.toLowerCase()}`}
+                    data-testid={`count-minus-${field}`}
+                  >
+                    −
+                  </button>
+                  <output className="console-count-value" data-testid={`value-${field}`}>
+                    {value}
+                  </output>
+                  <button
+                    className="console-count-btn"
+                    onClick={() => dispatch(actions.changeCount(field, 1))}
+                    disabled={!canPlus}
+                    aria-label={`Sumar ${label.toLowerCase()}`}
+                    data-testid={`count-plus-${field}`}
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="console-count-dots" aria-hidden>
+                  {Array.from({ length: max }, (_, i) => (
+                    <span key={i} className={i < value ? "is-on" : ""} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <button className="console-undo" disabled={!canUndo} onClick={() => dispatch(actions.undo())} data-testid="undo">
+            ↶ Deshacer
+          </button>
+        </section>
+      </main>
+
+      <footer className="console-bottom">
+        <button className="console-remote" onClick={() => setSettingsOpen(true)} aria-label="Estado del intermediario">
+          <span className="console-remote-icon" aria-hidden>
+            ((•))
+          </span>
+          <span>
+            <span className="console-remote-title">Remoto</span>
+            <span className={`console-remote-state is-${relayCheck.state}`}>
+              <span className="conn-dot" aria-hidden />
+              {relayCheck.state === "listo" ? "Conectado" : relayLabel(relayCheck)}
+            </span>
+          </span>
+        </button>
+        <div className="console-bases" role="group" aria-label="Bases">
+          <span className="console-bases-label">Bases</span>
+          {BASE_BUTTONS.map(({ key, label }) => (
+            <button
+              key={key}
+              className="console-base"
+              aria-pressed={game[key]}
+              onClick={() => dispatch(actions.setBase(key, !game[key]))}
+              data-testid={`base-${key}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+        <span className={`console-rec ${broadcast.phase === "en_vivo" ? "is-live" : ""}`} aria-hidden />
+        {!live ? (
+          <button className="console-go" onClick={startBroadcast} disabled={!canStart} data-testid="start-broadcast">
+            ((•)) Transmitir
+          </button>
+        ) : (
+          <button
+            className="console-go is-stop"
+            onClick={() => setConfirmStop(true)}
+            disabled={broadcast.phase === "finalizando"}
+            data-testid="stop-broadcast"
+          >
+            ■ Finalizar
+          </button>
+        )}
+        <button className="console-icon is-box" onClick={() => setSettingsOpen(true)} aria-label="Más ajustes">
+          ☰
+        </button>
+      </footer>
 
-        <div className="studio-config">
-          <section className="card studio-board-controls" aria-labelledby="h-pizarra">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <h2 id="h-pizarra" style={{ margin: 0 }}>
-                Pizarra
-              </h2>
-              <ConnectionBadge status={scoreConnection} pending={pendingCount} />
+      <div className={`console-drawer ${settingsOpen ? "is-open" : ""}`} role="dialog" aria-label="Ajustes del Estudio" aria-hidden={!settingsOpen}>
+        <div className="console-drawer-head">
+          <h2>Ajustes</h2>
+          <button className="btn btn-small" onClick={() => setSettingsOpen(false)} data-testid="close-settings">
+            Cerrar
+          </button>
+        </div>
+        <section className="card" aria-labelledby="h-game">
+          <h2 id="h-game">Partido</h2>
+          <div className="stack">
+            <div className="segmented status-segmented" role="group" aria-label="Estado del partido">
+              {GAME_STATUSES.map((status) => (
+                <button key={status} aria-pressed={game.status === status} onClick={() => dispatch(actions.setStatus(status))} data-testid={`status-${status}`}>
+                  {STATUS_LABELS[status]}
+                </button>
+              ))}
             </div>
-            <p className="hint" style={{ marginTop: 6 }}>
-              Maneja el marcador desde aquí mientras transmites. Los cambios salen en el video al instante.
-            </p>
             <div className="row">
-              <button className="btn" style={{ flex: 1 }} disabled={!canUndo} onClick={() => dispatch(actions.undo())} data-testid="undo">
-                ↶ Deshacer
+              <button className="btn" style={{ flex: 1 }} onClick={() => dispatch(actions.newBatter())} disabled={game.balls === 0 && game.strikes === 0}>
+                Nuevo bateador
+              </button>
+              <button className="btn" style={{ flex: 1 }} onClick={() => dispatch(actions.changeHalf())} data-testid="change-half">
+                Cambiar mitad
+              </button>
+            </div>
+            <div className="row">
+              <button className="btn" style={{ flex: 1 }} onClick={() => dispatch(actions.clearBases())} disabled={!game.on_first && !game.on_second && !game.on_third}>
+                Limpiar bases
               </button>
               <button
                 className={`btn ${game.overlay_visible ? "" : "btn-primary"}`}
@@ -569,9 +797,8 @@ export function Studio({ initial }: Props) {
                 {game.overlay_visible ? "Ocultar marcador" : "Mostrar marcador"}
               </button>
             </div>
-          </section>
-          <ScoreControls game={game} dispatch={dispatch} />
-
+          </div>
+        </section>
           <section className="card" aria-labelledby="h-status">
             <h2 id="h-status">Estado</h2>
             <dl className="studio-status">
@@ -753,9 +980,7 @@ export function Studio({ initial }: Props) {
             </p>
             <code className="overlay-url">{panelUrl}</code>
           </section>
-        </div>
-      </main>
-
+      </div>
       {notice && (
         <div className="toast" data-tone={notice.tone} role="alert" data-testid="notice">
           <p>{notice.text}</p>
@@ -777,7 +1002,7 @@ export function Studio({ initial }: Props) {
           al rato).
         </p>
       </ConfirmDialog>
-    </>
+    </div>
   );
 }
 
