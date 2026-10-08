@@ -1105,3 +1105,11 @@ details.card[open] > summary {
   flex-direction: column;
   gap: 0;
 }
+
+/* Con el celular en horizontal: la cámara y los botones de transmisión quedan fijos y la pizarra se desplaza al lado. */
+@media (min-width: 900px), (orientation: landscape) and (min-width: 640px) {
+  .studio-live {
+    position: sticky;
+    top: 64px;
+  }
+}

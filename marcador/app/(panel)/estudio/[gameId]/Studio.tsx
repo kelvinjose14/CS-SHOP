@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ConfirmDialog } from "@/components/control/ConfirmDialog";
 import { POSITIONS, type Position } from "@/components/scoreboard/placement";
-import type { OverlayGame } from "@/lib/game/types";
-import { CONNECTION_LABELS, useLiveTopic } from "@/lib/realtime/useLiveTopic";
+import { ConnectionBadge } from "@/components/control/ConnectionBadge";
+import { ScoreControls } from "@/components/control/ScoreControls";
+import { actions } from "@/lib/game/rules";
+import type { GameRow } from "@/lib/game/types";
+import { useGameController } from "@/lib/game/useGameController";
+import { CONNECTION_LABELS } from "@/lib/realtime/useLiveTopic";
 import { Broadcaster, IDLE_STATE, type BroadcastState } from "@/lib/studio/broadcaster";
 import { Compositor } from "@/lib/studio/compositor";
 import { drawScoreboard, PADDED_HEIGHT, PADDED_WIDTH, SCORE_FONTS } from "@/lib/studio/drawScoreboard";
@@ -52,29 +56,23 @@ type RelayCheck =
 type MediaState = "apagada" | "pidiendo" | "activa" | "denegada" | "error";
 
 interface Props {
-  gameId: string;
-  slug: string;
-  title: string;
-  initial: OverlayGame | null;
+  initial: GameRow;
 }
 
 const settingsKey = (gameId: string) => `marcador.estudio.${gameId}`;
 
 const noSubscribe = () => () => {};
 
-export function Studio({ gameId, slug, title, initial }: Props) {
-  // ---------- Marcador en vivo (misma sincronización que el overlay) ----------
-  const [game, setGame] = useState<OverlayGame | null>(initial);
-  const accept = useCallback((next: OverlayGame) => {
-    setGame((prev) => (!prev || next.version >= prev.version ? next : prev));
-  }, []);
-  const resync = useCallback(async () => {
-    const { data, error } = await getBrowserClient().rpc("marcador_get_overlay", { p_slug: slug });
-    if (error) return false;
-    if (data) accept(data as OverlayGame);
-    return true;
-  }, [slug, accept]);
-  const scoreConnection = useLiveTopic<OverlayGame>({ topic: `marcador-overlay:${slug}`, onMessage: accept, resync });
+export function Studio({ initial }: Props) {
+  const gameId = initial.id;
+  // ---------- Pizarra: el mismo controlador del panel (se puede manejar desde aquí o desde otro dispositivo) ----------
+  const { game, confirmed, dispatch, pendingCount, connection: scoreConnection, notice, dismissNotice } = useGameController(initial);
+  const canUndo = confirmed.undo_count > 0 || pendingCount > 0;
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(dismissNotice, 7000);
+    return () => clearTimeout(timer);
+  }, [notice, dismissNotice]);
 
   // ---------- Ajustes guardados en este celular ----------
   // (Este componente solo se dibuja en el navegador: ver StudioLoader.)
@@ -335,11 +333,11 @@ export function Studio({ gameId, slug, title, initial }: Props) {
     return null;
   }, []);
 
-  const boardVisible = !!game && settings.showBoard && game.overlay_visible;
+  const boardVisible = settings.showBoard && game.overlay_visible;
   useEffect(() => {
     const compositor = compositorRef.current;
     if (!compositor) return;
-    if (!game || !boardVisible) {
+    if (!boardVisible) {
       compositor.setBoard(null, null);
       return;
     }
@@ -485,7 +483,7 @@ export function Studio({ gameId, slug, title, initial }: Props) {
         <Link className="btn btn-ghost btn-small" href={`/control/${gameId}`} aria-label="Volver al panel">
           ←
         </Link>
-        <h1 className="topbar-title">Estudio · {title}</h1>
+        <h1 className="topbar-title">Estudio · {game.title}</h1>
         <span className="conn" data-status={broadcast.phase === "en_vivo" ? "conectado" : live ? "reconectando" : "sin_conexion"} data-testid="broadcast-phase">
           <span className="conn-dot" aria-hidden />
           {PHASE_LABELS[broadcast.phase]}
@@ -544,6 +542,36 @@ export function Studio({ gameId, slug, title, initial }: Props) {
             </p>
           )}
 
+        </div>
+
+        <div className="studio-config">
+          <section className="card studio-board-controls" aria-labelledby="h-pizarra">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <h2 id="h-pizarra" style={{ margin: 0 }}>
+                Pizarra
+              </h2>
+              <ConnectionBadge status={scoreConnection} pending={pendingCount} />
+            </div>
+            <p className="hint" style={{ marginTop: 6 }}>
+              Maneja el marcador desde aquí mientras transmites. Los cambios salen en el video al instante.
+            </p>
+            <div className="row">
+              <button className="btn" style={{ flex: 1 }} disabled={!canUndo} onClick={() => dispatch(actions.undo())} data-testid="undo">
+                ↶ Deshacer
+              </button>
+              <button
+                className={`btn ${game.overlay_visible ? "" : "btn-primary"}`}
+                style={{ flex: 1 }}
+                onClick={() => dispatch(actions.setOverlayVisible(!game.overlay_visible))}
+                aria-pressed={!game.overlay_visible}
+                data-testid="toggle-overlay"
+              >
+                {game.overlay_visible ? "Ocultar marcador" : "Mostrar marcador"}
+              </button>
+            </div>
+          </section>
+          <ScoreControls game={game} dispatch={dispatch} />
+
           <section className="card" aria-labelledby="h-status">
             <h2 id="h-status">Estado</h2>
             <dl className="studio-status">
@@ -574,7 +602,8 @@ export function Studio({ gameId, slug, title, initial }: Props) {
               <dt>Marcador</dt>
               <dd data-testid="status-score">
                 {CONNECTION_LABELS[scoreConnection]}
-                {game && !game.overlay_visible && " · oculto desde el panel"}
+                {pendingCount > 0 && " · guardando…"}
+                {!game.overlay_visible && " · oculto"}
               </dd>
               <dt>Cámara y micrófono</dt>
               <dd>
@@ -602,9 +631,6 @@ export function Studio({ gameId, slug, title, initial }: Props) {
               <li>Pon el celular en horizontal.</li>
             </ul>
           </section>
-        </div>
-
-        <div className="studio-config">
           <section className="card" aria-labelledby="h-board">
             <h2 id="h-board">Marcador en el video</h2>
             <div className="stack">
@@ -720,15 +746,24 @@ export function Studio({ gameId, slug, title, initial }: Props) {
           </section>
 
           <section className="card" aria-labelledby="h-share">
-            <h2 id="h-share">Marcador desde otro celular</h2>
+            <h2 id="h-share">Pizarra desde otro dispositivo (opcional)</h2>
             <p className="hint" style={{ marginTop: 0 }}>
-              Otra persona puede llevar el marcador mientras tú grabas: que abra el panel e inicie sesión con la misma cuenta.
-              Los cambios aparecen en el video en menos de un segundo.
+              Si prefieres que otra persona lleve el marcador, que abra el panel e inicie sesión con la misma cuenta. Los
+              cambios aparecen en el video en menos de un segundo.
             </p>
             <code className="overlay-url">{panelUrl}</code>
           </section>
         </div>
       </main>
+
+      {notice && (
+        <div className="toast" data-tone={notice.tone} role="alert" data-testid="notice">
+          <p>{notice.text}</p>
+          <button className="btn btn-small btn-ghost" onClick={dismissNotice} aria-label="Cerrar aviso">
+            ✕
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmStop}

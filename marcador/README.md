@@ -228,7 +228,8 @@ npm run configurar     # te pide la clave de YouTube y tu correo; los guarda en 
 
 **Durante el partido:**
 
-- **Otra persona puede llevar el marcador** desde su celular: que abra `/control/<id>` (el enlace está en el Estudio) e inicie sesión **con la misma cuenta**. Cada cambio aparece en el video en menos de un segundo.
+- **La pizarra está dentro del Estudio**: el mismo celular que transmite tiene los botones de carreras, conteo, outs, bases, inning, estado, deshacer y mostrar/ocultar. En horizontal, la cámara queda fija a la izquierda y la pizarra se desplaza a la derecha. No hace falta salir de la página.
+- **Opcional: otra persona puede llevar el marcador** desde su celular: que abra `/control/<id>` (el enlace está en el Estudio) e inicie sesión **con la misma cuenta**. Cada cambio aparece en el video en menos de un segundo.
 - **Silenciar micrófono** deja el audio en silencio sin cortar la transmisión.
 - La **duración** y el **estado real** se ven arriba y en la tarjeta **Estado**:
   - Transmisión.
